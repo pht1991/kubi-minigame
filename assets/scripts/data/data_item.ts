@@ -333,7 +333,7 @@ export const ITEM_DATA = {
     jam:{
         name:'果酱色拉',
         type:'food',
-        effect:{full:4,moist:2,san:2},
+        effect:{full:4,moist:4,hp:2},
         desc:'清爽可口的酱料。',
         canUse:true,
         isDrink:true,

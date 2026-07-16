@@ -36,7 +36,9 @@ export class GridNavigator {
     /** 面包屑路径（取每项 breadcrumb 最后一段短名，避免拼接重复） */
     get breadcrumbs(): string[] {
         return this._stack.map(p => {
-            const parts = p.breadcrumb.split('>');
+            const bc = p.breadcrumb;
+            const raw = (bc !== undefined && bc !== null) ? bc : (p.title || '');
+            const parts = raw.split('>');
             return parts[parts.length - 1].trim();
         });
     }

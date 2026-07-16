@@ -473,7 +473,7 @@ export class MainScene extends Component {
         switch (action) {
             case 'rest':
                 // 休息/睡觉 → 复用休息页（床铺恢复 或 原地等待）
-                this.openRestPage();
+                this._navigator.push(this.openRestPage());
                 break;
             case 'goout':
                 this.openGoOutList();
@@ -485,11 +485,11 @@ export class MainScene extends Component {
     }
 
     /** 床铺详情页（原版 UI：等级显示 + 睡觉操作 + 升级） */
-    private openRestPage(): void {
+    private openRestPage(): GridPage {
         const hasBed = !!this._gm.buildingSaveData['sleepPlace']?.own;
         if (!hasBed) {
             // 未建造 → 提示去建造
-            this._navigator.push({
+            return {
                 title: '休息',
                 breadcrumb: '主页 > 休息',
                 columns: 1,
@@ -503,8 +503,7 @@ export class MainScene extends Component {
                         this.openBuildList();
                     }
                 },
-            });
-            return;
+            };
         }
 
         // ===== 已建床铺：等级 + 睡觉 + 升级 =====
@@ -522,13 +521,23 @@ export class MainScene extends Component {
         // ── 顶行：当前等级 ──
         cells.push({ id: 'levelInfo', name: `当前床铺等级：${currentLevelName}`, state: 'disabled', type: 'list' });
 
-        // ── 操作面板：需求 | 获得 | 耗时 | [睡觉] ──
+        // ── 睡觉操作（恢复量按等级递增，不直接回满） ──
+        // 等级恢复表：[体力恢复, 精神恢复, 推进小时]
+        const REST_TABLE: [number, number, number][] = [
+            [15, 10, 1],   // Lv0 地板
+            [25, 18, 1],  // Lv1 木床
+            [35, 25, 1],  // Lv2 弹簧床
+            [50, 35, 1],  // Lv3 大床
+        ];
+        const restIdx = Math.min(level, REST_TABLE.length - 1);
+        const [restPs, restSan, restHours] = REST_TABLE[restIdx];
         cells.push({
             id: 'sleep',
-            name: `需求：体力10  精神0\n获得：恢复体力与精神\n耗时：1小时`,
+            name: `[睡觉]  恢复约 +${restPs}体力 +${restSan}精神  推进${restHours}小时`,
             state: 'normal',
             type: 'list',
             noTruncate: true,
+            data: { restPs, restSan, restHours },
         });
 
         // ── 升级区（有下一级时显示） ──
@@ -553,30 +562,40 @@ export class MainScene extends Component {
         // ── 返回 ──
         cells.push({ id: 'back', name: '返回', state: 'normal', type: 'list' });
 
-        this._navigator.push({
+        return {
             title: '床铺',
             breadcrumb: '主页 > 床铺',
             columns: 1,
             cells,
             onCellClick: (idx, cell) => {
                 if (cell.id === 'sleep') {
-                    // 睡觉：消耗体力10，恢复全部体力/精神，推进1小时
-                    const ps = this._gm.playerState.ps;
-                    const san = this._gm.playerState.san;
-                    this._gm.playerStateChange({ ps: Math.min(ps - 10 + 100, 100), san: 100 });
-                    this._timeSys.advance(1);
-                    this._lastMsg = `你在${currentLevelName}上睡了一觉，恢复了 ${Math.min(100, 100 - ps + 100)} 点体力和 ${100 - san} 点精神`;
-                    this._navigator.replace(this.openRestPage.bind(this));
+                    // 睡觉：按床铺等级定量恢复，推进时间
+                    const d = cell.data as any;
+                    const rp = d.restPs || 15;
+                    const rs = d.restSan || 10;
+                    const rh = d.restHours || 1;
+                    const oldPs = this._gm.playerState.ps;
+                    const oldSan = this._gm.playerState.san;
+                    // 增量加法，上限100
+                    this._gm.playerStateChange({
+                        ps: Math.min(oldPs + rp, 100),
+                        san: Math.min(oldSan + rs, 100),
+                    });
+                    this._timeSys.advance(rh);
+                    const actualPs = Math.min(rp, 100 - oldPs);
+                    const actualSan = Math.min(rs, 100 - oldSan);
+                    this._lastMsg = `你在${currentLevelName}上睡了一觉，恢复了 ${actualPs} 点体力和 ${actualSan} 点精神`;
+                    this._navigator.replace(this.openRestPage());
                     this._eventBus.emit(GameEvents.UI_REFRESH);
                 } else if (cell.data?.action === 'upgrade') {
                     const r = ActionBuilding.instance.upgrade('sleepPlaceUpdate', cell.data.targetId);
                     this._lastMsg = r.message;
-                    this._navigator.replace(this.openRestPage.bind(this));
+                    this._navigator.replace(this.openRestPage());
                 } else if (cell.id === 'back') {
                     this._navigator.pop();
                 }
             },
-        });
+        };
     }
 
     /** 检查并设置 UI Camera */
@@ -636,7 +655,7 @@ export class MainScene extends Component {
             home_box:     () => this.openBagPanel(),      // 大箱子=背包弹窗
             home_well:    () => this.openBuildingGrid(), // 取水在建筑详情
             home_toilet:  () => this.openBuildingGrid(),
-            home_sleep:   () => this.openRestPage(),
+            home_sleep:   () => this._navigator.push(this.openRestPage()),
         };
         if (facilityRoutes[id]) { facilityRoutes[id](); return; }
 
@@ -1030,7 +1049,8 @@ export class MainScene extends Component {
         const cells: GridCellData[] = [];
 
         cells.push({ id: 'add', name: '添加食材', state: 'normal' });
-        cells.push({ id: 'cook', name: '开始烹饪', state: cookerItems.length >= 2 ? 'normal' : 'disabled' });
+        cells.push({ id: 'cook', name: '开始烹饪', state: cookerItems.length >= 1 ? 'normal' : 'disabled' });
+        cells.push({ id: 'book', name: '📖 菜谱书', state: 'normal' });
         if (cookerItems.length > 0) {
             cells.push({ id: 'clear', name: '清空炊具', state: 'normal' });
             cells.push({ id: 'label', name: '── 炊具内 ──', state: 'disabled' });
@@ -1051,7 +1071,14 @@ export class MainScene extends Component {
                 if (cell.id === 'add') {
                     this.openCookAdd();
                 } else if (cell.id === 'cook') {
-                    this.openCookStep1();
+                    // 炊具内仅 1 种食材（如尸体/龙鳞）→ 直接匹配单食材配方
+                    if (cookerItems.length === 1) {
+                        this.showCookResult([cookerItems[0]]);
+                    } else {
+                        this.openCookStep1();
+                    }
+                } else if (cell.id === 'book') {
+                    this.openRecipeBook();
                 } else if (cell.id === 'clear') {
                     for (const itemId of cookerItems) {
                         this._gm.changeItem({ [itemId]: cooker[itemId] }, 'bag');
@@ -1158,30 +1185,29 @@ export class MainScene extends Component {
             cells,
             onCellClick: (index, cell) => {
                 if (cell.id !== 'none') {
-                    this.showCookResult(this._cookIngredient1!, cell.id);
+                    this.showCookResult([this._cookIngredient1!, cell.id]);
                 }
             },
         });
     }
 
-    /** 第三步：显示匹配的配方 */
-    private showCookResult(ing1: string, ing2: string): void {
-        const name1 = ITEM_DATA[ing1]?.name || ing1;
-        const name2 = ITEM_DATA[ing2]?.name || ing2;
+    /** 第三步：显示匹配的配方（支持任意食材数量，含单食材配方） */
+    private showCookResult(ings: string[]): void {
+        const nameList = ings.map(id => ITEM_DATA[id]?.name || id);
         const cells: GridCellData[] = [];
 
-        // 查找匹配的配方（ing1+ing2 或 ing2+ing1）
-        const ingredients = [ing1, ing2].sort();
+        // 查找匹配的配方（食材集合完全一致，顺序无关，长度也一致）
+        const ingredients = [...ings].sort();
         const matched: typeof COOK_DATA = [];
         for (const recipe of COOK_DATA) {
             const req = [...recipe.require].sort();
-            if (req.length === 2 && req[0] === ingredients[0] && req[1] === ingredients[1]) {
+            if (req.length === ingredients.length && req.every((r, i) => r === ingredients[i])) {
                 matched.push(recipe);
             }
         }
 
         if (matched.length === 0) {
-            cells.push({ id: 'no_match', name: `${name1} + ${name2} 没有匹配的配方`, state: 'disabled' });
+            cells.push({ id: 'no_match', name: `${nameList.join(' + ')} 没有匹配的配方`, state: 'disabled' });
         } else {
             for (const recipe of matched) {
                 const outName = ITEM_DATA[recipe.name]?.name || recipe.name;
@@ -1198,7 +1224,7 @@ export class MainScene extends Component {
         }
 
         this._navigator.push({
-            title: `${name1} + ${name2}`,
+            title: nameList.join(' + '),
             breadcrumb: '结果',
             columns: 4,
             cells,
@@ -1212,6 +1238,54 @@ export class MainScene extends Component {
                 }
             },
         });
+    }
+
+    /** 配方书：列出全部可烹饪料理（菜名+食用效果+所有配方变体），数据来自 COOK_DATA + ITEM_DATA */
+    private openRecipeBook(): void {
+        // 按料理名聚合：效果 + 所有配方变体
+        const byName: Record<string, { key: string; effect: Record<string, number> | null; variants: string[] }> = {};
+        for (const recipe of COOK_DATA) {
+            const key = recipe.name;
+            if (!byName[key]) {
+                byName[key] = {
+                    key,
+                    effect: (ITEM_DATA[key] && (ITEM_DATA[key] as any).effect) || null,
+                    variants: [],
+                };
+            }
+            byName[key].variants.push(recipe.require.map(id => ITEM_DATA[id]?.name || id).join(' + '));
+        }
+
+        const cells: GridCellData[] = [];
+        for (const key of Object.keys(byName)) {
+            const info = byName[key];
+            const outName = ITEM_DATA[key]?.name || key;
+            const effStr = info.effect ? this.formatEffect(info.effect) : '（无食用效果）';
+            const recipeStr = info.variants.join('  /  ');
+            const text = `${outName}\n效果: ${effStr}\n配方: ${recipeStr}`;
+            cells.push({ id: `rb_${key}`, name: text, state: 'disabled', type: 'list' });
+        }
+
+        this._navigator.push({
+            title: '📖 菜谱书',
+            breadcrumb: '菜谱书',
+            columns: 1,
+            cells,
+            onCellClick: () => {},
+        });
+    }
+
+    /** 把 effect 对象格式化为中文串，如 {full:15, san:25} → "满腹+15 精神+25" */
+    private formatEffect(effect: Record<string, number>): string {
+        const cn: Record<string, string> = { full: '满腹', moist: '水分', temp: '体温', san: '精神', hp: '生命', ps: '体力' };
+        const parts: string[] = [];
+        for (const k of ['full', 'moist', 'temp', 'san', 'hp', 'ps']) {
+            if (effect[k] !== undefined) {
+                const v = effect[k];
+                parts.push(`${cn[k]}${v > 0 ? '+' : ''}${v}`);
+            }
+        }
+        return parts.join(' ') || '—';
     }
 
     /** 原版首页：动态设施区 + 建造 + 出门 + 菜单 */
@@ -1261,11 +1335,6 @@ export class MainScene extends Component {
             home: true,
             onCellClick: (index, cell) => this.onHomeCellClick(cell.id),
         };
-    }
-
-    /** 烹饪配方详情 + 烹饪动作（保留兼容：直接调用两步流程） */
-    private openCookDetail(recipe: { name: string; require: string[] }): void {
-        this.openCookPanel();
     }
 
     // ===== 建造（网格形式：仅未建建筑，每格展示名称+需求摘要）=====
