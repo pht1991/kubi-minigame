@@ -1226,21 +1226,6 @@ export const PLAYER_STATE_INIT = {
 // 中全部工具都是 0，使 equip / canUseTools / useTools 里的「未初始化→满耐久」
 // 兜底（基于 === undefined 判断）全部失效，从而所有已装备工具都误判「耐久不足」。
 export const DURABLE_INIT = {}
-//集市商人初始化
-export const TRADE_INIT = [
-    {
-        trade:'wood',
-        time:200
-    },
-    {
-        trade:'iron',
-        time:200
-    },
-    {
-        trade:'part',
-        time:200
-    }
-]
 //行动冷却初始化
 export const COOL_DOWN_INIT = {
     shit:0,

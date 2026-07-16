@@ -46,6 +46,8 @@ export class GameManager {
     placeSaveData: Record<string, any>;
     /** 地牢数据 */
     dungeonSaveData: Record<string, any>;
+    /** 商人交易库存（已售量 + 上次补货时间，用于刷新周期补货） */
+    tradeSaveData: Record<string, { sold: number; day: number; hour: number }>;
     /** 阵营 */
     campSaveData: string;
     /** 酿酒（时间型，类比农田） */
@@ -102,6 +104,7 @@ export class GameManager {
         this.eventSaveData = JSON.parse(JSON.stringify(EVENT_INIT));
         this.placeSaveData = JSON.parse(JSON.stringify(PLACE_INIT));
         this.dungeonSaveData = {};
+        this.tradeSaveData = {};
         this.campSaveData = '';
         this.alcoSaveData = [];
         this.robberSaveData = JSON.parse(JSON.stringify(ROBBER_INIT));
@@ -324,6 +327,7 @@ export class GameManager {
             durableSaveData: { ...this.durableSaveData },
             eventSaveData: JSON.parse(JSON.stringify(this.eventSaveData)),
             dungeonSaveData: JSON.parse(JSON.stringify(this.dungeonSaveData)),
+            tradeSaveData: JSON.parse(JSON.stringify(this.tradeSaveData)),
             campSaveData: this.campSaveData,
             alcoSaveData: JSON.parse(JSON.stringify(this.alcoSaveData)),
             coolDownSaveData: { ...this.coolDownSaveData },
@@ -343,6 +347,7 @@ export class GameManager {
         this.durableSaveData = data.durableSaveData;
         this.eventSaveData = data.eventSaveData;
         this.dungeonSaveData = data.dungeonSaveData;
+        this.tradeSaveData = data.tradeSaveData || {};
         this.campSaveData = data.campSaveData;
         this.alcoSaveData = data.alcoSaveData || [];
         this.coolDownSaveData = data.coolDownSaveData;

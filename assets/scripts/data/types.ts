@@ -248,6 +248,8 @@ export interface SaveData {
     durableSaveData: Record<string, number>;
     eventSaveData: Record<string, any>;
     dungeonSaveData: Record<string, any>;
+    /** 商人交易库存：已售量 + 上次补货时间 */
+    tradeSaveData: Record<string, { sold: number; day: number; hour: number }>;
     campSaveData: string;
     alcoSaveData: any[];
     coolDownSaveData: Record<string, number>;

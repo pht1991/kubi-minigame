@@ -116,6 +116,8 @@ export class MainScene extends Component {
 
     /** 是否在户外（已出门进入地图/地点）——用于控制底栏第3按钮显示「出门」或「回家」 */
     private _isOutdoors: boolean = false;
+    /** 本次出门随机摇出的在场商人 key 列表（回家清空，再出门重摇；保证出门期间稳定） */
+    private _rolledTraders: string[] = [];
     /** 底栏第3个按钮（出门/回家）的 Label 引用，用于动态改文字 */
     private _goBtnLabel: Label | null = null;
 
@@ -449,6 +451,7 @@ export class MainScene extends Component {
         const cur = this._navigator.current;
         if (cur && (cur as any).home) {
             this._isOutdoors = false;
+            this._rolledTraders = []; // 回家清空在场商人，下次出门重新随机
         }
         this.refreshGoButton();
     }
@@ -669,7 +672,6 @@ export class MainScene extends Component {
             case 'cook': this.openCookPanel(); break;
             case 'building': this.openBuildingGrid(); break;
             case 'map': this.openMapGrid(); break;
-            case 'trade': this.openTradeGrid(); break;
             case 'skill': this.openSkillGrid(); break;
             case 'dungeon': this.openDungeonGrid(); break;
             case 'quest': this.openQuestGrid(); break;
@@ -1292,6 +1294,7 @@ export class MainScene extends Component {
     private buildHomePage(): GridPage {
         // 回主页 → 必然不在户外，重置底栏按钮为「出门」
         this._isOutdoors = false;
+        this._rolledTraders = []; // 回家清空在场商人，下次出门重新随机
         this.refreshGoButton();
 
         const cells: GridCellData[] = [];
@@ -1391,10 +1394,53 @@ export class MainScene extends Component {
     }
 
     // ===== 出门 / 地点列表（渐进解锁，网格形式）=====
+    /** 商人是否在当前户外页可见（过滤地牢专属 / 季节 / 天数） */
+    private isTraderVisible(key: string): boolean {
+        const d = TRADE_DATA[key];
+        if (!d) return false;
+        if (d.type === 'dungeon') return false; // 地牢专属商人仅地牢商人弹窗出现
+        if (d.season) {
+            const SEASON_EN = ['spring', 'summer', 'autumn', 'winter'];
+            if (d.season !== SEASON_EN[this._gm.timeData.season]) return false;
+        }
+        if (d.day && this._gm.timeData.day < d.day) return false; // 第N天后才出现
+        return true;
+    }
+
+    /**
+     * 随机摇出当前在场商人（参照原版贸易系统：商人随机出现，不是全部列出）。
+     * 每个可见商人按出现概率掷骰，命中的进入在场列表。
+     * 概率优先级：TRADE_DATA[key].prob（可选，便于精确还原原版各商人概率）> 类别默认值。
+     */
+    private rollVisibleTraders(): string[] {
+        const visible = Object.keys(TRADE_DATA).filter(k => this.isTraderVisible(k));
+        const rolled = visible.filter(k => {
+            const d = TRADE_DATA[k] as any;
+            const p = d.prob ?? this.defaultTraderProb(d);
+            return Math.random() < p;
+        });
+        // 极端兜底：若全部未命中（概率极低），至少随机保留一个在场，避免空场导致无法交易
+        if (rolled.length === 0 && visible.length > 0) {
+            rolled.push(visible[Math.floor(Math.random() * visible.length)]);
+        }
+        return rolled;
+    }
+
+    /** 未显式指定 prob 时的默认出现概率（参照原版：核心商必现、资源商约半数到场） */
+    private defaultTraderProb(d: any): number {
+        if (d.give === 'gold') return 1;        // 金币商队必出（核心金币来源，保证玩家总能卖货换金）
+        if (d.season) return 1;                 // 季节限定商人必出（本身稀缺）
+        if (d.type === 'upgrade') return 0.6;   // 升级商人较常出现
+        return 0.5;                             // 其余资源/功能商人默认 50%
+    }
+
     private openGoOutList(): void {
         // 进入地图列表即视为「出门在外」，底栏按钮变「回家」
         this._isOutdoors = true;
         this.refreshGoButton();
+
+        // 本次出门随机摇出在场商人（回家后缓存清空，再出门重摇）
+        if (this._rolledTraders.length === 0) this._rolledTraders = this.rollVisibleTraders();
 
         const cells: GridCellData[] = [];
         for (const key in PLACE_DATA) {
@@ -1430,6 +1476,22 @@ export class MainScene extends Component {
             });
         }
 
+        // 商人（与地点平铺，点击进交易二级页；仅展示本次随机在场的一批）
+        for (const key of this._rolledTraders) {
+            const d = TRADE_DATA[key];
+            const giveName = d.give === 'gold' ? '金币' : (ITEM_DATA[d.give]?.name || d.give);
+            const refresh = d.time ? ` 每${d.time}h补货` : '';
+            const stock = ActionTrade.instance.getStock(key);
+            const stockStr = d.give === 'gold' ? '领取金币' : `剩余${stock.available}/${stock.max}`;
+            cells.push({
+                id: `trader_${key}`,
+                name: `${d.name}\n出售:${giveName} · ${stockStr}${refresh}`,
+                state: 'normal',
+                type: 'list',
+                data: { traderId: key },
+            });
+        }
+
         if (cells.length === 0) {
             cells.push({ id: 'empty', name: '还没有可前往的地点', state: 'disabled', type: 'list' });
         }
@@ -1440,7 +1502,9 @@ export class MainScene extends Component {
             columns: 1,  // 单列：每行一个地点，横向撑满展示完整信息
             cells,
             onCellClick: (index, cell) => {
-                if (cell.data?.placeKey) {
+                if (cell.data?.traderId) {
+                    this.openTradeDetail(cell.data.traderId);
+                } else if (cell.data?.placeKey) {
                     this.travelToPlace(cell.data.placeKey, cell.data.timeNeed);
                 }
             },
@@ -1909,6 +1973,9 @@ export class MainScene extends Component {
         this._isOutdoors = true;
         this.refreshGoButton();
 
+        // 本次出门随机摇出在场商人（与出门页共用缓存，保证两入口看到同一批）
+        if (this._rolledTraders.length === 0) this._rolledTraders = this.rollVisibleTraders();
+
         const cells: GridCellData[] = [];
         for (const key in PLACE_DATA) {
             const p = PLACE_DATA[key];
@@ -1923,6 +1990,17 @@ export class MainScene extends Component {
             });
         }
 
+        // 商人（与地点同网格平铺，点击进交易二级页；仅展示本次随机在场的一批）
+        for (const key of this._rolledTraders) {
+            const d = TRADE_DATA[key];
+            cells.push({
+                id: `trader_${key}`,
+                name: d.name,
+                state: 'normal',
+                data: { traderId: key },
+            });
+        }
+
         if (cells.length === 0) {
             cells.push({ id: 'empty', name: '没有可探索的地点', state: 'disabled' });
         }
@@ -1933,6 +2011,10 @@ export class MainScene extends Component {
             columns: 4,
             cells,
             onCellClick: (index, cell) => {
+                if (cell.data?.traderId) {
+                    this.openTradeDetail(cell.data.traderId);
+                    return;
+                }
                 if (cell.id !== 'empty') {
                     if (!this._gm.placeSaveData[cell.id]?.visited) {
                         if (!this._gm.placeSaveData[cell.id]) this._gm.placeSaveData[cell.id] = {};
@@ -2128,23 +2210,6 @@ export class MainScene extends Component {
     }
 
     // ===== 贸易 =====
-    private openTradeGrid(): void {
-        const cells: GridCellData[] = Object.keys(TRADE_DATA).map(key => ({
-            id: key,
-            name: TRADE_DATA[key].name,
-            state: 'normal',
-            data: key,
-        }));
-
-        this._navigator.push({
-            title: '贸易',
-            breadcrumb: '贸易',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => this.openTradeDetail(cell.id),
-        });
-    }
-
     /** 商人详情 + 购买动作 */
     private openTradeDetail(traderId: string): void {
         this._navigator.push(this.buildTradeDetailPage(traderId));
@@ -2157,10 +2222,17 @@ export class MainScene extends Component {
         const gold = this._gm.boxSaveData['bag']?.['gold'] || 0;
         const cells: GridCellData[] = [];
 
-        // 商人刷新周期信息
-        const refreshTime = detail.time || 0;
-        const refreshDesc = refreshTime > 0 ? `每 ${refreshTime} 小时刷新` : '长期可用';
-        cells.push({ id: 'refresh', name: `刷新: ${refreshDesc}`, state: 'disabled' });
+        // 库存 / 刷新信息（基于商人库存系统）
+        const stock = ActionTrade.instance.getStock(traderId);
+        const giveName = ITEM_DATA[give]?.name || give;
+        if (give === 'gold') {
+            cells.push({ id: 'stock', name: `收益: 金币 ×${max}（随时可领取）`, state: 'disabled' });
+        } else if (stock.soldOut) {
+            cells.push({ id: 'stock', name: `已售罄，${stock.restockHours} 小时后补货`, state: 'disabled' });
+        } else {
+            const refreshDesc = detail.time ? `每 ${detail.time} 小时补货` : '库存有限';
+            cells.push({ id: 'stock', name: `库存: ${stock.available}/${stock.max} · ${refreshDesc}`, state: 'disabled' });
+        }
 
         if (give === 'gold') {
             cells.push(
@@ -2169,22 +2241,21 @@ export class MainScene extends Component {
             );
         } else {
             const price = ActionTrade.instance.getPrice(give);
-            const cost = price * max;
-            const giveName = ITEM_DATA[give]?.name || give;
-            const canBuy = gold >= price;
+            const canBuy = gold >= price && !stock.soldOut && stock.available > 0;
             cells.push(
                 { id: 'give', name: `换取: ${giveName} (上限 ${max})`, state: 'disabled' },
                 { id: 'price', name: `单价: ${price} 金`, state: 'disabled' },
                 { id: 'gold', name: `持有金币: ${gold}`, state: 'disabled' },
             );
 
-            // 购买选项（快捷按钮，无自定义弹窗）
-            cells.push({ id: 'buy1', name: `×1 (${price}金)`, state: canBuy ? 'normal' : 'disabled' });
-            cells.push({ id: 'buy5', name: `×5 (${price * 5}金)`, state: gold >= price * 5 ? 'normal' : 'disabled' });
-            cells.push({ id: 'buy10', name: `×10 (${price * 10}金)`, state: gold >= price * 10 ? 'normal' : 'disabled' });
+            // 购买选项（受商人库存与金币双重限制）
+            const a = stock.available;
+            cells.push({ id: 'buy1', name: `×1 (${price}金)`, state: (canBuy && a >= 1) ? 'normal' : 'disabled' });
+            cells.push({ id: 'buy5', name: `×5 (${price * 5}金)`, state: (canBuy && a >= 5) ? 'normal' : 'disabled' });
+            cells.push({ id: 'buy10', name: `×10 (${price * 10}金)`, state: (canBuy && a >= 10) ? 'normal' : 'disabled' });
             if (max > 10) {
-                cells.push({ id: 'buy20', name: `×20 (${price * 20}金)`, state: gold >= price * 20 ? 'normal' : 'disabled' });
-                cells.push({ id: 'buy_max', name: `买满 ×${max}`, state: gold >= cost ? 'normal' : 'disabled' });
+                cells.push({ id: 'buy20', name: `×20 (${price * 20}金)`, state: (canBuy && a >= 20) ? 'normal' : 'disabled' });
+                cells.push({ id: 'buy_max', name: `买满 ×${Math.min(max, a)}`, state: canBuy ? 'normal' : 'disabled' });
             }
 
             // 易货（以物易物）：列出背包中可估值交换的物品
