@@ -38,8 +38,8 @@ export class ActionBuilding {
         if (data.building && !this._gm.buildingSaveData[data.building]?.own) {
             return { success: false, message: `需要先建造 ${BUILDING_DATA[data.building]?.name || data.building}` };
         }
-        // 科技前置（科技存于 scienceTable 箱，own 标记）
-        if (data.science && !this._gm.buildingSaveData[data.science]?.own) {
+        // 科技前置（科技技能统一存于 skill map，由 ActionSkill.learn 写入）
+        if (data.science && !this._gm.skill[data.science]) {
             return { success: false, message: `需要先研究对应科技` };
         }
         // 材料

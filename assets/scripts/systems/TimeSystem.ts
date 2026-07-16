@@ -14,6 +14,7 @@ import {
     NIGHT_END,
     SEASON_CIRCLE,
     MAX_STATE,
+    ROBBER_DAY,
 } from '../data/data';
 
 /** 冬季每小时体温额外流失（制造"难熬"的低温压力） */
@@ -107,6 +108,14 @@ export class TimeSystem {
 
         if (td.day !== oldDay) {
             this._eventBus.emit(GameEvents.NEW_DAY, td.day);
+        }
+
+        // 盗贼突袭：第 ROBBER_DAY 天起自动开启盗贼线（标记 intro 事件已发生，
+        // 之后 robberQuest / robberPlace 等盗贼内容即可游玩，原版核心生存压力事件补全）
+        if (td.day >= ROBBER_DAY && !this._gm.eventSaveData['robberQuestGet']?.experienced) {
+            if (!this._gm.eventSaveData['robberQuestGet']) this._gm.eventSaveData['robberQuestGet'] = {};
+            this._gm.eventSaveData['robberQuestGet'].experienced = true;
+            this._eventBus.emit(GameEvents.EVENT_TRIGGER, 'robberQuestGet');
         }
         if (td.season !== oldSeason) {
             this._eventBus.emit(GameEvents.SEASON_CHANGE, td.season);

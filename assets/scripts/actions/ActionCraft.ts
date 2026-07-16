@@ -37,8 +37,8 @@ export class ActionCraft {
         if (recipe.building && !this._gm.buildingSaveData[recipe.building]) {
             return { success: false, message: '需要先建造对应建筑' };
         }
-        // 前置科技
-        if (recipe.science && !this._gm.buildingSaveData[recipe.science]) {
+        // 前置科技（科技技能统一存于 skill map，由 ActionSkill.learn 写入）
+        if (recipe.science && !this._gm.skill[recipe.science]) {
             return { success: false, message: '需要先研究对应科技' };
         }
 

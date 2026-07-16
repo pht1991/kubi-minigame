@@ -303,9 +303,9 @@ export class GameManager {
         return this.skill[skillName] || 0;
     }
 
-    /** 获取科技等级 */
+    /** 获取科技等级（科技技能统一存于 skill map，由 ActionSkill.learn 写入） */
     getScienceLevel(scienceName: string): number {
-        return this.buildingSaveData[scienceName] ? 1 : 0;
+        return this.skill[scienceName] ? 1 : 0;
     }
 
     /** 获取建筑等级 */
@@ -322,6 +322,7 @@ export class GameManager {
             playerState: { ...this.playerState },
             currentEquip: { ...this.currentEquip },
             skill: { ...this.skill },
+            placeSaveData: JSON.parse(JSON.stringify(this.placeSaveData)),
             boxSaveData: JSON.parse(JSON.stringify(this.boxSaveData)),
             buildingSaveData: JSON.parse(JSON.stringify(this.buildingSaveData)),
             durableSaveData: { ...this.durableSaveData },
@@ -342,6 +343,7 @@ export class GameManager {
         this.playerState = data.playerState;
         this.currentEquip = data.currentEquip;
         this.skill = data.skill;
+        this.placeSaveData = data.placeSaveData || {};
         this.boxSaveData = data.boxSaveData;
         this.buildingSaveData = data.buildingSaveData;
         this.durableSaveData = data.durableSaveData;
