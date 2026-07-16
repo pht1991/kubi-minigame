@@ -1,0 +1,10 @@
+{
+  "name": "kubi-minigame",
+  "version": "1.0.0",
+  "description": "超苦逼冒险者 - 微信小游戏版 (Cocos Creator 3.8)",
+  "author": "小游",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "uuid": "ad09f222-9a11-4179-96e8-380a884acf8e"
+}

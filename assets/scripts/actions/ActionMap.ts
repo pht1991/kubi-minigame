@@ -1,0 +1,107 @@
+/**
+ * ActionMap.ts - 地图探索系统动作
+ * 覆盖：资源采集（gather）、拾荒（scavenge）、狩猎（hunt→战斗）
+ * 范式对齐原 PlaceComponent：
+ *   - 采集：消耗 resource.require（含 ps 体力 / 工具）→ 产出 resource.things → 该资源点 amount-1
+ *   - 拾荒：消耗 pickRequire（默认 ps:3）→ 随机获得地点散落物品
+ *   - 狩猎：从地点 mst 列表随机抽怪 → 交由 ActionDungeon 战斗
+ */
+
+import { GameManager } from '../core/GameManager';
+import { EventBus, GameEvents } from '../core/EventBus';
+import { ActionExecutor, ActionResult } from './ActionExecutor';
+import { PLACE_DATA, PICK_TIME, MST_DATA, ITEM_DATA } from '../data/data';
+import { ActionDungeon } from './ActionDungeon';
+
+export class ActionMap {
+    private static _instance: ActionMap;
+    private _gm: GameManager;
+    private _exec: ActionExecutor;
+    private _eventBus: EventBus;
+    private _dungeon: ActionDungeon;
+
+    static get instance(): ActionMap {
+        if (!this._instance) this._instance = new ActionMap();
+        return this._instance;
+    }
+
+    private constructor() {
+        this._gm = GameManager.instance;
+        this._exec = ActionExecutor.instance;
+        this._eventBus = EventBus.instance;
+        this._dungeon = ActionDungeon.instance;
+    }
+
+    /** 资源采集 */
+    gather(placeId: string, resourceName: string): ActionResult {
+        const placeData = PLACE_DATA[placeId];
+        const res = placeData?.resource?.[resourceName];
+        if (!res) return { success: false, message: '资源点不存在' };
+        const psd = this._gm.placeSaveData[placeId]?.resource?.[resourceName];
+        if (!psd || psd.amount <= 0) return { success: false, message: '资源已耗尽' };
+
+        const require = res.require || {};
+        const canGet = res.things || {};
+        const timeNeed = res.timeNeed || 1;
+
+        const r = this._exec.execute({ ...canGet }, { ...require }, timeNeed, {
+            onDone: () => {
+                if (this._gm.placeSaveData[placeId]?.resource?.[resourceName]) {
+                    this._gm.placeSaveData[placeId].resource[resourceName].amount -= 1;
+                }
+                this._eventBus.emit('place_change', placeId);
+            },
+        });
+        return r.success ? { success: true, message: `获得了${this.formatGetNames(canGet)}` } : r;
+    }
+
+    /** 拾荒：随机获得地点散落物品 */
+    scavenge(placeId: string): ActionResult {
+        const placeData = PLACE_DATA[placeId];
+        const things = placeData?.things;
+        if (!things || Object.keys(things).length === 0) {
+            return { success: false, message: '这里没有可拾取的东西' };
+        }
+        const pickReq = placeData.pickRequire || { ps: 3 };
+
+        // 随机挑选若干物品（每种 1~3 个）
+        const keys = Object.keys(things);
+        const canGet: Record<string, number> = {};
+        const n = Math.min(keys.length, 2 + Math.floor(Math.random() * 2));
+        for (let i = 0; i < n; i++) {
+            const k = keys[Math.floor(Math.random() * keys.length)];
+            canGet[k] = (canGet[k] || 0) + 1 + Math.floor(Math.random() * 3);
+        }
+
+        const r = this._exec.execute(canGet, { ...pickReq }, PICK_TIME, {
+            onDone: () => this._eventBus.emit('place_change', placeId),
+        });
+        return r.success ? { success: true, message: `获得了${this.formatGetNames(canGet)}` } : r;
+    }
+
+    /** 狩猎：从地点随机抽一只怪进入战斗 */
+    hunt(placeId: string): ActionResult {
+        const mstList = this._gm.placeSaveData[placeId]?.mst;
+        const keys = mstList ? Object.keys(mstList).filter(k => (mstList[k].amount ?? 0) > 0) : [];
+        if (keys.length === 0) return { success: false, message: '附近没有怪物' };
+        const mstId = keys[Math.floor(Math.random() * keys.length)];
+        return this._dungeon.battle(mstId, {});
+    }
+
+    /** 将物品ID→数量映射格式化为中文显示（如 "树皮2 木头5"） */
+    private formatGetNames(items: Record<string, number>): string {
+        return Object.entries(items)
+            .map(([id, cnt]) => `${ITEM_DATA[id]?.name || id}${cnt > 1 ? cnt : ''}`)
+            .join(' ');
+    }
+
+    /** 探测狩猎（不自动战斗）：随机抽怪，返回怪物 ID 供 BattlePanel 使用 */
+    probeHunt(placeId: string): { mstId: string | null; mstName: string } {
+        const mstList = this._gm.placeSaveData[placeId]?.mst;
+        const keys = mstList ? Object.keys(mstList).filter(k => (mstList[k].amount ?? 0) > 0) : [];
+        if (keys.length === 0) return { mstId: null, mstName: '' };
+        const mstId = keys[Math.floor(Math.random() * keys.length)];
+        const mst = MST_DATA[mstId];
+        return { mstId, mstName: mst?.name || mstId };
+    }
+}

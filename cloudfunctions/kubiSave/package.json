@@ -1,0 +1,9 @@
+{
+  "name": "kubiSave",
+  "version": "1.0.0",
+  "description": "KuBi 小游戏云存档",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
