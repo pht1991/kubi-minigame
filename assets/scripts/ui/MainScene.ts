@@ -1407,10 +1407,14 @@ export class MainScene extends Component {
         return true;
     }
 
+    /** 每次出门最多出现的商人数（避免扎堆） */
+    private static readonly MAX_TRADERS_PER_OUTING = 4;
+
     /**
      * 随机摇出当前在场商人（参照原版贸易系统：商人随机出现，不是全部列出）。
      * 每个可见商人按出现概率掷骰，命中的进入在场列表。
      * 概率优先级：TRADE_DATA[key].prob（可选，便于精确还原原版各商人概率）> 类别默认值。
+     * 最终截取至 MAX_TRADERS_PER_OUTING 个，避免出门页被商人淹没。
      */
     private rollVisibleTraders(): string[] {
         const visible = Object.keys(TRADE_DATA).filter(k => this.isTraderVisible(k));
@@ -1423,15 +1427,25 @@ export class MainScene extends Component {
         if (rolled.length === 0 && visible.length > 0) {
             rolled.push(visible[Math.floor(Math.random() * visible.length)]);
         }
+        // 截取上限：随机打乱后取前 N，保证多样性
+        if (rolled.length > MainScene.MAX_TRADERS_PER_OUTING) {
+            // Fisher-Yates partial shuffle — only shuffle first M elements
+            for (let i = rolled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [rolled[i], rolled[j]] = [rolled[j], rolled[i]];
+            }
+            rolled.length = MainScene.MAX_TRADERS_PER_OUTING;
+        }
         return rolled;
     }
 
-    /** 未显式指定 prob 时的默认出现概率（参照原版：核心商必现、资源商约半数到场） */
+    /** 未显式指定 prob 时的默认出现概率（低频：每次出门只遇到少数商人） */
     private defaultTraderProb(d: any): number {
-        if (d.give === 'gold') return 1;        // 金币商队必出（核心金币来源，保证玩家总能卖货换金）
-        if (d.season) return 1;                 // 季节限定商人必出（本身稀缺）
-        if (d.type === 'upgrade') return 0.6;   // 升级商人较常出现
-        return 0.5;                             // 其余资源/功能商人默认 50%
+        if (d.give === 'gold') return 0.9;       // 金币商队高概率（核心金币来源）
+        if (d.season) return 0.5;                // 季节限定商人中等概率（本身稀缺）
+        if (d.type === 'upgrade') return 0.25;   // 升级商人较低频
+        if (d.type === 'potion' || d.type === 'scroll') return 0.15;  // 特殊商人稀少
+        return 0.2;                              // 其余资源/功能商人默认 20%
     }
 
     private openGoOutList(): void {
@@ -2210,11 +2224,12 @@ export class MainScene extends Component {
     }
 
     // ===== 贸易 =====
-    /** 商人详情 + 购买动作 */
+    /** 商人详情入口（点击商人格子 → 进交易页） */
     private openTradeDetail(traderId: string): void {
         this._navigator.push(this.buildTradeDetailPage(traderId));
     }
 
+    /** 商人详情 + 物品交易页（单列 list 布局，移动端友好） */
     private buildTradeDetailPage(traderId: string): GridPage {
         const detail = TRADE_DATA[traderId];
         const give = detail.give;
@@ -2222,83 +2237,110 @@ export class MainScene extends Component {
         const gold = this._gm.boxSaveData['bag']?.['gold'] || 0;
         const cells: GridCellData[] = [];
 
-        // 库存 / 刷新信息（基于商人库存系统）
-        const stock = ActionTrade.instance.getStock(traderId);
         const giveName = ITEM_DATA[give]?.name || give;
+        const price = ActionTrade.instance.getPrice(give);
+        const stock = ActionTrade.instance.getStock(traderId);
+
+        // ═══ 信息区（disabled 展示行）═══
         if (give === 'gold') {
-            cells.push({ id: 'stock', name: `收益: 金币 ×${max}（随时可领取）`, state: 'disabled' });
-        } else if (stock.soldOut) {
-            cells.push({ id: 'stock', name: `已售罄，${stock.restockHours} 小时后补货`, state: 'disabled' });
+            cells.push({ id: 'info_item', name: `📦 收购：任意物品`, state: 'disabled', type: 'list' });
+            cells.push({ id: 'info_stock', name: `收益：金币 ×${max}（随时可领取）`, state: 'disabled', type: 'list' });
         } else {
             const refreshDesc = detail.time ? `每 ${detail.time} 小时补货` : '库存有限';
-            cells.push({ id: 'stock', name: `库存: ${stock.available}/${stock.max} · ${refreshDesc}`, state: 'disabled' });
+            const stockText = stock.soldOut
+                ? `已售罄，${stock.restockHours}h 后补货`
+                : `剩余 ${stock.available}/${max} · ${refreshDesc}`;
+            cells.push({ id: 'info_item', name: `📦 出售：${giveName}`, state: 'disabled', type: 'list' });
+            cells.push({ id: 'info_price', name: `单价：${price} 金币 / 个`, state: 'disabled', type: 'list' });
+            cells.push({ id: 'info_stock', name: `库存：${stockText}`, state: 'disabled', type: 'list' });
+            cells.push({ id: 'info_gold', name: `💰 持有金币：${gold}`, state: 'disabled', type: 'list' });
         }
 
+        // ═══ 操作区 ═══
         if (give === 'gold') {
-            cells.push(
-                { id: 'give', name: `收益: 金币 ×${max}`, state: 'disabled' },
-                { id: 'buy', name: '领取收益', state: 'normal' },
-            );
+            // 返金商：直接领取
+            cells.push({ id: 'buy', name: '领取收益', state: 'normal', type: 'list' });
         } else {
-            const price = ActionTrade.instance.getPrice(give);
-            const canBuy = gold >= price && !stock.soldOut && stock.available > 0;
-            cells.push(
-                { id: 'give', name: `换取: ${giveName} (上限 ${max})`, state: 'disabled' },
-                { id: 'price', name: `单价: ${price} 金`, state: 'disabled' },
-                { id: 'gold', name: `持有金币: ${gold}`, state: 'disabled' },
-            );
+            // ── 金币购买 ──
+            const canBuyAny = gold >= price && !stock.soldOut && stock.available > 0;
+            cells.push({ id: 'hdr_buy', name: '── 金币购买 ──', state: 'disabled', type: 'list' });
 
-            // 购买选项（受商人库存与金币双重限制）
-            const a = stock.available;
-            cells.push({ id: 'buy1', name: `×1 (${price}金)`, state: (canBuy && a >= 1) ? 'normal' : 'disabled' });
-            cells.push({ id: 'buy5', name: `×5 (${price * 5}金)`, state: (canBuy && a >= 5) ? 'normal' : 'disabled' });
-            cells.push({ id: 'buy10', name: `×10 (${price * 10}金)`, state: (canBuy && a >= 10) ? 'normal' : 'disabled' });
-            if (max > 10) {
-                cells.push({ id: 'buy20', name: `×20 (${price * 20}金)`, state: (canBuy && a >= 20) ? 'normal' : 'disabled' });
-                cells.push({ id: 'buy_max', name: `买满 ×${Math.min(max, a)}`, state: canBuy ? 'normal' : 'disabled' });
+            // 数量档位（移动端友好的少量选项 + 买满）
+            const buyTiers = [
+                { id: 'buy1', label: '×1', qty: 1 },
+                { id: 'buy5', label: '×5', qty: 5 },
+                { id: 'buy10', label: '×10', qty: 10 },
+            ];
+            if (max >= 20) buyTiers.push({ id: 'buy20', label: '×20', qty: 20 });
+            // 买满
+            buyTiers.push({ id: 'buy_max', label: `买满 ×${Math.min(max, stock.available)}`, qty: Math.min(max, stock.available) });
+
+            for (const t of buyTiers) {
+                const cost = price * t.qty;
+                const affordable = gold >= cost && t.qty <= stock.available;
+                cells.push({
+                    id: t.id,
+                    name: `${t.label}  （${cost} 金币）`,
+                    state: affordable ? 'normal' : 'disabled',
+                    type: 'list',
+                    data: { qty: t.qty },
+                });
             }
 
-            // 易货（以物易物）：列出背包中可估值交换的物品
-            cells.push({ id: 'barter_hdr', name: '— 易货（以物易物）—', state: 'disabled' });
+            // ── 以物易物 ──
+            cells.push({ id: 'hdr_barter', name: '── 以物易物 ──', state: 'disabled', type: 'list' });
+
             const bagB = this._gm.boxSaveData['bag'] || {};
-            const offered = Object.keys(bagB).filter(id => (bagB[id] || 0) > 0 && id !== 'gold' && ActionTrade.instance.getPrice(id) > 0);
+            // 筛选可易货物品（非金币、持有量>0、有价值）
+            const offered = Object.keys(bagB)
+                .filter(id => (bagB[id] || 0) > 0 && id !== 'gold' && ActionTrade.instance.getPrice(id) > 0)
+                .sort((a, b) => {
+                    // 按持有量降序（常用的排前面）
+                    return (bagB[b] || 0) - (bagB[a] || 0);
+                });
+
             let shownB = 0;
             for (const id of offered) {
-                if (shownB >= 12) break;
+                if (shownB >= 8) break; // 限制显示数量，避免列表过长
                 const q = bagB[id] || 0;
-                cells.push({ id: `barter:${id}`, name: `易货 ${ITEM_DATA[id]?.name || id} ×${q}`, state: 'normal', data: id });
+                const itemName = ITEM_DATA[id]?.name || id;
+                // 预览换得数量（含商人利润率）
+                const previewQty = ActionTrade.instance.previewBarter(traderId, id, q);
+                const previewLabel = previewQty >= 1
+                    ? `→ 可换 ${giveName} ×${previewQty}`
+                    : `→ 价值不足`;
+                cells.push({
+                    id: `barter:${id}`,
+                    name: `${itemName} ×${q}    ${previewLabel}`,
+                    state: previewQty >= 1 ? 'normal' : 'disabled',
+                    type: 'list',
+                    data: id,
+                });
                 shownB++;
             }
-            if (shownB === 0) cells.push({ id: 'barter_none', name: '背包无可用易货物品', state: 'disabled' });
+            if (shownB === 0) {
+                cells.push({ id: 'barter_none', name: '背包无可用于易货的物品', state: 'disabled', type: 'list' });
+            }
         }
 
         return {
             title: detail.name,
             breadcrumb: detail.name,
-            columns: 4,
+            columns: 1,  // 单列 list 布局，移动端友好
             cells,
             onCellClick: (index, cell) => {
+                // 易货入口 → 弹窗选择数量
                 if (typeof cell.id === 'string' && cell.id.startsWith('barter:')) {
                     this.showBarterDialog(traderId, cell.data as string);
                     return;
                 }
-                if (cell.id === 'buy1') {
-                    const r = ActionTrade.instance.trade(traderId, 1);
+                // 金币购买（所有 buy* 按钮统一处理，qty 从 data 取）
+                if ((cell.id === 'buy' || cell.id.startsWith('buy')) && cell.data?.qty) {
+                    const r = ActionTrade.instance.trade(traderId, cell.data.qty);
                     this._lastMsg = r.message;
                     this._navigator.replace(this.buildTradeDetailPage(traderId));
-                } else if (cell.id === 'buy5') {
-                    const r = ActionTrade.instance.trade(traderId, 5);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTradeDetailPage(traderId));
-                } else if (cell.id === 'buy10') {
-                    const r = ActionTrade.instance.trade(traderId, 10);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTradeDetailPage(traderId));
-                } else if (cell.id === 'buy20') {
-                    const r = ActionTrade.instance.trade(traderId, 20);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTradeDetailPage(traderId));
-                } else if (cell.id === 'buy_max' || cell.id === 'buy') {
+                } else if (cell.id === 'buy') {
+                    // 返金商无 data.qty 的 fallback
                     const r = ActionTrade.instance.trade(traderId);
                     this._lastMsg = r.message;
                     this._navigator.replace(this.buildTradeDetailPage(traderId));
@@ -2579,38 +2621,43 @@ export class MainScene extends Component {
         );
     }
 
-    /** 显示易货弹窗：选择提供数量，预览可换得的商人货品 */
+    /** 显示易货弹窗：选择提供数量，预览可换得的商人货品（含商人利润率） */
     private showBarterDialog(traderId: string, offerItem: string): void {
         const detail = TRADE_DATA[traderId];
         const give = detail.give;
         const maxOut = detail.max || 100;
         const offerName = ITEM_DATA[offerItem]?.name || offerItem;
         const giveName = ITEM_DATA[give]?.name || give;
-        const offerPrice = ActionTrade.instance.getPrice(offerItem);
-        const unitValue = ActionTrade.instance.getPrice(give);
         const bagQty = this._gm.boxSaveData['bag']?.[offerItem] || 0;
+        const margin = ActionTrade.instance.getBarterMargin();
+        const marginPct = Math.round(margin * 100);
 
         const options: DialogOption[] = [];
-        if (offerPrice <= 0 || unitValue <= 0) {
-            options.push({ label: '该物品或货品无法估值', data: null, disabled: true });
-        } else {
-            const tiers = [1, 5, 10];
-            for (const q of tiers) {
-                if (bagQty < q) continue;
-                const out = Math.min(maxOut, Math.floor((q * offerPrice) / unitValue));
-                if (out < 1) continue;
-                options.push({ label: `给 ${offerName} ×${q} → 换得 ${giveName} ×${out}`, data: { q } });
-            }
-            // 换满
-            const qForMax = Math.ceil((maxOut * unitValue) / offerPrice);
-            if (bagQty >= qForMax) {
-                options.push({ label: `换满：给 ${offerName} ×${qForMax} → 换得 ${giveName} ×${maxOut}`, data: { q: qForMax } });
-            } else if (bagQty > 0) {
-                const out = Math.min(maxOut, Math.floor((bagQty * offerPrice) / unitValue));
-                if (out >= 1) options.push({ label: `全部：给 ${offerName} ×${bagQty} → 换得 ${giveName} ×${out}`, data: { q: bagQty } });
+
+        // 用 previewBarter 统一计算（含利润率）
+        const preview = (q: number) => ActionTrade.instance.previewBarter(traderId, offerItem, q);
+
+        // 数量阶梯（移动端友好：少量选项 + 全部/换满）
+        const tiers = [1, 3, 5, 10];
+        for (const q of tiers) {
+            if (bagQty < q) continue;
+            const out = preview(q);
+            if (out < 1) continue;
+            options.push({ label: `给 ${offerName}×${q} → 换 ${giveName}×${out}`, data: { q } });
+        }
+        // 换满（按库存上限反算需要量）
+        if (!detail.give || detail.give !== 'gold') {
+            const stock = ActionTrade.instance.getStock(traderId);
+            if (stock.available > 0 && bagQty > 0) {
+                const outAll = preview(bagQty);
+                if (outAll >= 1) {
+                    options.push({ label: `全部：${offerName}×${bagQty} → 换 ${giveName}×${outAll}`, data: { q: bagQty } });
+                }
             }
         }
-        options.push({ label: '─────', data: null, disabled: true });
+
+        // 利率提示
+        options.push({ label: `─────\n(商人利润率：仅兑付估值的${marginPct}%)`, data: null, disabled: true });
         options.push({ label: '返回', data: { action: 'back' } });
 
         this._dialogPanel?.show(

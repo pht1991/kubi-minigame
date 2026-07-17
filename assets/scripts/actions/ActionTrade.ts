@@ -19,6 +19,9 @@ export class ActionTrade {
     private _exec: ActionExecutor;
     private _eventBus: EventBus;
 
+    /** 易货利润率：商人吃差价，玩家实际获得 = 公平价值 × MARGIN（模拟原版以物易物谈判劣势） */
+    private static readonly BARTER_MARGIN = 0.65;
+
     static get instance(): ActionTrade {
         if (!this._instance) this._instance = new ActionTrade();
         return this._instance;
@@ -73,6 +76,26 @@ export class ActionTrade {
     /** 公开查询物品金币单价（供 UI 展示） */
     getPrice(itemId: string): number {
         return this.priceOf(itemId);
+    }
+
+    /** 公开查询易货利润率（供 UI 展示交换比率） */
+    getBarterMargin(): number {
+        return ActionTrade.BARTER_MARGIN;
+    }
+
+    /**
+     * 预览易货结果（不扣物品，仅计算换得数量，供 UI 弹窗展示）
+     * @returns 可换得数量（已含商人利润率），若不可交易返回 0
+     */
+    previewBarter(traderId: string, offerItem: string, offerQty: number): number {
+        const detail = TRADE_DATA[traderId];
+        if (!detail || detail.give === 'gold' || offerQty <= 0) return 0;
+        const offerPrice = this.priceOf(offerItem);
+        const unitValue = this.priceOf(detail.give);
+        if (offerPrice <= 0 || unitValue <= 0) return 0;
+        const stock = this.getStock(traderId);
+        const offeredValue = offerQty * offerPrice * ActionTrade.BARTER_MARGIN;
+        return Math.min(stock.available, Math.floor(offeredValue / unitValue));
     }
 
     /** 计算物品金币单价（与原 getValue 简化对齐） */
@@ -135,7 +158,8 @@ export class ActionTrade {
 
     /**
      * 易货（以物易物）：用持有的 offerItem 按估值换商人的 give 物品，受商人库存限制。
-     * 换得数量 = min(可用库存, floor(offerQty × priceOf(offer) / priceOf(give)))。
+     * 商人吃差价：实际换得 = floor(offerQty × priceOf(offer) × BARTER_MARGIN / priceOf(give))。
+     * 这意味着易货不如「卖掉换金币再买」划算，符合原版谈判劣势设定。
      * @param traderId TRADE_DATA 的键
      * @param offerItem 玩家提供的物品 ID
      * @param offerQty 提供数量
@@ -158,10 +182,11 @@ export class ActionTrade {
         }
 
         const stock = this.getStock(traderId);
-        const offeredValue = offerQty * offerPrice;
+        // 商人吃差价：玩家只获得公平价值的 65%
+        const offeredValue = offerQty * offerPrice * ActionTrade.BARTER_MARGIN;
         const outQty = Math.min(stock.available, Math.floor(offeredValue / unitValue));
         if (outQty < 1) {
-            return { success: false, message: stock.soldOut ? `${detail.name} 已售罄，暂无可换货物` : '物品价值不足以交换' };
+            return { success: false, message: stock.soldOut ? `${detail.name} 已售罄，暂无可换货物` : '物品价值不足以交换（商人利润率较高）' };
         }
 
         this._gm.changeItem({ [offerItem]: -offerQty, [give]: outQty }, 'bag');
