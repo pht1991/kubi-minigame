@@ -134,7 +134,9 @@ export class TradePanel extends Component {
     private _mode: 'gold' | 'barter' = 'gold';
     private _bStage: 'choose' | 'amount' = 'choose';
     private _bOffer: string | null = null;
-    private _qty = 1, _mqty = 1, _mnqty = 1;
+    private _qty = 1;
+    private _mqty = 1;
+    private _mnqty = 1;
 
     private _slider: QSlider | null = null;
     private _onTrade: ((msg: string) => void) | null = null;
