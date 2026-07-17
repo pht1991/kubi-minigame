@@ -167,11 +167,13 @@ export class TradePanel extends Component {
         pg.roundRect(-PW / 2, -PH / 2, PW, PH, 16); pg.stroke();
         this._panel.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
 
-        // 标题
-        const tn = new Node('T'); tn.addComponent(UITransform).setContentSize(520, 52);
+        // 标题（左锚点避免宽容器溢出面板左边界）
+        const tn = new Node('T');
+        const tnt = tn.addComponent(UITransform);
+        tnt.setContentSize(PW - 100, 52); tnt.setAnchorPoint(0, 0.5);
         this._titleLbl = tn.addComponent(Label);
         Object.assign(this._titleLbl, {
-            fontSize: 30, lineHeight: 38, color: C.title, string: '', isBold: true,
+            fontSize: 28, lineHeight: 36, color: C.title, string: '', isBold: true,
             horizontalAlign: Label.HorizontalAlign.LEFT, verticalAlign: Label.VerticalAlign.CENTER,
         });
         tn.setPosition(-PW / 2 + 36, PH / 2 - 42, 0); tn.setParent(this._panel);
@@ -508,18 +510,18 @@ export class TradePanel extends Component {
         return { n, l: lbl, g };
     }
 
-    /** Tab 按钮 */
+    /** Tab 按钮（Label 用子节点避免与 Graphics 同级冲突） */
     private _tabN(x: number, y: number, w: number, h: number, text: string, cb: () => void): { n: Node; g: Graphics; l: Label } {
         const n = new Node('Tab');
         const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 1);
         n.setPosition(x, -y, 0); n.setParent(this._c!);
         const g = n.addComponent(Graphics);
-        const l = n.addComponent(Label);
-        l.string = text; l.fontSize = 23; l.color = C.body;
-        l.horizontalAlign = Label.HorizontalAlign.CENTER;
-        l.verticalAlign = VerticalTextAlignment.CENTER; l.isBold = true;
+        // Label 放在子节点上（与 _btn 同模式），避免 Graphics 覆盖渲染
+        const lbl = this._txI(n, 0, 0, text, Math.min(23, h * 0.43), C.body, true);
+        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lbl.node.getComponent(UITransform)!.setAnchorPoint(0.5, 0.5);
         n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
-        return { n, g, l };
+        return { n, g, l: lbl };
     }
 
     /** 步进按钮 */
