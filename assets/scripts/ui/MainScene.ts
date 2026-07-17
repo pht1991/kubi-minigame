@@ -25,6 +25,7 @@ import { ActionExecutor } from '../actions/ActionExecutor';
 import { DialogPanel, DialogOption } from './DialogPanel';
 import { BagPanel } from './BagPanel';
 import { BattlePanel } from './BattlePanel';
+import { TradePanel } from './TradePanel';
 import { Toast } from './Toast';
 import { SaveIndicator } from './SaveIndicator';
 import { GridPage, GridCellData } from '../data/types';
@@ -198,6 +199,9 @@ export class MainScene extends Component {
     /** 战斗面板 */
     private _battlePanel: BattlePanel | null = null;
 
+    /** 交易面板（独立模态，替代原网格式交易页） */
+    private _tradePanel: TradePanel | null = null;
+
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
 
@@ -254,6 +258,12 @@ export class MainScene extends Component {
         this._battlePanel = battleNode.addComponent(BattlePanel);
         this._battlePanel.onEnd = (win) => this.onBattleEnd(win);
         this.node.addChild(battleNode);
+
+        // 创建交易面板（独立模态窗口）
+        const tradeNode = new Node('TradePanel');
+        tradeNode.layer = this.node.layer;
+        this._tradePanel = tradeNode.addComponent(TradePanel);
+        this.node.addChild(tradeNode);
 
         // 创建底部快捷操作栏（固定在屏幕底部，不受 ScrollView 滚动影响）
         this.createBottomBar();
@@ -2224,130 +2234,11 @@ export class MainScene extends Component {
     }
 
     // ===== 贸易 =====
-    /** 商人详情入口（点击商人格子 → 进交易页） */
+    /** 商人详情入口（点击商人格子 → 打开交易面板） */
     private openTradeDetail(traderId: string): void {
-        this._navigator.push(this.buildTradeDetailPage(traderId));
+        this._tradePanel?.show(traderId, (msg) => { this._lastMsg = msg; });
     }
 
-    /** 商人详情 + 物品交易页（单列 list 布局，移动端友好） */
-    private buildTradeDetailPage(traderId: string): GridPage {
-        const detail = TRADE_DATA[traderId];
-        const give = detail.give;
-        const max = detail.max || 100;
-        const gold = this._gm.boxSaveData['bag']?.['gold'] || 0;
-        const cells: GridCellData[] = [];
-
-        const giveName = ITEM_DATA[give]?.name || give;
-        const price = ActionTrade.instance.getPrice(give);
-        const stock = ActionTrade.instance.getStock(traderId);
-
-        // ═══ 信息区（disabled 展示行）═══
-        if (give === 'gold') {
-            cells.push({ id: 'info_item', name: `📦 收购：任意物品`, state: 'disabled', type: 'list' });
-            cells.push({ id: 'info_stock', name: `收益：金币 ×${max}（随时可领取）`, state: 'disabled', type: 'list' });
-        } else {
-            const refreshDesc = detail.time ? `每 ${detail.time} 小时补货` : '库存有限';
-            const stockText = stock.soldOut
-                ? `已售罄，${stock.restockHours}h 后补货`
-                : `剩余 ${stock.available}/${max} · ${refreshDesc}`;
-            cells.push({ id: 'info_item', name: `📦 出售：${giveName}`, state: 'disabled', type: 'list' });
-            cells.push({ id: 'info_price', name: `单价：${price} 金币 / 个`, state: 'disabled', type: 'list' });
-            cells.push({ id: 'info_stock', name: `库存：${stockText}`, state: 'disabled', type: 'list' });
-            cells.push({ id: 'info_gold', name: `💰 持有金币：${gold}`, state: 'disabled', type: 'list' });
-        }
-
-        // ═══ 操作区 ═══
-        if (give === 'gold') {
-            // 返金商：直接领取
-            cells.push({ id: 'buy', name: '领取收益', state: 'normal', type: 'list' });
-        } else {
-            // ── 金币购买 ──
-            const canBuyAny = gold >= price && !stock.soldOut && stock.available > 0;
-            cells.push({ id: 'hdr_buy', name: '── 金币购买 ──', state: 'disabled', type: 'list' });
-
-            // 数量档位（移动端友好的少量选项 + 买满）
-            const buyTiers = [
-                { id: 'buy1', label: '×1', qty: 1 },
-                { id: 'buy5', label: '×5', qty: 5 },
-                { id: 'buy10', label: '×10', qty: 10 },
-            ];
-            if (max >= 20) buyTiers.push({ id: 'buy20', label: '×20', qty: 20 });
-            // 买满
-            buyTiers.push({ id: 'buy_max', label: `买满 ×${Math.min(max, stock.available)}`, qty: Math.min(max, stock.available) });
-
-            for (const t of buyTiers) {
-                const cost = price * t.qty;
-                const affordable = gold >= cost && t.qty <= stock.available;
-                cells.push({
-                    id: t.id,
-                    name: `${t.label}  （${cost} 金币）`,
-                    state: affordable ? 'normal' : 'disabled',
-                    type: 'list',
-                    data: { qty: t.qty },
-                });
-            }
-
-            // ── 以物易物 ──
-            cells.push({ id: 'hdr_barter', name: '── 以物易物 ──', state: 'disabled', type: 'list' });
-
-            const bagB = this._gm.boxSaveData['bag'] || {};
-            // 筛选可易货物品（非金币、持有量>0、有价值）
-            const offered = Object.keys(bagB)
-                .filter(id => (bagB[id] || 0) > 0 && id !== 'gold' && ActionTrade.instance.getPrice(id) > 0)
-                .sort((a, b) => {
-                    // 按持有量降序（常用的排前面）
-                    return (bagB[b] || 0) - (bagB[a] || 0);
-                });
-
-            let shownB = 0;
-            for (const id of offered) {
-                if (shownB >= 8) break; // 限制显示数量，避免列表过长
-                const q = bagB[id] || 0;
-                const itemName = ITEM_DATA[id]?.name || id;
-                // 预览换得数量（含商人利润率）
-                const previewQty = ActionTrade.instance.previewBarter(traderId, id, q);
-                const previewLabel = previewQty >= 1
-                    ? `→ 可换 ${giveName} ×${previewQty}`
-                    : `→ 价值不足`;
-                cells.push({
-                    id: `barter:${id}`,
-                    name: `${itemName} ×${q}    ${previewLabel}`,
-                    state: previewQty >= 1 ? 'normal' : 'disabled',
-                    type: 'list',
-                    data: id,
-                });
-                shownB++;
-            }
-            if (shownB === 0) {
-                cells.push({ id: 'barter_none', name: '背包无可用于易货的物品', state: 'disabled', type: 'list' });
-            }
-        }
-
-        return {
-            title: detail.name,
-            breadcrumb: detail.name,
-            columns: 1,  // 单列 list 布局，移动端友好
-            cells,
-            onCellClick: (index, cell) => {
-                // 易货入口 → 弹窗选择数量
-                if (typeof cell.id === 'string' && cell.id.startsWith('barter:')) {
-                    this.showBarterDialog(traderId, cell.data as string);
-                    return;
-                }
-                // 金币购买（所有 buy* 按钮统一处理，qty 从 data 取）
-                if ((cell.id === 'buy' || cell.id.startsWith('buy')) && cell.data?.qty) {
-                    const r = ActionTrade.instance.trade(traderId, cell.data.qty);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTradeDetailPage(traderId));
-                } else if (cell.id === 'buy') {
-                    // 返金商无 data.qty 的 fallback
-                    const r = ActionTrade.instance.trade(traderId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTradeDetailPage(traderId));
-                }
-            },
-        };
-    }
 
     // ===== 技能（全部技能一览 + 天赋/普通标识）=====
     private openSkillGrid(): void {
@@ -2596,11 +2487,10 @@ export class MainScene extends Component {
             const trade = TRADE_DATA[id];
             const price = ActionTrade.instance.getPrice(trade.give);
             const giveName = ITEM_DATA[trade.give]?.name || trade.give;
-            const canBuy = gold >= price;
             return {
                 label: `${trade.name}：${giveName} ×1 (${price}金)`,
-                data: { action: 'buy', traderId: id },
-                disabled: !canBuy,
+                data: { action: 'open', traderId: id },
+                disabled: false,
             };
         });
         options.push({ label: '离开商人', data: { action: 'leave' } });
@@ -2609,67 +2499,9 @@ export class MainScene extends Component {
             `地牢商人 (持有 ${gold} 金)`,
             options,
             (data) => {
-                if (data.action === 'buy') {
-                    const r = ActionTrade.instance.trade(data.traderId, 1);
-                    this._lastMsg = r.message;
-                    this._eventBus.emit(GameEvents.UI_REFRESH);
-                    // 继续显示商人（刷新金币）
-                    this.showDungeonMerchant();
-                }
-            },
-            () => {}
-        );
-    }
-
-    /** 显示易货弹窗：选择提供数量，预览可换得的商人货品（含商人利润率） */
-    private showBarterDialog(traderId: string, offerItem: string): void {
-        const detail = TRADE_DATA[traderId];
-        const give = detail.give;
-        const maxOut = detail.max || 100;
-        const offerName = ITEM_DATA[offerItem]?.name || offerItem;
-        const giveName = ITEM_DATA[give]?.name || give;
-        const bagQty = this._gm.boxSaveData['bag']?.[offerItem] || 0;
-        const margin = ActionTrade.instance.getBarterMargin();
-        const marginPct = Math.round(margin * 100);
-
-        const options: DialogOption[] = [];
-
-        // 用 previewBarter 统一计算（含利润率）
-        const preview = (q: number) => ActionTrade.instance.previewBarter(traderId, offerItem, q);
-
-        // 数量阶梯（移动端友好：少量选项 + 全部/换满）
-        const tiers = [1, 3, 5, 10];
-        for (const q of tiers) {
-            if (bagQty < q) continue;
-            const out = preview(q);
-            if (out < 1) continue;
-            options.push({ label: `给 ${offerName}×${q} → 换 ${giveName}×${out}`, data: { q } });
-        }
-        // 换满（按库存上限反算需要量）
-        if (!detail.give || detail.give !== 'gold') {
-            const stock = ActionTrade.instance.getStock(traderId);
-            if (stock.available > 0 && bagQty > 0) {
-                const outAll = preview(bagQty);
-                if (outAll >= 1) {
-                    options.push({ label: `全部：${offerName}×${bagQty} → 换 ${giveName}×${outAll}`, data: { q: bagQty } });
-                }
-            }
-        }
-
-        // 利率提示
-        options.push({ label: `─────\n(商人利润率：仅兑付估值的${marginPct}%)`, data: null, disabled: true });
-        options.push({ label: '返回', data: { action: 'back' } });
-
-        this._dialogPanel?.show(
-            `易货：${offerName} (持有 ${bagQty})`,
-            options,
-            (data) => {
-                if (data && data.q) {
-                    const r = ActionTrade.instance.barter(traderId, offerItem, data.q);
-                    this._lastMsg = r.message;
-                    this._eventBus.emit(GameEvents.UI_REFRESH);
-                    // 继续显示易货弹窗（刷新数量）
-                    this.showBarterDialog(traderId, offerItem);
+                if (data.action === 'open') {
+                    // 用统一交易面板打开该商人（金币不足可在面板内易货）
+                    this._tradePanel?.show(data.traderId, (msg) => { this._lastMsg = msg; });
                 }
             },
             () => {}
