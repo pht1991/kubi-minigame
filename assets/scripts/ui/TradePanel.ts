@@ -284,17 +284,17 @@ export class TradePanel extends Component {
         // ── 1. 商品信息头部（始终显示）──
         const stock = ActionTrade.instance.getStock(this._traderId);
         if (this._isGold) {
-            y = this._lbl(y, `\U0001f4e6 \u56de\u6536\uff1a\u4efb\u610f\u7269\u54c1 \u2192 \u91d1\u5e01`, 26, C.title, true);
+            y = this._lbl(y, `[回收] \u4efb\u610f\u7269\u54c1 \u2192 \u91d1\u5e01`, 26, C.title, true);
             y = this._lbl(y, `\u6536\u76ca\uff1a\u91d1\u5e01 \u00d7${stock.available}\uff08\u968f\u65f6\u53ef\u9886\u53d6\uff09`, 21, C.body);
         } else {
-            y = this._lbl(y, `\U0001f4e6 \u51fa\u552e\uff1a${this._giveName}`, 26, C.title, true);
+            y = this._lbl(y, `[出售] ${this._giveName}`, 26, C.title, true);
             y = this._lbl(y, `\u5355\u4ef7\uff1a${this._price} \u91d1\u5e01 / \u4e2a`, 21, C.body);
             const st = stock.soldOut
                 ? `\u5df2\u552e\u7f44\uff0c${stock.restockHours}h \u540e\u8865\u8d27`
                 : `\u5269\u4f59 ${stock.available}/${stock.max}`;
             y = this._lbl(y, `\u5e93\u5b58\uff1a${st}`, 21, stock.soldOut ? C.warn : C.sub);
         }
-        y -= 16; // 间距
+        y -= 20; // 间距
 
         // ── 2. 标签栏（非金币商人才显示）──
         if (!this._isGold) {
@@ -594,8 +594,10 @@ export class TradePanel extends Component {
     private _lbl(y: number, text: string, size: number, color: Color, bold = false, padT = 0): number {
         if (!this._content) return y;
         const n = new Node('L');
-        n.addComponent(UITransform).setContentSize(PANEL_W - 48, size * 1.6 + padT * 2);
-        n.setAnchorPoint(0.5, 1);
+        const nt = n.addComponent(UITransform);
+        const h = size * 1.8 + padT * 2 + 4;
+        nt.setContentSize(PANEL_W - 48, h);
+        nt.setAnchorPoint(0.5, 1);
         n.setPosition(0, -y, 0);
         n.setParent(this._content);
         const l = n.addComponent(Label);
@@ -603,16 +605,16 @@ export class TradePanel extends Component {
         l.horizontalAlign = Label.HorizontalAlign.LEFT;
         l.verticalAlign = Label.VerticalAlign.TOP;
         l.enableWrapText = true; l.overflow = Label.Overflow.CLAMP;
-        l.lineHeight = size * 1.45;
+        l.lineHeight = size * 1.5;
         if (bold) l.isBold = true;
-        return y + size * 1.6 + padT * 2 + 8;
+        return y + h + 6;
     }
 
     /** 内联标签：用于预览区等子节点内 */
     private _lblIn(parent: Node, x: number, y: number, text: string, size: number, color: Color, bold = false): Label {
         const n = new Node('IL');
         const t = n.addComponent(UITransform);
-        t.setContentSize(PANEL_W - 72, size * 1.6);
+        t.setContentSize(PANEL_W - 72, size * 1.7);
         t.setAnchorPoint(0, 0.5);
         n.setPosition(x, y, 0);
         n.setParent(parent);
@@ -621,7 +623,7 @@ export class TradePanel extends Component {
         l.horizontalAlign = Label.HorizontalAlign.LEFT;
         l.verticalAlign = Label.VerticalAlign.CENTER;
         l.enableWrapText = true; l.overflow = Label.Overflow.CLAMP;
-        l.lineHeight = size * 1.4;
+        l.lineHeight = size * 1.5;
         if (bold) l.isBold = true;
         return l;
     }
@@ -646,8 +648,9 @@ export class TradePanel extends Component {
     // ═════ 工具方法：按钮 ═════
     private _btn(y: number, w: number, h: number, text: string, bg: Color, cb: () => void): { node: Node; label: Label; gfx: Graphics } {
         const n = new Node('Btn');
-        n.addComponent(UITransform).setContentSize(w, h);
-        n.setAnchorPoint(0.5, 1);
+        const nt = n.addComponent(UITransform);
+        nt.setContentSize(w, h);
+        nt.setAnchorPoint(0.5, 1);
         n.setPosition(0, -y, 0);
         n.setParent(this._content!);
         const g = n.addComponent(Graphics);
@@ -668,8 +671,9 @@ export class TradePanel extends Component {
     // ═════ 工具方法：标签按钮 ═════
     private _tabBtn(x: number, y: number, w: number, h: number, text: string, cb: () => void): { node: Node; gfx: Graphics; lbl: Label } {
         const n = new Node('Tab');
-        n.addComponent(UITransform).setContentSize(w, h);
-        n.setAnchorPoint(0.5, 1);
+        const nt = n.addComponent(UITransform);
+        nt.setContentSize(w, h);
+        nt.setAnchorPoint(0.5, 1);
         n.setPosition(x, -y, 0);
         n.setParent(this._content!);
         const g = n.addComponent(Graphics);
@@ -684,8 +688,9 @@ export class TradePanel extends Component {
     // ═════ 工具方法：步进按钮 ═════
     private _mkStep(y: number, x: number, sign: number): void {
         const n = new Node('Step');
-        n.addComponent(UITransform).setContentSize(60, 60);
-        n.setAnchorPoint(0.5, 0.5);
+        const nt = n.addComponent(UITransform);
+        nt.setContentSize(60, 60);
+        nt.setAnchorPoint(0.5, 0.5);
         n.setPosition(x, y, 0);
         n.setParent(this._content!);
         const g = n.addComponent(Graphics);
