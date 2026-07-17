@@ -37,8 +37,13 @@ export class ActionMap {
         const placeData = PLACE_DATA[placeId];
         const res = placeData?.resource?.[resourceName];
         if (!res) return { success: false, message: '资源点不存在' };
+
+        // 与 UI (buildPlaceDetailPage) 保持一致的 fallback 链：
+        //   saveData.resource[name].amount → PLACE_DATA.resource[name].initAmount → 0
+        // 避免存档缺少 resource 子字段时误判"资源已耗尽"
         const psd = this._gm.placeSaveData[placeId]?.resource?.[resourceName];
-        if (!psd || psd.amount <= 0) return { success: false, message: '资源已耗尽' };
+        const amount = psd?.amount ?? res.initAmount ?? 0;
+        if (amount <= 0) return { success: false, message: '资源已耗尽' };
 
         const require = res.require || {};
         const canGet = res.things || {};
@@ -46,8 +51,12 @@ export class ActionMap {
 
         const r = this._exec.execute({ ...canGet }, { ...require }, timeNeed, {
             onDone: () => {
-                if (this._gm.placeSaveData[placeId]?.resource?.[resourceName]) {
-                    this._gm.placeSaveData[placeId].resource[resourceName].amount -= 1;
+                // 确保资源条目存在（兼容旧存档/缺失字段），懒初始化后递减
+                const pd = this._gm.placeSaveData[placeId];
+                if (pd) {
+                    if (!pd.resource) pd.resource = {};
+                    if (!pd.resource[resourceName]) pd.resource[resourceName] = { amount: res.initAmount ?? 30, count: 0 };
+                    pd.resource[resourceName].amount -= 1;
                 }
                 this._eventBus.emit('place_change', placeId);
             },

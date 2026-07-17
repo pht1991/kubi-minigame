@@ -20,7 +20,7 @@
         "progress": 1,
         "state": "success",
         "stage": "build",
-        "message": "2026-7-15 19:04:56 build success in 19390 ms!",
+        "message": "2026-7-16 18:51:24 build success in 23597 ms!",
         "options": {
           "name": "kubi-minigame",
           "server": "",
@@ -56,7 +56,7 @@
           "buildMode": "normal",
           "logDest": "project://temp/builder/log/wechatgame2026-7-8 17-56.log"
         },
-        "time": "2026-7-15 19:04:36",
+        "time": "2026-7-16 18:51:00",
         "dirty": false
       }
     }

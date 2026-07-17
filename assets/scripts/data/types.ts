@@ -247,6 +247,8 @@ export interface SaveData {
     buildingSaveData: Record<string, any>;
     durableSaveData: Record<string, number>;
     eventSaveData: Record<string, any>;
+    /** 地点探索进度（资源剩余量、已访问等） */
+    placeSaveData: Record<string, any>;
     dungeonSaveData: Record<string, any>;
     /** 商人交易库存：已售量 + 上次补货时间 */
     tradeSaveData: Record<string, { sold: number; day: number; hour: number }>;

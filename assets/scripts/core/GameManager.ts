@@ -20,6 +20,7 @@ import {
     ROBBER_INIT,
     DEBUG_SKILL,
     ITEM_DATA,
+    PLACE_DATA,
 } from '../data/data';
 // PLACE_INIT 已在 data.ts 末尾初始化（visited/amount/resource/things/mst），与 PLACE_DATA 配套
 
@@ -343,7 +344,30 @@ export class GameManager {
         this.playerState = data.playerState;
         this.currentEquip = data.currentEquip;
         this.skill = data.skill;
-        this.placeSaveData = data.placeSaveData || {};
+        // placeSaveData 防御性合并：旧存档可能缺少 resource/mst/things 等子字段
+        // 与 PLACE_INIT 深合并，确保每个地点都有完整的资源/怪物/拾荒初始化数据
+        const savedPlaces = data.placeSaveData || {};
+        const mergedPlaces: Record<string, any> = {};
+        for (const pid in PLACE_INIT) {
+            mergedPlaces[pid] = { ...PLACE_INIT[pid], ...(savedPlaces[pid] || {}) };
+            // 深合并 resource/mst/things（确保存档覆盖默认值，但缺失字段不丢失）
+            for (const sub of ['resource', 'mst'] as const) {
+                if (PLACE_INIT[pid][sub] && !mergedPlaces[pid][sub]) {
+                    mergedPlaces[pid][sub] = JSON.parse(JSON.stringify(PLACE_INIT[pid][sub]));
+                } else if (PLACE_INIT[pid][sub] && mergedPlaces[pid][sub]) {
+                    for (const key in PLACE_INIT[pid][sub]) {
+                        if (mergedPlaces[pid][sub][key] == null) {
+                            mergedPlaces[pid][sub][key] = { ...PLACE_INIT[pid][sub][key] };
+                        }
+                    }
+                }
+            }
+        }
+        // 同时保留存档中可能有但 PLACE_INIT 中没有的地点（向前兼容）
+        for (const pid in savedPlaces) {
+            if (!mergedPlaces[pid]) mergedPlaces[pid] = savedPlaces[pid];
+        }
+        this.placeSaveData = mergedPlaces;
         this.boxSaveData = data.boxSaveData;
         this.buildingSaveData = data.buildingSaveData;
         this.durableSaveData = data.durableSaveData;
