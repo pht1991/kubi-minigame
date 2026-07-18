@@ -88,8 +88,7 @@ export class RestPage extends BasePage {
             cells.push({ id: 'maxed', name: '床铺已达最高等级', state: 'disabled', type: 'list' });
         }
 
-        // ── 返回 ──
-        cells.push({ id: 'back', name: '返回', state: 'normal', type: 'list' });
+        // （返回由底栏「主页」按钮提供，不重复添加 cell）
 
         return {
             title: '床铺',
@@ -120,8 +119,6 @@ export class RestPage extends BasePage {
                     const r = ActionBuilding.instance.upgrade('sleepPlaceUpdate', cell.data.targetId);
                     this.setMsg(r.message);
                     this.navigator.replace(this.openRestPage());
-                } else if (cell.id === 'back') {
-                    this.navigator.pop();
                 }
             },
         };
