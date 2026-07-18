@@ -234,8 +234,7 @@ export class MainScene extends Component {
         // 诊断并修复 UI Camera
         this.setupUICamera();
 
-        // 初始化一级网格（发出 UI_REFRESH 事件）
-        this.initHomeGrid();
+        // 注意：initHomeGrid() 依赖 _buildPage，须在所有 Page 创建之后调用（见下方 pageCtx 构建段末尾）
 
         // 创建背包弹窗（先于 DialogPanel 创建，物品操作弹窗层级更高）
         const bagNode = new Node('BagPanel');
@@ -306,7 +305,10 @@ export class MainScene extends Component {
         pageCtx.onHomeCellClick = (id: string) => this.onHomeCellClick(id);
         pageCtx.refreshGoButton = () => this.refreshGoButton();
 
-        // 创建底部快捷操作栏（固定在屏幕底部，不受 ScrollView 滚动影响）
+        // 初始化一级网格（须在所有 Page 创建之后，依赖 _buildPage）
+        this.initHomeGrid();
+
+        // 创建底部快捷操作栏
         this.createBottomBar();
 
         // 注册导航变化回调：返回主页时同步底栏「出门/回家」按钮状态
