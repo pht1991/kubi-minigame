@@ -32,6 +32,9 @@ import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
 import { CookPage } from './pages/CookPage';
 import { CraftPage } from './pages/CraftPage';
+import { FarmPage } from './pages/FarmPage';
+import { TrapPage } from './pages/TrapPage';
+import { BrewPage } from './pages/BrewPage';
 import {
     BUILDING_DATA,
     SKILL_DATA,
@@ -204,6 +207,9 @@ export class MainScene extends Component {
     /** 烹饪系统页面模块（从 MainScene 抽离，见 pages/CookPage.ts） */
     private _cookPage: CookPage | null = null;
     private _craftPage: CraftPage | null = null;
+    private _farmPage: FarmPage | null = null;
+    private _trapPage: TrapPage | null = null;
+    private _brewPage: BrewPage | null = null;
 
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
@@ -287,6 +293,12 @@ export class MainScene extends Component {
         // 回填各 Page 引用到 ctx，供少数跨域导航（如建筑详情打开农田/陷阱/酿酒管理页）
         pageCtx.cookPage = this._cookPage;
         pageCtx.craftPage = this._craftPage;
+        this._farmPage = new FarmPage(pageCtx);
+        this._trapPage = new TrapPage(pageCtx);
+        this._brewPage = new BrewPage(pageCtx);
+        pageCtx.farmPage = this._farmPage;
+        pageCtx.trapPage = this._trapPage;
+        pageCtx.brewPage = this._brewPage;
 
         // 创建底部快捷操作栏（固定在屏幕底部，不受 ScrollView 滚动影响）
         this.createBottomBar();
@@ -683,7 +695,7 @@ export class MainScene extends Component {
             home_science: () => this._craftPage?.openCraftGrid('scienceTable'),
             home_cook:    () => this._cookPage?.openCookPanel(),
             home_farm:    () => this.openBuildingGrid(), // 农田在建筑详情里管理种植/收获
-            home_alco:    () => this.openBrewPanel(),
+            home_alco:    () => this._brewPage?.openBrewPanel(),
             home_trap:    () => this.openBuildingGrid(), // 陷阱检查在建筑详情
             home_box:     () => this.openBagPanel(),      // 大箱子=背包弹窗
             home_well:    () => this.openBuildingGrid(), // 取水在建筑详情
@@ -1328,11 +1340,11 @@ export class MainScene extends Component {
                     this._lastMsg = r.message;
                     this._navigator.replace(this.buildBuildingDetailPage(buildingId));
                 } else if (cell.id === 'farm_manage') {
-                    this.openFarmPanel();
+                    this._farmPage?.openFarmPanel();
                 } else if (cell.id === 'trap_manage') {
-                    this.openTrapPanel();
+                    this._trapPage?.openTrapPanel();
                 } else if (cell.id === 'brew_manage') {
-                    this.openBrewPanel();
+                    this._brewPage?.openBrewPanel();
                 } else if (cell.id === 'well_collect') {
                     const r = ActionBuilding.instance.collectWell();
                     this._lastMsg = r.message;
@@ -1340,211 +1352,6 @@ export class MainScene extends Component {
                 }
             },
         };
-    }
-
-    // ===== 农田管理 =====
-    private openFarmPanel(): void {
-        this._lastMsg = '';
-        this._navigator.push(this.buildFarmPage());
-    }
-
-    private buildFarmPage(): GridPage {
-        const farmData = this._gm.buildingSaveData['farm'];
-        const slots = ActionBuilding.instance.getFarmSlots();
-        const cells: GridCellData[] = [];
-
-
-        // 已种植的作物（可收获/查看进度）
-        cells.push({ id: 'slot_label', name: `── 已种植 (${slots.length}/${farmData?.size || 2}) ──`, state: 'disabled' });
-        for (let i = 0; i < slots.length; i++) {
-            const s = slots[i];
-            if (s.ready) {
-                cells.push({ id: `harvest_${i}`, name: `${s.cropDesc} [可收获]`, state: 'normal' });
-            } else {
-                const pct = Math.floor(s.progress * 100);
-                cells.push({ id: `slot_${i}`, name: `${s.cropDesc} 生长${pct}% (${Math.ceil(s.remaining)}h)`, state: 'disabled' });
-            }
-        }
-
-        // 可种植的作物列表
-        if (slots.length < (farmData?.size || 2)) {
-            cells.push({ id: 'plant_label', name: '── 可种植 ──', state: 'disabled' });
-            for (const cropId in CROP_DATA) {
-                const crop = CROP_DATA[cropId];
-                const canPlant = this._gm.checkHaveResource(crop.require);
-                const reqStr = Object.entries(crop.require)
-                    .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
-                cells.push({
-                    id: `plant_${cropId}`,
-                    name: `${crop.desc} [${reqStr}]`,
-                    state: canPlant ? 'normal' : 'disabled',
-                });
-            }
-        }
-
-        return {
-            title: '农田管理',
-            breadcrumb: '农田',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id.startsWith('harvest_')) {
-                    const slotIdx = parseInt(cell.id.replace('harvest_', ''));
-                    const r = ActionBuilding.instance.harvestCrop(slotIdx);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildFarmPage());
-                } else if (cell.id.startsWith('plant_')) {
-                    const cropId = cell.id.replace('plant_', '');
-                    const r = ActionBuilding.instance.plantCrop(cropId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildFarmPage());
-                }
-            },
-        };
-    }
-
-    // ===== 陷阱管理 =====
-    private openTrapPanel(): void {
-        this._lastMsg = '';
-        this._navigator.push(this.buildTrapPage());
-    }
-
-    private buildTrapPage(): GridPage {
-        const trapData = this._gm.buildingSaveData['trap'];
-        const slots = ActionBuilding.instance.getTrapSlots();
-        const cells: GridCellData[] = [];
-
-
-        // 已放置的陷阱
-        cells.push({ id: 'slot_label', name: `── 已放置 (${slots.length}/${trapData?.size || 2}) ──`, state: 'disabled' });
-        for (let i = 0; i < slots.length; i++) {
-            const s = slots[i];
-            if (s.canCheck) {
-                cells.push({ id: `check_${i}`, name: `${s.trapDesc} [可检查]`, state: 'normal' });
-            } else if (s.checked) {
-                cells.push({ id: `remove_${i}`, name: `${s.trapDesc} [已检查·移除]`, state: 'normal' });
-            } else {
-                const hoursLeft = Math.max(0, 6 - s.elapsed);
-                cells.push({ id: `slot_${i}`, name: `${s.trapDesc} 等待中(${Math.ceil(hoursLeft)}h)`, state: 'disabled' });
-            }
-        }
-
-        // 可放置的陷阱列表
-        if (slots.length < (trapData?.size || 2)) {
-            cells.push({ id: 'place_label', name: '── 可放置 ──', state: 'disabled' });
-            for (const trapId in TRAP_DATA) {
-                const trap = TRAP_DATA[trapId];
-                const canPlace = this._gm.checkHaveResource(trap.require);
-                const reqStr = Object.entries(trap.require)
-                    .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
-                const getStr = Object.entries(trap.itemGet)
-                    .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
-                cells.push({
-                    id: `place_${trapId}`,
-                    name: `${trap.desc} 诱[${reqStr}] → ${getStr}`,
-                    state: canPlace ? 'normal' : 'disabled',
-                });
-            }
-        }
-
-        return {
-            title: '陷阱管理',
-            breadcrumb: '陷阱',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id.startsWith('check_')) {
-                    const slotIdx = parseInt(cell.id.replace('check_', ''));
-                    const r = ActionBuilding.instance.checkTrap(slotIdx);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTrapPage());
-                } else if (cell.id.startsWith('remove_')) {
-                    const slotIdx = parseInt(cell.id.replace('remove_', ''));
-                    const r = ActionBuilding.instance.removeTrap(slotIdx);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTrapPage());
-                } else if (cell.id.startsWith('place_')) {
-                    const trapId = cell.id.replace('place_', '');
-                    const r = ActionBuilding.instance.placeTrap(trapId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildTrapPage());
-                }
-            },
-        };
-    }
-
-    // ===== 酿酒管理 =====
-    private openBrewPanel(): void {
-        if (!ActionBrew.instance.isBuilt()) {
-            this._lastMsg = '需要先建造【酿酒桶】';
-            this._navigator.replace(this.buildBuildingDetailPage('alco'));
-            return;
-        }
-        this._lastMsg = '';
-        this._navigator.push(this.buildBrewPage());
-    }
-
-    private buildBrewPage(): GridPage {
-        const slots = ActionBrew.instance.getBrewSlots();
-        const cells: GridCellData[] = [];
-
-
-        cells.push({ id: 'start', name: '开始酿造', state: 'normal' });
-        cells.push({ id: 'slot_label', name: `── 酿造中 (${slots.length}/${ActionBrew.MAX_SLOTS}) ──`, state: 'disabled' });
-        if (slots.length === 0) {
-            cells.push({ id: 'empty', name: '暂无酿造', state: 'disabled' });
-        }
-        slots.forEach((s, i) => {
-            if (s.ready) {
-                cells.push({ id: `harvest_${i}`, name: `${s.recipeDesc} [可收获]`, state: 'normal' });
-            } else {
-                cells.push({ id: `slot_${i}`, name: `${s.recipeDesc} 酿造${s.progress}% (${Math.ceil(s.remaining)}h)`, state: 'disabled' });
-            }
-        });
-
-        return {
-            title: '酿酒管理',
-            breadcrumb: '酿酒',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'start') {
-                    this.openBrewRecipeList();
-                } else if (cell.id.startsWith('harvest_')) {
-                    const slotIdx = parseInt(cell.id.replace('harvest_', ''));
-                    const r = ActionBrew.instance.harvestBrew(slotIdx);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildBrewPage());
-                }
-            },
-        };
-    }
-
-    /** 选择要酿造的配方 */
-    private openBrewRecipeList(): void {
-        const options: DialogOption[] = Object.keys(ALCO_DATA).map(key => {
-            const recipe = ALCO_DATA[key];
-            const canBrew = this._gm.checkHaveResource(recipe.require || {});
-            const reqStr = recipe.require && Object.keys(recipe.require).length > 0
-                ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-                : '无';
-            const outName = ITEM_DATA[recipe.itemGet]?.name || recipe.itemGet;
-            return {
-                label: `${recipe.desc} ${outName} [${reqStr}]`,
-                data: key,
-                disabled: !canBrew,
-            };
-        });
-        this._dialogPanel?.show(
-            '选择酿造配方',
-            options,
-            (data: string) => {
-                const r = ActionBrew.instance.brew(data);
-                this._lastMsg = r.message;
-                this._navigator.replace(this.buildBrewPage());
-            },
-            () => {}
-        );
     }
 
     // ===== 地图辅助方法 =====
