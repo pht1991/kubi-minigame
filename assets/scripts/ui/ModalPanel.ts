@@ -19,6 +19,7 @@
 import {
     _decorator, Component, Node, Label, UITransform, Color, Graphics,
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment,
+    Sprite, SpriteFrame, Texture2D, UIOpacity, ImageAsset,
 } from 'cc';
 
 const { ccclass } = _decorator;
@@ -65,6 +66,20 @@ export abstract class ModalPanel extends Component {
     protected _closeNode: Node | null = null;
     protected _content: Node | null = null;   // 子类内容构建区（anchor 0.5,1，位于标题下方）
 
+    /** 共享的 1×1 白色纹理（所有弹窗遮罩复用，只创建一次） */
+    private static _whiteSF: SpriteFrame | null = null;
+    private static getWhiteSpriteFrame(): SpriteFrame {
+        if (!ModalPanel._whiteSF) {
+            const tex = new Texture2D();
+            tex.initialize({ width: 1, height: 1, format: Texture2D.PixelFormat.RGBA8888 });
+            tex.uploadData(new Uint8Array([255, 255, 255, 255]), 1, 1);
+            const sf = new SpriteFrame();
+            sf.texture = tex;
+            ModalPanel._whiteSF = sf;
+        }
+        return ModalPanel._whiteSF;
+    }
+
     onLoad(): void {
         // 确保根节点有全屏 UITransfer（否则子节点 Graphics 在微信小游戏可能不渲染）
         let rt = this.node.getComponent(UITransform);
@@ -76,7 +91,9 @@ export abstract class ModalPanel extends Component {
 
     // ──── 骨架（只创建一次）────
     protected buildSkeleton(): void {
-        // 全屏遮罩（点击关闭 / 拦截穿透）
+        // 全屏遮罩（点击关闭 / 拦截穿透）—— 使用 Sprite+UIOpacity 而非 Graphics
+        // 原因：微信小游戏环境下 Graphics 在节点 inactive→active 切换时绘制可能丢失；
+        //       Sprite 是引擎最基础的渲染组件，兼容性最可靠
         if (this.showMask) {
             this._mask = new Node('M');
             const mt = this._mask.addComponent(UITransform);
@@ -84,7 +101,15 @@ export abstract class ModalPanel extends Component {
             mt.setAnchorPoint(0.5, 0.5);
             this._mask.setPosition(0, 0, 0);
             this._mask.setParent(this.node);
-            this._drawMask();
+            // Sprite 渲染纯色矩形（黑色）
+            const sp = this._mask.addComponent(Sprite);
+            sp.type = Sprite.Type.SIMPLE;
+            sp.size.set(750, 1334);
+            sp.spriteFrame = ModalPanel.getWhiteSpriteFrame();
+            sp.color = new Color(0, 0, 0, 255);
+            // UIOpacity 控制整体透明度（100 ≈ 40% 不透明度，等效于原 Graphics alpha=100/255）
+            const op = this._mask.addComponent(UIOpacity);
+            op.opacity = 100;
             this._mask.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
                 e.propagationStopped = true;
                 if (this.maskClose) this.hide();
@@ -145,17 +170,6 @@ export abstract class ModalPanel extends Component {
         this._closeNode = cn;
     }
 
-    /** 重绘全屏遮罩（show() 时调用，确保微信小游戏 Graphics 可靠渲染） */
-    private _drawMask(): void {
-        if (!this._mask) return;
-        let mg = this._mask.getComponent(Graphics);
-        if (!mg) { mg = this._mask.addComponent(Graphics); }
-        mg.clear();
-        mg.fillColor = C.maskDim;
-        mg.rect(-375, -667, 750, 1334);
-        mg.fill();
-    }
-
     /** 重绘面板背景（自适应高度时调用） */
     protected drawPanelBg(): void {
         const g = this._panelGfx; g.clear();
@@ -179,8 +193,6 @@ export abstract class ModalPanel extends Component {
         this.node.active = true;
         // 置顶：确保盖住底栏与同级其它弹窗
         this.node.setSiblingIndex(this.node.parent!.children.length - 1);
-        // 每次显示重绘遮罩（防止微信小游戏 Graphics 缓存/清除异常）
-        if (this.showMask && this._mask) this._drawMask();
         this.render();
     }
     public hide(): void {
