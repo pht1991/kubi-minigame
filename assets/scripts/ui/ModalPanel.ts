@@ -1,0 +1,285 @@
+/**
+ * ModalPanel.ts - 公共模态弹窗基类
+ *
+ * 设计目的：把所有弹窗（背包 / 对话 / 交易 / 战斗 / 未来任意新弹窗）共用的
+ * 「外壳 + 控件助手」集中到一处，避免同类 bug 在多个文件重复出现：
+ *   - 全屏遮罩：点击关闭 + 事件 stopPropagation 防穿透
+ *   - 面板：圆角描边 + RECT Mask（裁剪子内容，Cocos 3.x 必须显式设 type）
+ *   - 标题 / 关闭按钮（×）
+ *   - show() 时 setSiblingIndex 置顶（盖住底栏与同级弹窗）
+ *   - 控件助手 mkText / mkButton / mkTab / mkRect / mkScroll / resizePanel
+ *     统一内建「Label 必须放子节点（避免与 Graphics 同节点冲突）」「TOUCH 事件 stopPropagation」
+ *
+ * 子类只需：
+ *   1. 用字段初始化设置 panelW/panelH/showMask/showClose/buildContentContainer 等
+ *   2. 实现 protected abstract render() 构建自身内容（用基类 _content 或 _panel + 上述助手）
+ *   3. 提供自己的 public show(...) 包装（捕获参数后调用 super.show(title)）
+ */
+
+import {
+    _decorator, Component, Node, Label, UITransform, Color, Graphics,
+    Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment,
+} from 'cc';
+
+const { ccclass } = _decorator;
+
+// ── 统一主题色（所有弹窗共用，一处改全局生效）──
+export const C = {
+    panelBg: new Color(255, 248, 240, 255),
+    border:   new Color(200, 168, 130, 255),
+    title:    new Color(92, 61, 30, 255),
+    body:     new Color(50, 40, 30, 255),
+    sub:      new Color(120, 100, 80, 255),
+    warn:     new Color(180, 70, 50, 255),
+    accent:   new Color(196, 132, 64, 255),
+    accent2:  new Color(76, 128, 72, 255),
+    tabOn:    new Color(210, 162, 110, 255),
+    tabOff:   new Color(228, 218, 205, 255),
+    track:    new Color(216, 206, 190, 255),
+    fill:     new Color(200, 140, 70, 255),
+    handle:   new Color(120, 80, 50, 255),
+    disabled: new Color(175, 170, 163, 255),
+    white:    new Color(255, 252, 245, 255),
+    maskDim:  new Color(0, 0, 0, 100),
+};
+
+export interface BtnRef { node: Node; label: Label; gfx: Graphics; }
+
+@ccclass('ModalPanel')
+export abstract class ModalPanel extends Component {
+
+    // ════ 子类可覆盖的配置（字段初始化在 onLoad 前执行）════
+    protected panelW = 640;
+    protected panelH = 900;
+    protected showMask = true;     // 是否创建半透明遮罩
+    protected maskClose = true;    // 点击遮罩是否关闭
+    protected showClose = true;    // 是否显示右上角关闭按钮
+    protected buildContentContainer = true; // 是否创建 _content 内容容器
+
+    // ════ 外壳节点 ════
+    protected _mask: Node | null = null;
+    protected _panel!: Node;
+    protected _panelGfx!: Graphics;
+    protected _titleNode!: Node;
+    protected _titleLbl!: Label;
+    protected _closeNode: Node | null = null;
+    protected _content: Node | null = null;   // 子类内容构建区（anchor 0.5,1，位于标题下方）
+
+    onLoad(): void { this.buildSkeleton(); }
+
+    // ──── 骨架（只创建一次）────
+    protected buildSkeleton(): void {
+        // 全屏遮罩（点击关闭 / 拦截穿透）
+        if (this.showMask) {
+            this._mask = new Node('M');
+            const mt = this._mask.addComponent(UITransform);
+            mt.setContentSize(750, 1334);
+            this._mask.setParent(this.node);
+            const mg = this._mask.addComponent(Graphics);
+            mg.fillColor = C.maskDim; mg.rect(-375, -667, 750, 1334); mg.fill();
+            this._mask.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
+                e.propagationStopped = true;
+                if (this.maskClose) this.hide();
+            });
+        }
+
+        // 面板（圆角描边 + RECT Mask 裁剪）
+        this._panel = new Node('P');
+        const pt = this._panel.addComponent(UITransform);
+        pt.setContentSize(this.panelW, this.panelH); pt.setAnchorPoint(0.5, 0.5);
+        this._panel.setPosition(0, 0, 0); this._panel.setParent(this.node);
+        this._panelGfx = this._panel.addComponent(Graphics);
+        this.drawPanelBg();
+        // 面板拦截事件，防止点击面板内部冒泡
+        this._panel.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
+        // ⚠️ 关键：Cocos 3.x Mask 必须显式设 type，否则不裁剪
+        this._panel.addComponent(Mask).type = Mask.Type.RECT;
+
+        // 标题（左锚点避免宽容器溢出面板左边界）
+        this._titleNode = new Node('T');
+        const tnt = this._titleNode.addComponent(UITransform);
+        tnt.setContentSize(this.panelW - 100, 52); tnt.setAnchorPoint(0, 0.5);
+        this._titleLbl = this._titleNode.addComponent(Label);
+        Object.assign(this._titleLbl, {
+            fontSize: 28, lineHeight: 36, color: C.title, string: '', isBold: true,
+            horizontalAlign: Label.HorizontalAlign.LEFT, verticalAlign: Label.VerticalAlign.CENTER,
+        });
+        this._titleNode.setPosition(-this.panelW / 2 + 36, this.panelH / 2 - 42, 0);
+        this._titleNode.setParent(this._panel);
+
+        // 关闭按钮
+        if (this.showClose) this._buildClose();
+
+        // 内容容器（anchor 0.5,1 即顶部居中，位于标题下方）
+        if (this.buildContentContainer) {
+            this._content = new Node('C');
+            const ct = this._content.addComponent(UITransform);
+            ct.setContentSize(this.panelW - 48, this.panelH - 140);
+            ct.setAnchorPoint(0.5, 1);
+            this._content.setPosition(0, this.panelH / 2 - 90, 0);
+            this._content.setParent(this._panel);
+        }
+
+        this.node.active = false;
+    }
+
+    private _buildClose(): void {
+        const cn = new Node('X'); cn.addComponent(UITransform).setContentSize(44, 44);
+        cn.setPosition(this.panelW / 2 - 34, this.panelH / 2 - 34, 0); cn.setParent(this._panel);
+        const cg = cn.addComponent(Graphics); cg.fillColor = new Color(200, 160, 130, 220);
+        cg.circle(0, 0, 20); cg.fill(); cg.lineWidth = 1.5; cg.strokeColor = new Color(160, 120, 90);
+        cg.circle(0, 0, 20); cg.stroke();
+        const cln = new Node('XL'); cln.setParent(cn); cln.addComponent(UITransform).setContentSize(44, 44);
+        const cll = cln.addComponent(Label);
+        Object.assign(cll, { string: '×', fontSize: 28, color: C.white, isBold: true,
+            horizontalAlign: Label.HorizontalAlign.CENTER, verticalAlign: Label.VerticalAlign.CENTER });
+        cn.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; this.hide(); });
+        this._closeNode = cn;
+    }
+
+    /** 重绘面板背景（自适应高度时调用） */
+    protected drawPanelBg(): void {
+        const g = this._panelGfx; g.clear();
+        g.fillColor = C.panelBg;
+        g.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); g.fill();
+        g.lineWidth = 3; g.strokeColor = C.border;
+        g.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); g.stroke();
+    }
+
+    /** 自适应高度：重绘面板 + 重定位标题/关闭按钮。返回可用滚动可视高度推导用的面板高 */
+    protected resizePanel(h: number): void {
+        this.panelH = h;
+        this.drawPanelBg();
+        if (this._titleNode) this._titleNode.setPosition(-this.panelW / 2 + 36, h / 2 - 42, 0);
+        if (this._closeNode) this._closeNode.setPosition(this.panelW / 2 - 34, h / 2 - 34, 0);
+    }
+
+    // ════ 对外接口 ════
+    public show(title: string): void {
+        if (this._titleLbl) this._titleLbl.string = title;
+        this.node.active = true;
+        // 置顶：确保盖住底栏与同级其它弹窗
+        this.node.setSiblingIndex(this.node.parent!.children.length - 1);
+        this.render();
+    }
+    public hide(): void {
+        this.onHide();
+        this.node.active = false;
+    }
+    /** 弹窗是否正在显示 */
+    public isShowing(): boolean { return this.node.active; }
+    /** hide 前的钩子（子类可重写，如触发 onCancel） */
+    protected onHide(): void {}
+
+    // ════ 子类必须实现：构建具体内容 ════
+    protected abstract render(): void;
+
+    /** 清空内容容器（render 开头调用） */
+    protected clearContent(): void {
+        if (!this._content) return;
+        for (const c of [...this._content.children]) c.destroy();
+    }
+
+    // ══════════ 公共控件助手（集中修复点）═════════
+
+    /** 文本标签：默认 anchor(0.5,1)，absolute Y 向下为正方向 */
+    protected mkText(
+        parent: Node, x: number, y: number, w: number, h: number,
+        text: string, size: number, color: Color,
+        opts?: { bold?: boolean; align?: 'left' | 'center' | 'right'; anchorX?: number; anchorY?: number; fontSize?: number },
+    ): Label {
+        const n = new Node('L');
+        const nt = n.addComponent(UITransform);
+        nt.setContentSize(w, h);
+        nt.setAnchorPoint(opts?.anchorX ?? 0.5, opts?.anchorY ?? 1);
+        n.setPosition(x, y, 0); n.setParent(parent);
+        const l = n.addComponent(Label);
+        l.string = text; l.fontSize = opts?.fontSize ?? size; l.color = color;
+        l.horizontalAlign = opts?.align === 'left' ? Label.HorizontalAlign.LEFT
+            : opts?.align === 'right' ? Label.HorizontalAlign.RIGHT
+            : Label.HorizontalAlign.CENTER;
+        l.verticalAlign = Label.VerticalAlign.TOP;
+        l.enableWrapText = true; l.overflow = Label.Overflow.CLAMP;
+        l.lineHeight = Math.ceil(size * 1.5);
+        if (opts?.bold) l.isBold = true;
+        return l;
+    }
+
+    /** 内联文本（常用于某父节点局部坐标，anchor(0,0.5) 默认） */
+    protected mkInline(parent: Node, x: number, y: number, w: number, h: number, text: string, size: number, color: Color, bold = false): Label {
+        const n = new Node('iL');
+        const t = n.addComponent(UITransform); t.setContentSize(w, h);
+        t.setAnchorPoint(0, 0.5); n.setPosition(x, y, 0); n.setParent(parent);
+        const l = n.addComponent(Label);
+        l.string = text; l.fontSize = size; l.color = color;
+        l.horizontalAlign = Label.HorizontalAlign.LEFT;
+        l.verticalAlign = VerticalTextAlignment.CENTER;
+        l.enableWrapText = true; l.overflow = Label.Overflow.CLAMP;
+        l.lineHeight = Math.ceil(size * 1.5);
+        if (bold) l.isBold = true;
+        return l;
+    }
+
+    /** 居中文本（anchor 0.5,0.5） */
+    protected mkCenter(parent: Node, x: number, y: number, w: number, h: number, text: string, size: number, color: Color, bold = false): Label {
+        const n = new Node('ic');
+        const t = n.addComponent(UITransform); t.setContentSize(w, h); t.setAnchorPoint(0.5, 0.5);
+        n.setPosition(x, y, 0); n.setParent(parent);
+        const l = n.addComponent(Label);
+        l.string = text; l.fontSize = size; l.color = color;
+        l.horizontalAlign = Label.HorizontalAlign.CENTER;
+        l.verticalAlign = VerticalTextAlignment.CENTER;
+        if (bold || size >= 28) l.isBold = true;
+        return l;
+    }
+
+    /** 圆角矩形填充 + 描边 */
+    protected mkRect(g: Graphics, x: number, y: number, w: number, h: number, r: number, fill: Color, stroke?: Color, sw = 2): void {
+        g.fillColor = fill;
+        g.roundRect(x, y, w, h, r); g.fill();
+        if (stroke) { g.lineWidth = sw; g.strokeColor = stroke; g.roundRect(x, y, w, h, r); g.stroke(); }
+    }
+
+    /**
+     * 按钮：节点上 Graphics 画背景 + Label 放【子节点】（避免与 Graphics 同节点冲突）。
+     * 自带 TOUCH_END stopPropagation，cb 内自行处理关闭逻辑。
+     */
+    protected mkButton(parent: Node, x: number, y: number, w: number, h: number, text: string, bg: Color, cb: () => void): BtnRef {
+        const n = new Node('Btn');
+        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 1);
+        n.setPosition(x, y, 0); n.setParent(parent);
+        const g = n.addComponent(Graphics);
+        this.mkRect(g, -w / 2, -h / 2, w, h, 14, bg, new Color(150, 110, 70, 200), 2);
+        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, Math.min(24, h * 0.43), C.white, true);
+        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
+        return { node: n, label: lbl, gfx: g };
+    }
+
+    /** Tab 按钮：结构同上（Graphics + 子节点 Label），样式由调用方用 gfx 自绘（见 TradePanel 用法） */
+    protected mkTab(parent: Node, x: number, y: number, w: number, h: number, text: string, cb: () => void): BtnRef {
+        const n = new Node('Tab');
+        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 1);
+        n.setPosition(x, y, 0); n.setParent(parent);
+        const g = n.addComponent(Graphics);
+        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, Math.min(23, h * 0.43), C.body, true);
+        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
+        return { node: n, label: lbl, gfx: g };
+    }
+
+    /** 带圆角的滚动视图（含 RECT Mask + ScrollView）。返回 view / content / sv */
+    protected mkScroll(parent: Node, x: number, y: number, w: number, h: number): { view: Node; content: Node; sv: ScrollView } {
+        const view = new Node('SV');
+        const vt = view.addComponent(UITransform); vt.setContentSize(w, h); vt.setAnchorPoint(0.5, 1);
+        view.setPosition(x, y, 0); view.setParent(parent);
+        view.addComponent(Mask).type = Mask.Type.RECT;
+        const sv = view.addComponent(ScrollView);
+        sv.horizontal = false; sv.vertical = true; sv.inertia = true; sv.brake = 0.3;
+        sv.elastic = true; sv.elasticBounceTime = 0.5;
+        sv.verticalScrollBar = null; sv.horizontalScrollBar = null;
+        const content = new Node('Cnt');
+        const ct = content.addComponent(UITransform); ct.setContentSize(w, h); ct.setAnchorPoint(0.5, 1);
+        content.setPosition(0, 0, 0); content.setParent(view);
+        sv.content = content;
+        return { view, content, sv };
+    }
+}

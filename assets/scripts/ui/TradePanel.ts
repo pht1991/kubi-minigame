@@ -1,5 +1,5 @@
 /**
- * TradePanel.ts - 交易面板（独立模态窗口，仿 BagPanel / DialogPanel）
+ * TradePanel.ts - 交易面板（继承 ModalPanel 的公共模态外壳）
  *
  * 布局：固定分区绝对定位（Header / Tab / Body 三区独立坐标，杜绝游标累加重叠）
  *   - Header: y=0~130   （商品信息，始终可见）
@@ -8,43 +8,22 @@
  *
  * 交互：
  *   - 金币购买：滑动条 + 步进器 + 实时预览「花费X→获得Y」
- *   - 以物易货：选物品(列表) → 定数量 → 预览「给A×q→换B×r」
+ *   - 以物易物：选物品(列表) → 定数量 → 预览「给A×q→换B×r」
  *   - give==='gold' 特殊商人：直接领取
  */
 
 import {
-    _decorator, Component, Node, Label, UITransform, Color, Graphics, Vec3, EventTouch,
-    NodeEventType, Mask, ScrollView, VerticalTextAlignment,
+    Node, Label, UITransform, Color, Graphics, Vec3, EventTouch, NodeEventType,
 } from 'cc';
+import { ModalPanel, C } from './ModalPanel';
 import { ITEM_DATA, TRADE_DATA } from '../data/data';
 import { ActionTrade } from '../actions/ActionTrade';
 import { GameManager } from '../core/GameManager';
 
-const { ccclass } = _decorator;
-
-// ── 主题色 ──
-const C = {
-    panelBg: new Color(255, 248, 240, 255),
-    border:   new Color(200, 168, 130, 255),
-    title:    new Color(92, 61, 30, 255),
-    body:     new Color(50, 40, 30, 255),
-    sub:      new Color(120, 100, 80, 255),
-    warn:     new Color(180, 70, 50, 255),
-    accent:   new Color(196, 132, 64, 255),
-    accent2:  new Color(76, 128, 72, 255),
-    tabOn:    new Color(210, 162, 110, 255),
-    tabOff:   new Color(228, 218, 205, 255),
-    track:    new Color(216, 206, 190, 255),
-    fill:     new Color(200, 140, 70, 255),
-    handle:   new Color(120, 80, 50, 255),
-    disabled: new Color(175, 170, 163, 255),
-    white:    new Color(255, 252, 245, 255),
-};
-
 const PW = 680;    // 面板宽
 const PH = 1000;   // 面板高
 
-// ═════════════════ 自制滑动条 ═════════════════
+// ═════════════════ 自制滑动条 ═══════════════
 class QSlider {
     public node: Node;
     private fillGfx: Graphics;
@@ -116,16 +95,11 @@ class QSlider {
     destroy(): void { this.node.destroy(); }
 }
 
-// ═════════════════ TradePanel ═════════════════
-@ccclass('TradePanel')
-export class TradePanel extends Component {
+// ═════════════════ TradePanel ═══════════════
+export class TradePanel extends ModalPanel {
+    protected panelW = PW;    // 覆盖基类默认 640×900
+    protected panelH = PH;
 
-    private _mask: Node | null = null;
-    private _panel: Node | null = null;
-    private _titleLbl: Label | null = null;
-    private _c: Node | null = null;          // content 容器
-
-    // 数据
     private _tid = '';
     private _give = '';
     private _gName = '';
@@ -145,62 +119,6 @@ export class TradePanel extends Component {
     private _cf: { n: Node; l: Label; g: Graphics } | null = null;
     private _qLbl: Label | null = null;
 
-    onLoad(): void { this._buildSK(); }
-
-    // ──── 骨架（只创建一次）────
-    private _buildSK(): void {
-        // 遮罩
-        this._mask = new Node('M');
-        const mt = this._mask.addComponent(UITransform); mt.setContentSize(750, 1334);
-        this._mask.setParent(this.node);
-        const mg = this._mask.addComponent(Graphics); mg.fillColor = new Color(0, 0, 0, 100);
-        mg.rect(-375, -667, 750, 1334); mg.fill();
-        this._mask.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; this.hide(); });
-
-        // 面板
-        this._panel = new Node('P');
-        const pt = this._panel.addComponent(UITransform); pt.setContentSize(PW, PH); pt.setAnchorPoint(0.5, 0.5);
-        this._panel.setPosition(0, 0, 0); this._panel.setParent(this.node);
-        const pg = this._panel.addComponent(Graphics); pg.fillColor = C.panelBg;
-        pg.roundRect(-PW / 2, -PH / 2, PW, PH, 16); pg.fill();
-        pg.lineWidth = 2.5; pg.strokeColor = C.border;
-        pg.roundRect(-PW / 2, -PH / 2, PW, PH, 16); pg.stroke();
-        this._panel.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
-        // 面板 Mask：裁剪所有子内容到面板矩形内
-        const pm = this._panel.addComponent(Mask); pm.type = Mask.Type.RECT;
-
-        // 标题（左锚点避免宽容器溢出面板左边界）
-        const tn = new Node('T');
-        const tnt = tn.addComponent(UITransform);
-        tnt.setContentSize(PW - 100, 52); tnt.setAnchorPoint(0, 0.5);
-        this._titleLbl = tn.addComponent(Label);
-        Object.assign(this._titleLbl, {
-            fontSize: 28, lineHeight: 36, color: C.title, string: '', isBold: true,
-            horizontalAlign: Label.HorizontalAlign.LEFT, verticalAlign: Label.VerticalAlign.CENTER,
-        });
-        tn.setPosition(-PW / 2 + 36, PH / 2 - 42, 0); tn.setParent(this._panel);
-
-        // 关闭按钮
-        const cn = new Node('X'); cn.addComponent(UITransform).setContentSize(44, 44);
-        cn.setPosition(PW / 2 - 34, PH / 2 - 34, 0); cn.setParent(this._panel);
-        const cg = cn.addComponent(Graphics); cg.fillColor = new Color(200, 160, 130, 220);
-        cg.circle(0, 0, 20); cg.fill(); cg.lineWidth = 1.5; cg.strokeColor = new Color(160, 120, 90);
-        cg.circle(0, 0, 20); cg.stroke();
-        const cln = new Node('XL'); cln.setParent(cn); cln.addComponent(UITransform).setContentSize(44, 44);
-        const cll = cln.addComponent(Label);
-        Object.assign(cll, { string: '\u00d7', fontSize: 28, color: C.white, isBold: true,
-            horizontalAlign: Label.HorizontalAlign.CENTER, verticalAlign: Label.VerticalAlign.CENTER });
-        cn.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; this.hide(); });
-
-        // 内容容器（anchor=0.5,1 即顶部居中）
-        this._c = new Node('C');
-        const ct = this._c.addComponent(UITransform); ct.setContentSize(PW - 48, PH - 140);
-        ct.setAnchorPoint(0.5, 1);
-        this._c.setPosition(0, PH / 2 - 90, 0); this._c.setParent(this._panel);
-
-        this.node.active = false;
-    }
-
     // ════ 对外接口 ════
     show(traderId: string, onTraded?: (msg: string) => void): void {
         this._tid = traderId; this._onTrade = onTraded || null;
@@ -208,17 +126,13 @@ export class TradePanel extends Component {
         this._give = d?.give || ''; this._gName = ITEM_DATA[this._give]?.name || this._give;
         this._price = ActionTrade.instance.getPrice(this._give); this._isGold = this._give === 'gold';
         this._mode = 'gold'; this._bStage = 'choose'; this._bOffer = null;
-        if (this._titleLbl) this._titleLbl.string = d?.name || '\u5546\u4eba';
-        this.node.active = true;
-        this.node.setSiblingIndex(this.node.parent!.children.length - 1);
-        this._render();
+        super.show(d?.name || '商人');
     }
-    hide(): void { this.node.active = false; }
 
     // ════ 全量渲染（固定分区绝对定位）═════
-    private _render(): void {
-        if (!this._c) return;
-        this._c.removeAllChildren();
+    protected render(): void {
+        if (!this._content) return;
+        this.clearContent();
         this._slider = null; this._tG = null; this._tB = null;
         this._cf = null; this._qLbl = null;
 
@@ -226,20 +140,20 @@ export class TradePanel extends Component {
 
         // ════ Zone 1: Header (y=0 ~ 130) ════
         if (this._isGold) {
-            this._tx(0, `[回收] \u4efb\u610f\u7269\u54c1 \u2192 \u91d1\u5e01`, 26, C.title, true);
-            this._tx(36, `\u6536\u76ca\uff1a\u91d1\u5e01 \u00d7${stock.available}\uff08\u968f\u65f6\u53ef\u9886\u53d6\uff09`, 21, C.body);
+            this._tx(0, `[回收] 任意物品 → 金币`, 26, C.title, true);
+            this._tx(36, `收益：金币 ×${stock.available}（随时可领取）`, 21, C.body);
         } else {
             this._tx(0, `[出售] ${this._gName}`, 26, C.title, true);
-            this._tx(36, `\u5355\u4ef7\uff1a${this._price} \u91d1\u5e01 / \u4e2a`, 21, C.body);
-            const st = stock.soldOut ? `\u5df2\u552e\u7f44\uff0c${stock.restockHours}h \u540e\u8865\u8d27` : `\u5269\u4f59 ${stock.available}/${stock.max}`;
-            this._tx(68, `\u5e93\u5b58\uff1a${st}`, 21, stock.soldOut ? C.warn : C.sub);
+            this._tx(36, `单价：${this._price} 金币 / 个`, 21, C.body);
+            const st = stock.soldOut ? `已售罄，${stock.restockHours}h 后补货` : `库存：剩余 ${stock.available}/${stock.max}`;
+            this._tx(68, st, 21, stock.soldOut ? C.warn : C.sub);
         }
 
         // ════ Zone 2: Tab (y=148) ════
         if (!this._isGold) {
             const ty = 148, tw = 300, th = 54, gap = 14;
-            this._tG = this._tabN(-gap / 2 - tw / 2, ty, tw, th, '\u91d1\u5e01\u8d2d\u4e70', () => this._sw('gold'));
-            this._tB = this._tabN(gap / 2 + tw / 2, ty, tw, th, '\u4ee5\u7269\u6613\u8d27', () => this._sw('barter'));
+            this._tG = this._tabN(-gap / 2 - tw / 2, ty, tw, th, '金币购买', () => this._sw('gold'));
+            this._tB = this._tabN(gap / 2 + tw / 2, ty, tw, th, '以物易货', () => this._sw('barter'));
             this._rstab();
         }
 
@@ -254,7 +168,7 @@ export class TradePanel extends Component {
     // ════ 标签切换 ════
     private _sw(m: 'gold' | 'barter'): void {
         if (this._mode === m) return;
-        this._mode = m; this._bStage = 'choose'; this._bOffer = null; this._render();
+        this._mode = m; this._bStage = 'choose'; this._bOffer = null; this.render();
     }
     private _rstab(): void {
         if (this._tG) this._styT(this._tG, this._mode === 'gold');
@@ -271,8 +185,8 @@ export class TradePanel extends Component {
 
     // ════ Body: 金币特殊商人 ════
     private _bGoldSpec(by: number): void {
-        this._tx(by, `\u53ef\u9886\u53d6\uff1a\u91d1\u5e01 \u00d7${ActionTrade.instance.getStock(this._tid).available}`, 23, C.body);
-        this._cf = this._btn(by + 48, 340, 84, '\u9886\u53d6\u6536\u76ca', C.accent2, () => this._do());
+        this._tx(by, `可领取：金币 ×${ActionTrade.instance.getStock(this._tid).available}`, 23, C.body);
+        this._cf = this._btn(by + 48, 340, 84, '领取收益', C.accent2, () => this._do());
     }
 
     // ════ Body: 金币购买 ════
@@ -283,59 +197,53 @@ export class TradePanel extends Component {
         this._mqty = Math.max(0, Math.min(stock.available, mbg));
         this._mnqty = 1; this._qty = this._mqty > 0 ? 1 : 0;
 
-        // 摘要行
-        this._tx(by, `\u6301\u6709 ${gold} \u91d1 | \u5355\u4ef7 ${this._price} | \u6700\u5917 ${this._mqty} \u4e2a`, 19, C.sub);
+        this._tx(by, `持有 ${gold} 金 | 单价 ${this._price} | 最多 ${this._mqty} 个`, 19, C.sub);
 
         if (this._mqty <= 0) {
-            const r = stock.soldOut ? '\u5546\u4eba\u8d27\u7269\u5df2\u552e\u7f44' : '\u91d1\u5e01\u4e0d\u8db3';
+            const r = stock.soldOut ? '商人货物已售罄' : '金币不足';
             this._tx(by + 34, r, 23, C.warn, true);
-            this._cf = this._btn(by + 84, 320, 76, '\u5173\u95ed', C.disabled, () => this.hide());
+            this._cf = this._btn(by + 84, 320, 76, '关闭', C.disabled, () => this.hide());
             return;
         }
 
-        // 数量选择区标题
-        this._tx(by + 34, '\u8d2d\u4e65\u6570\u91cf', 22, C.title, true);
+        this._tx(by + 34, '购买数量', 22, C.title, true);
 
-        // 滑动条
-        this._slider = new QSlider(this._c!, by + 90, (v) => {
-            this._qty = v; if (this._qLbl) this._qLbl.string = `\u00d7${v}`; this._updGP();
+        this._slider = new QSlider(this._content!, by + 90, (v) => {
+            this._qty = v; if (this._qLbl) this._qLbl.string = `×${v}`; this._updGP();
         });
         this._slider.setRange(this._mnqty, this._mqty, this._qty);
 
-        // 步进器 + 数量显示
         const sy = by + 152;
         this._step(sy, -115, -1); this._step(sy, 115, 1);
-        this._qLbl = this._txCI(sy, 0, 110, 52, `\u00d7${this._qty}`, 28, C.title);
+        this._qLbl = this._txCI(sy, 0, 110, 52, `×${this._qty}`, 28, C.title);
 
-        // 预览
         this._updGP();
 
-        // 确认按钮
-        this._cf = this._btn(by + 215, 400, 84, '\u786e\u8ba4\u8d2d\u4e70', C.accent2, () => this._do());
+        this._cf = this._btn(by + 215, 400, 84, '确认购买', C.accent2, () => this._do());
         this._updGC();
     }
 
     private _updGP(): void {
-        if (!this._c) return;
-        const old = this._c.getChildByName('_gp'); if (old) old.destroy();
-        const pn = new Node('_gp'); pn.setParent(this._c!);
+        if (!this._content) return;
+        const old = this._content.getChildByName('_gp'); if (old) old.destroy();
+        const pn = new Node('_gp'); pn.setParent(this._content!);
         const cost = this._price * this._qty;
-        this._txI(pn, -PW / 2 + 28, -5, `\u8393\u8d39\uff1a${cost} \u91d1`, 21, C.body);
-        this._txI(pn, -PW / 2 + 28, -33, `\u2192 \u83b7\u5f97\uff1a${this._gName} \u00d7${this._qty}`, 21, C.accent2, true);
+        this._txI(pn, -PW / 2 + 28, -5, `花费：${cost} 金`, 21, C.body);
+        this._txI(pn, -PW / 2 + 28, -33, `→ 获得：${this._gName} ×${this._qty}`, 21, C.accent2, true);
         this._updGC();
     }
     private _updGC(): void {
         if (!this._cf) return;
         const gold = GameManager.instance.boxSaveData['bag']?.['gold'] || 0;
         const ok = gold >= this._price * this._qty && this._qty > 0;
-        this._cf.l.string = ok ? `\u786e\u8ba4\u8d2d\u4e70(${this._price * this._qty}\u91d1)` : '\u91d1\u5e01\u4e0d\u8db3';
+        this._cf.l.string = ok ? `确认购买(${this._price * this._qty}金)` : '金币不足';
         this._cf.g.clear(); this._cf.g.fillColor = ok ? C.accent2 : C.disabled;
         this._cf.g.roundRect(-200, -42, 400, 84, 14); this._cf.g.fill();
     }
 
     // ════ Body: 易货列表 ════
     private _bBarterList(by: number): void {
-        this._tx(by, '\u9009\u62e9\u8981\u4ea4\u6362\u7684\u7269\u54c1', 22, C.title, true);
+        this._tx(by, '选择要交换的物品', 22, C.title, true);
 
         const bag = GameManager.instance.boxSaveData['bag'] || {};
         const items = Object.keys(bag)
@@ -343,23 +251,14 @@ export class TradePanel extends Component {
             .sort((a, b) => (bag[b] || 0) - (bag[a] || 0));
 
         if (items.length === 0) {
-            this._tx(by + 34, '\u80cc\u5305\u91cc\u6ca1\u6709\u53ef\u7528\u4e8e\u4ea4\u6362\u7684\u7269\u54c1', 21, C.warn);
-            this._btn(by + 80, 280, 72, '\u5173\u95ed', C.disabled, () => this.hide());
+            this._tx(by + 34, '背包里没有可用于交换的物品', 21, C.warn);
+            this._btn(by + 80, 280, 72, '关闭', C.disabled, () => this.hide());
             return;
         }
 
-        // ScrollView 列表
         const lh = 480, rh = 76;
-        const sv = new Node('BL'); const svt = sv.addComponent(UITransform);
-        svt.setContentSize(PW - 48, lh); svt.setAnchorPoint(0.5, 1);
-        sv.setPosition(0, by + 34, 0); sv.setParent(this._c!);
-        sv.addComponent(Mask).type = Mask.Type.RECT;
-        const sc = sv.addComponent(ScrollView); sc.horizontal = false; sc.vertical = true;
-        sc.verticalScrollBar = null; sc.horizontalScrollBar = null; sc.inertia = true; sc.brake = 0.3;
-
-        const cnt = new Node('BC'); const cntT = cnt.addComponent(UITransform);
-        cntT.setContentSize(PW - 48, Math.max(lh, items.length * rh + 16));
-        cntT.setAnchorPoint(0.5, 1); cnt.setParent(sv); sc.content = cnt;
+        const { view: sv, content: cnt } = this.mkScroll(this._content!, 0, by + 34, PW - 48, lh);
+        cnt.getComponent(UITransform)!.setContentSize(PW - 48, Math.max(lh, items.length * rh + 16));
 
         items.forEach((id, i) => {
             const q = bag[id] || 0, nm = ITEM_DATA[id]?.name || id;
@@ -368,63 +267,56 @@ export class TradePanel extends Component {
             const rt = row.addComponent(UITransform); rt.setContentSize(PW - 68, rh - 6); rt.setAnchorPoint(0.5, 1);
             row.setPosition(0, -i * rh - 8, 0); row.setParent(cnt);
             const rg = row.addComponent(Graphics); rg.fillColor = new Color(255, 252, 245);
-            rg.roundRect(-(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10); rg.fill();
-            rg.lineWidth = 1.5; rg.strokeColor = C.border;
-            rg.roundRect(-(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10); rg.stroke();
+            this.mkRect(rg, -(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10, new Color(255, 252, 245), C.border, 1.5);
 
-            const lb = new Node('lb'); lb.setParent(row);
-            lb.addComponent(UITransform).setContentSize(PW - 102, rh - 6);
-            lb.setPosition(-16, 0, 0);
-            const l = lb.addComponent(Label);
-            l.string = out >= 1 ? `${nm} \u00d7${q}  \u2192 \u6362 ${this._gName} \u00d7${out}` : `${nm} \u00d7${q}  (\u4ef7\u503c\u4e0d\u8db3)`;
-            l.fontSize = 19; l.color = out >= 1 ? C.body : C.disabled;
-            l.horizontalAlign = Label.HorizontalAlign.LEFT;
-            l.verticalAlign = VerticalTextAlignment.CENTER;
-            l.enableWrapText = true; l.overflow = Label.Overflow.CLAMP; l.lineHeight = 25;
+            this.mkInline(row, -16, 0, PW - 102, rh - 6,
+                out >= 1 ? `${nm} ×${q}  → 换 ${this._gName} ×${out}` : `${nm} ×${q}  (价值不足)`,
+                19, out >= 1 ? C.body : C.disabled);
+
             row.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
-                e.propagationStopped = true; this._bOffer = id; this._bStage = 'amount'; this._render();
+                e.propagationStopped = true; this._bOffer = id; this._bStage = 'amount'; this.render();
             });
         });
 
         const mp = Math.round(ActionTrade.instance.getBarterMargin() * 100);
-        this._tx(by + lh + 44, `\u63d0\u793a\uff1a\u6613\u8d22 \u226b \u5356\u8d27\u6362\u91d1\u518d\u4e70 (${mp}%\u5dee\u4ef7)`, 15, C.sub);
+        this._tx(by + lh + 44, `提示：易货 >> 卖货换金币再买 (${mp}%差价)`, 15, C.sub);
     }
 
     // ════ Body: 易货数量 ════
     private _bBarterAmt(by: number): void {
         const onm = ITEM_DATA[this._bOffer!]?.name || this._bOffer!;
-        this._tx(by, `\u4ea4\u6362\u7269\uff1a${onm}`, 22, C.title, true);
+        this._tx(by, `交换物：${onm}`, 22, C.title, true);
 
         const bq = GameManager.instance.boxSaveData['bag']?.[this._bOffer!] || 0;
         this._mqty = Math.max(1, bq); this._mnqty = 1; this._qty = 1;
 
-        this._slider = new QSlider(this._c!, by + 42, (v) => {
-            this._qty = v; if (this._qLbl) this._qLbl.string = `\u00d7${v}`; this._updBP();
+        this._slider = new QSlider(this._content!, by + 42, (v) => {
+            this._qty = v; if (this._qLbl) this._qLbl.string = `×${v}`; this._updBP();
         });
         this._slider.setRange(this._mnqty, this._mqty, this._qty);
 
         const sy = by + 104;
         this._step(sy, -115, -1); this._step(sy, 115, 1);
-        this._qLbl = this._txCI(sy, 0, 110, 52, `\u00d7${this._qty}`, 28, C.title);
+        this._qLbl = this._txCI(sy, 0, 110, 52, `×${this._qty}`, 28, C.title);
 
         this._updBP();
 
-        this._btn(by + 170, 190, 68, '\u2190 \u91cd\u9009', C.tabOff, () => {
-            this._bStage = 'choose'; this._bOffer = null; this._render();
+        this._btn(by + 170, 190, 68, '← 重选', C.tabOff, () => {
+            this._bStage = 'choose'; this._bOffer = null; this.render();
         });
-        this._cf = this._btn(by + 170, 280, 68, '\u786e\u8ba4\u6613\u8d27', C.accent, () => this._do());
+        this._cf = this._btn(by + 170, 280, 68, '确认易货', C.accent, () => this._do());
         this._updBC();
     }
 
     private _updBP(): void {
-        if (!this._c) return;
-        const old = this._c.getChildByName('_bp'); if (old) old.destroy();
-        const pn = new Node('_bp'); pn.setParent(this._c!);
+        if (!this._content) return;
+        const old = this._content.getChildByName('_bp'); if (old) old.destroy();
+        const pn = new Node('_bp'); pn.setParent(this._content!);
         const onm = ITEM_DATA[this._bOffer!]?.name || this._bOffer!;
         const out = ActionTrade.instance.previewBarter(this._tid, this._bOffer!, this._qty);
-        this._txI(pn, -PW / 2 + 28, -5, `\u7ed9\uff1a${onm} \u00d7${this._qty}`, 21, C.body);
+        this._txI(pn, -PW / 2 + 28, -5, `给：${onm} ×${this._qty}`, 21, C.body);
         this._txI(pn, -PW / 2 + 28, -33,
-            out >= 1 ? `\u2192 \u6362\uff1a${this._gName} \u00d7${out}` : `\u2192 \u4ef7\u503c\u4e0d\u8db3`,
+            out >= 1 ? `→ 换：${this._gName} ×${out}` : `→ 价值不足`,
             21, out >= 1 ? C.accent : C.warn, true);
         this._updBC();
     }
@@ -432,7 +324,7 @@ export class TradePanel extends Component {
         if (!this._cf) return;
         const out = ActionTrade.instance.previewBarter(this._tid, this._bOffer!, this._qty);
         const ok = out >= 1;
-        this._cf.l.string = ok ? '\u786e\u8ba4\u6613\u8d27' : '\u65e0\u6cd5\u4ea4\u6362';
+        this._cf.l.string = ok ? '确认易货' : '无法交换';
         this._cf.g.clear(); this._cf.g.fillColor = ok ? C.accent : C.disabled;
         this._cf.g.roundRect(-140, -34, 280, 68, 12); this._cf.g.fill();
     }
@@ -444,101 +336,35 @@ export class TradePanel extends Component {
         else if (this._mode === 'gold') r = ActionTrade.instance.trade(this._tid, this._qty);
         else r = ActionTrade.instance.barter(this._tid, this._bOffer!, this._qty);
         if (this._onTrade) this._onTrade(r.message);
-        this._render();
+        this.render();
     }
 
-    // ═════ 工具方法 ═════
-
-    /** 文本标签：绝对 Y 定位到 _content */
+    // ═════ 薄封装：把原私有助手对接到基类公共助手（集中修复点在基类）═════
     private _tx(y: number, text: string, sz: number, clr: Color, bold = false): Label {
-        if (!this._c) throw new Error('_c missing');
-        const n = new Node('L');
-        const nt = n.addComponent(UITransform);
-        nt.setContentSize(PW - 48, Math.ceil(sz * 2.2) + 8);
-        nt.setAnchorPoint(0.5, 1);
-        n.setPosition(0, -y, 0); n.setParent(this._c);
-        const l = n.addComponent(Label);
-        l.string = text; l.fontSize = sz; l.color = clr;
-        l.horizontalAlign = Label.HorizontalAlign.LEFT;
-        l.verticalAlign = Label.VerticalAlign.TOP;
-        l.enableWrapText = true; l.overflow = Label.Overflow.CLAMP;
-        l.lineHeight = Math.ceil(sz * 1.55);
-        if (bold) l.isBold = true;
-        return l;
+        return this.mkText(this._content!, 0, -y, PW - 48, Math.ceil(sz * 2.2) + 8, text, sz, clr, { bold, align: 'left' });
     }
-
-    /** 内联文本：添加到指定父节点 */
     private _txI(p: Node, x: number, yy: number, text: string, sz: number, clr: Color, bold = false): Label {
-        const n = new Node('iL');
-        const t = n.addComponent(UITransform); t.setContentSize(PW - 56, Math.ceil(sz * 2) + 6);
-        t.setAnchorPoint(0, 0.5); n.setPosition(x, yy, 0); n.setParent(p);
-        const l = n.addComponent(Label);
-        l.string = text; l.fontSize = sz; l.color = clr;
-        l.horizontalAlign = Label.HorizontalAlign.LEFT;
-        l.verticalAlign = VerticalTextAlignment.CENTER;
-        l.enableWrapText = true; l.overflow = Label.Overflow.CLAMP;
-        l.lineHeight = Math.ceil(sz * 1.5);
-        if (bold) l.isBold = true;
-        return l;
+        return this.mkInline(p, x, yy, PW - 56, Math.ceil(sz * 2) + 6, text, sz, clr, bold);
     }
-
-    /** 居中内联文本 */
     private _txCI(p: Node | undefined, x: number, yy: number, w: number, h: number, text: string, sz: number, clr: Color): Label {
-        const tgt = p || this._c!;
-        const n = new Node('ic');
-        const t = n.addComponent(UITransform); t.setContentSize(w, h); t.setAnchorPoint(0.5, 0.5);
-        n.setPosition(x, yy, 0); n.setParent(tgt);
-        const l = n.addComponent(Label);
-        l.string = text; l.fontSize = sz; l.color = clr;
-        l.horizontalAlign = Label.HorizontalAlign.CENTER;
-        l.verticalAlign = VerticalTextAlignment.CENTER;
-        if (sz >= 28) l.isBold = true;
-        return l;
+        return this.mkCenter(p || this._content!, x, yy, w, h, text, sz, clr);
     }
-
-    /** 按钮 */
     private _btn(y: number, w: number, h: number, text: string, bg: Color, cb: () => void): { n: Node; l: Label; g: Graphics } {
-        const n = new Node('Btn');
-        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 1);
-        n.setPosition(0, -y, 0); n.setParent(this._c!);
-        const g = n.addComponent(Graphics); g.fillColor = bg;
-        g.roundRect(-w / 2, -h / 2, w, h, 14); g.fill();
-        g.lineWidth = 2; g.strokeColor = new Color(150, 110, 70, 200);
-        g.roundRect(-w / 2, -h / 2, w, h, 14); g.stroke();
-        const lbl = this._txI(n, 0, 0, text, Math.min(24, h * 0.43), C.white, true);
-        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-        lbl.node.getComponent(UITransform)!.setAnchorPoint(0.5, 0.5);
-        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
-        return { n, l: lbl, g };
+        const r = this.mkButton(this._content!, 0, -y, w, h, text, bg, cb);
+        return { n: r.node, l: r.label, g: r.gfx };
     }
-
-    /** Tab 按钮（Label 用子节点避免与 Graphics 同级冲突） */
     private _tabN(x: number, y: number, w: number, h: number, text: string, cb: () => void): { n: Node; g: Graphics; l: Label } {
-        const n = new Node('Tab');
-        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 1);
-        n.setPosition(x, -y, 0); n.setParent(this._c!);
-        const g = n.addComponent(Graphics);
-        // Label 放在子节点上（与 _btn 同模式），避免 Graphics 覆盖渲染
-        const lbl = this._txI(n, 0, 0, text, Math.min(23, h * 0.43), C.body, true);
-        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-        lbl.node.getComponent(UITransform)!.setAnchorPoint(0.5, 0.5);
-        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
-        return { n, g, l: lbl };
+        const r = this.mkTab(this._content!, x, -y, w, h, text, cb);
+        return { n: r.node, g: r.gfx, l: r.label };
     }
-
-    /** 步进按钮 */
+    /** 步进按钮（Label 放子节点，避免与 Graphics 同节点冲突） */
     private _step(y: number, x: number, sign: number): void {
         const n = new Node('Step');
         const nt = n.addComponent(UITransform); nt.setContentSize(60, 60); nt.setAnchorPoint(0.5, 0.5);
-        n.setPosition(x, y, 0); n.setParent(this._c!);
-        const g = n.addComponent(Graphics); g.fillColor = C.tabOn;
-        g.roundRect(-30, -30, 60, 60, 12); g.fill();
-        g.lineWidth = 2; g.strokeColor = C.accent;
-        g.roundRect(-30, -30, 60, 60, 12); g.stroke();
-        const l = n.addComponent(Label);
-        l.string = sign > 0 ? '+' : '\u2212'; l.fontSize = 34; l.color = C.white;
-        l.horizontalAlign = Label.HorizontalAlign.CENTER;
-        l.verticalAlign = VerticalTextAlignment.CENTER; l.isBold = true;
+        n.setPosition(x, y, 0); n.setParent(this._content!);
+        const g = n.addComponent(Graphics);
+        this.mkRect(g, -30, -30, 60, 60, 12, C.tabOn, C.accent, 2);
+        this.mkCenter(n, 0, 0, 60, 60, sign > 0 ? '+' : '−', 34, C.white, true);
         n.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
             e.propagationStopped = true;
             const nv = Math.min(this._mqty, Math.max(this._mnqty, this._qty + sign));
