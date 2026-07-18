@@ -354,13 +354,10 @@ export class MainScene extends Component {
         barTf.setContentSize(700, BAR_H);
         barTf.setAnchorPoint(0.5, 0.5);   // 还原默认锚点
 
-        // 挂载到 Canvas 下（有固定尺寸，定位基准正确）
-        const canvas = this.node.scene?.getChildByName('Canvas');
-        if (canvas) {
-            canvas.addChild(this._bottomBar);
-        } else {
-            this.node.addChild(this._bottomBar);
-        }
+        // 挂载到 MainScene(this.node) 下，与所有弹窗(Bag/Dialog/Battle/Trade)同级。
+        // 这样弹窗显示时 setSiblingIndex(父内最后) 置顶即可盖住底栏；
+        // 若挂到 Canvas 层并置顶，弹窗(在 MainScene 层)将永远盖不过底栏，导致点击穿透。
+        this.node.addChild(this._bottomBar);
 
         // 绝对坐标定位（不依赖 Widget，避免 ScrollView 边界缓存失效）
         // 设计分辨率 750×1334，锚点默认(0.5,0.5)，Canvas 中心为原点

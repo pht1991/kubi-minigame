@@ -43,6 +43,7 @@ export class DialogPanel extends Component {
         // 只有点击遮罩本身（非面板区域）才关闭
         this._maskNode.on(Node.EventType.TOUCH_END, (event) => {
             if (event.target === this._maskNode) {
+                event.propagationStopped = true; // 拦截，防止穿透到底层按钮(底栏/页面)
                 this.hide();
             }
         });

@@ -155,7 +155,7 @@ export class TradePanel extends Component {
         this._mask.setParent(this.node);
         const mg = this._mask.addComponent(Graphics); mg.fillColor = new Color(0, 0, 0, 100);
         mg.rect(-375, -667, 750, 1334); mg.fill();
-        this._mask.on(NodeEventType.TOUCH_END, () => this.hide());
+        this._mask.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; this.hide(); });
 
         // 面板
         this._panel = new Node('P');

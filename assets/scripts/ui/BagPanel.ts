@@ -50,7 +50,7 @@ export class BagPanel extends Component {
         maskGfx.rect(-375, -667, 750, 1334);
         maskGfx.fill();
         this._maskNode.on(Node.EventType.TOUCH_END, (event) => {
-            if (event.target === this._maskNode) this.hide();
+            if (event.target === this._maskNode) { event.propagationStopped = true; this.hide(); }
         });
 
         // 面板
