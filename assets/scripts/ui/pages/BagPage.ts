@@ -76,7 +76,6 @@ export class BagPage extends BasePage {
         const equippedIds = boxType === 'bag'
             ? new Set(Object.values(this.gm.currentEquip).filter(Boolean) as string[])
             : new Set<string>();
-        const emptyHint = boxType === 'bag' ? '背包是空的' : '大箱子是空的';
         const cells: GridCellData[] = Object.keys(box).map(itemId => {
             const baseName = ITEM_DATA[itemId]?.name || itemId;
             const isEquipped = equippedIds.has(itemId);
@@ -95,9 +94,7 @@ export class BagPage extends BasePage {
                 durability,
             };
         });
-        if (cells.length === 0) {
-            cells.push({ id: 'empty', name: emptyHint, state: 'disabled' });
-        }
+        // 空箱子/背包不渲染占位 cell，内容区自然留白
         return cells;
     }
 
