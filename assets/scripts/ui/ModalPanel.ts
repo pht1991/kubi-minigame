@@ -93,7 +93,7 @@ export abstract class ModalPanel extends Component {
         // 面板拦截事件，防止点击面板内部冒泡
         this._panel.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
         // ⚠️ 关键：Cocos 3.x Mask 必须显式设 type，否则不裁剪
-        this._panel.addComponent(Mask).type = Mask.Type.RECT;
+        this._panel.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
 
         // 标题（左锚点避免宽容器溢出面板左边界）
         this._titleNode = new Node('T');
@@ -271,7 +271,7 @@ export abstract class ModalPanel extends Component {
         const view = new Node('SV');
         const vt = view.addComponent(UITransform); vt.setContentSize(w, h); vt.setAnchorPoint(0.5, 1);
         view.setPosition(x, y, 0); view.setParent(parent);
-        view.addComponent(Mask).type = Mask.Type.RECT;
+        view.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
         const sv = view.addComponent(ScrollView);
         sv.horizontal = false; sv.vertical = true; sv.inertia = true; sv.brake = 0.3;
         sv.elastic = true; sv.elasticBounceTime = 0.5;
