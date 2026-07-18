@@ -39,6 +39,9 @@ import { OutdoorPage } from './pages/OutdoorPage';
 import { DungeonPage } from './pages/DungeonPage';
 import { SkillPage } from './pages/SkillPage';
 import { EventPage } from './pages/EventPage';
+import { BuildPage } from './pages/BuildPage';
+import { MenuPage } from './pages/MenuPage';
+import { RestPage } from './pages/RestPage';
 import {
     BUILDING_DATA,
     SKILL_DATA,
@@ -218,6 +221,9 @@ export class MainScene extends Component {
     private _dungeonPage: DungeonPage | null = null;
     private _skillPage: SkillPage | null = null;
     private _eventPage: EventPage | null = null;
+    private _buildPage: BuildPage | null = null;
+    private _menuPage: MenuPage | null = null;
+    private _restPage: RestPage | null = null;
 
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
@@ -315,6 +321,13 @@ export class MainScene extends Component {
         pageCtx.dungeonPage = this._dungeonPage;
         pageCtx.skillPage = this._skillPage;
         pageCtx.eventPage = this._eventPage;
+        this._buildPage = new BuildPage(pageCtx);
+        this._menuPage = new MenuPage(pageCtx);
+        this._restPage = new RestPage(pageCtx);
+        pageCtx.buildPage = this._buildPage;
+        pageCtx.menuPage = this._menuPage;
+        pageCtx.restPage = this._restPage;
+        pageCtx.onHomeCellClick = (id: string) => this.onHomeCellClick(id);
         pageCtx.refreshGoButton = () => this.refreshGoButton();
 
         // 创建底部快捷操作栏（固定在屏幕底部，不受 ScrollView 滚动影响）
@@ -525,7 +538,7 @@ export class MainScene extends Component {
 
         // 户外时「出门」按钮已变为「回家」，点击直接回主页（不 popTo 清理后再 push 地图）
         if (action === 'goout' && this._outdoorPage?.isOutdoors) {
-            this._navigator.setRoot(this.buildHomePage());
+            if (this._buildPage) this._navigator.setRoot(this._buildPage.buildHomePage());
             return; // buildHomePage 内部已重置 _isOutdoors=false 并刷新按钮
         }
 
@@ -535,129 +548,15 @@ export class MainScene extends Component {
         switch (action) {
             case 'rest':
                 // 休息/睡觉 → 复用休息页（床铺恢复 或 原地等待）
-                this._navigator.push(this.openRestPage());
+                if (this._restPage) this._navigator.push(this._restPage.openRestPage());
                 break;
             case 'goout':
                 this._outdoorPage?.openGoOutList();
                 break;
             case 'menu':
-                this.openMenuGrid();
+                this._menuPage?.openMenuGrid();
                 break;
         }
-    }
-
-    /** 床铺详情页（原版 UI：等级显示 + 睡觉操作 + 升级） */
-    private openRestPage(): GridPage {
-        const hasBed = !!this._gm.buildingSaveData['sleepPlace']?.own;
-        if (!hasBed) {
-            // 未建造 → 提示去建造
-            return {
-                title: '休息',
-                breadcrumb: '主页 > 休息',
-                columns: 1,
-                cells: [
-                    { id: 'hint', name: '你还没有床铺\n请先在「建造」中建造一个', state: 'disabled', type: 'list' },
-                    { id: 'goBuild', name: '前往建造', state: 'normal', type: 'list' },
-                ],
-                onCellClick: (idx, cell) => {
-                    if (cell.id === 'goBuild') {
-                        this._navigator.pop();
-                        this.openBuildList();
-                    }
-                },
-            };
-        }
-
-        // ===== 已建床铺：等级 + 睡觉 + 升级 =====
-        const level = this._gm.getBuildingLevel('sleepPlace');
-        const updateGroup = BUILDING_UPDATE_DATA['sleepPlaceUpdate'];
-        // 等级键顺序：bed_1(0), bed_2(1), bed_3(2), bed_4(3)
-        const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
-        const currentLevelName = level >= levelKeys.length ? '已满级' :
-            (level === 0 ? '地板' : ITEM_DATA[levelKeys[level - 1]]?.name || `Lv.${level}`);
-        const nextLevelId = levelKeys[level];
-        const canUpgrade = !!(updateGroup && nextLevelId);
-
-        const cells: GridCellData[] = [];
-
-        // ── 顶行：当前等级 ──
-        cells.push({ id: 'levelInfo', name: `当前床铺等级：${currentLevelName}`, state: 'disabled', type: 'list' });
-
-        // ── 睡觉操作（恢复量按等级递增，不直接回满） ──
-        // 等级恢复表：[体力恢复, 精神恢复, 推进小时]
-        const REST_TABLE: [number, number, number][] = [
-            [15, 10, 1],   // Lv0 地板
-            [25, 18, 1],  // Lv1 木床
-            [35, 25, 1],  // Lv2 弹簧床
-            [50, 35, 1],  // Lv3 大床
-        ];
-        const restIdx = Math.min(level, REST_TABLE.length - 1);
-        const [restPs, restSan, restHours] = REST_TABLE[restIdx];
-        cells.push({
-            id: 'sleep',
-            name: `[睡觉]  恢复约 +${restPs}体力 +${restSan}精神  推进${restHours}小时`,
-            state: 'normal',
-            type: 'list',
-            noTruncate: true,
-            data: { restPs, restSan, restHours },
-        });
-
-        // ── 升级区（有下一级时显示） ──
-        if (canUpgrade && nextLevelId) {
-            const upData = updateGroup[nextLevelId];
-            const nextItem = ITEM_DATA[nextLevelId];
-            const reqParts = Object.entries(upData.require || {})
-                .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
-                .join(' ');
-            cells.push({
-                id: `upgrade_${nextLevelId}`,
-                name: `${nextItem?.name || nextLevelId}    ${reqParts || ''}\n${nextItem?.desc || ''}`,
-                state: this._gm.checkHaveResource(upData.require || {}) ? 'normal' : 'disabled',
-                type: 'list',
-                noTruncate: true,
-                data: { action: 'upgrade', targetId: nextLevelId },
-            });
-        } else if (!canUpgrade && level > 0) {
-            cells.push({ id: 'maxed', name: '床铺已达最高等级', state: 'disabled', type: 'list' });
-        }
-
-        // ── 返回 ──
-        cells.push({ id: 'back', name: '返回', state: 'normal', type: 'list' });
-
-        return {
-            title: '床铺',
-            breadcrumb: '主页 > 床铺',
-            columns: 1,
-            cells,
-            onCellClick: (idx, cell) => {
-                if (cell.id === 'sleep') {
-                    // 睡觉：按床铺等级定量恢复，推进时间
-                    const d = cell.data as any;
-                    const rp = d.restPs || 15;
-                    const rs = d.restSan || 10;
-                    const rh = d.restHours || 1;
-                    const oldPs = this._gm.playerState.ps;
-                    const oldSan = this._gm.playerState.san;
-                    // 增量加法，上限100
-                    this._gm.playerStateChange({
-                        ps: Math.min(oldPs + rp, 100),
-                        san: Math.min(oldSan + rs, 100),
-                    });
-                    this._timeSys.advance(rh);
-                    const actualPs = Math.min(rp, 100 - oldPs);
-                    const actualSan = Math.min(rs, 100 - oldSan);
-                    this._lastMsg = `你在${currentLevelName}上睡了一觉，恢复了 ${actualPs} 点体力和 ${actualSan} 点精神`;
-                    this._navigator.replace(this.openRestPage());
-                    this._eventBus.emit(GameEvents.UI_REFRESH);
-                } else if (cell.data?.action === 'upgrade') {
-                    const r = ActionBuilding.instance.upgrade('sleepPlaceUpdate', cell.data.targetId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.openRestPage());
-                } else if (cell.id === 'back') {
-                    this._navigator.pop();
-                }
-            },
-        };
     }
 
     /** 检查并设置 UI Camera */
@@ -697,7 +596,7 @@ export class MainScene extends Component {
 
     /** 初始化主页一级网格 */
     private initHomeGrid(): void {
-        this._navigator.setRoot(this.buildHomePage());
+        if (this._buildPage) this._navigator.setRoot(this._buildPage.buildHomePage());
     }
 
     /** 一级网格点击处理（首页 + 设施入口） */
@@ -717,14 +616,14 @@ export class MainScene extends Component {
             home_box:     () => this.openBagPanel(),      // 大箱子=背包弹窗
             home_well:    () => this._outdoorPage?.openBuildingGrid(), // 取水在建筑详情
             home_toilet:  () => this._outdoorPage?.openBuildingGrid(),
-            home_sleep:   () => this._navigator.push(this.openRestPage()),
+            home_sleep:   () => { if (this._restPage) this._navigator.push(this._restPage.openRestPage()); },
         };
         if (facilityRoutes[id]) { facilityRoutes[id](); return; }
 
         switch (id) {
-            case 'build': this.openBuildList(); break;
+            case 'build': this._buildPage?.openBuildList(); break;
             case 'goOut': this._outdoorPage?.openGoOutList(); break;
-            case 'menu': this.openMenuGrid(); break;
+            case 'menu': this._menuPage?.openMenuGrid(); break;
             // 以下为菜单内直达快捷方式（保留兼容）
             case 'bag': this.openBagPanel(); break;
             case 'craft': this._craftPage?.openCraftGrid(); break;
@@ -972,389 +871,6 @@ export class MainScene extends Component {
         });
     }
 
-    // ===== 制造 =====
-    /** 构建制造工作台格子列表（供 push 与 rebuild 共用） */
-    /** 原版首页：动态设施区 + 建造 + 出门 + 菜单 */
-    private buildHomePage(): GridPage {
-        // 回主页 → 必然不在户外，重置底栏按钮为「出门」
-        this._outdoorPage.isOutdoors = false;
-        this._outdoorPage.rolledTraders = []; // 回家清空在场商人，下次出门重新随机
-        this.refreshGoButton();
-
-        const cells: GridCellData[] = [];
-
-        // 1. 已建设施动态入口（建了什么出现什么）
-        const facilityMap: Record<string, { label: string; id: string }> = {
-            makeTable:  { label: '制造台', id: 'home_craft' },
-            alchemyTable: { label: '炼金台', id: 'home_alchemy' },
-            magicTable:  { label: '秘术台', id: 'home_magic' },
-            scienceTable:{ label: '科研台', id: 'home_science' },
-            cooker:     { label: '炊具箱', id: 'home_cook' },
-            farm:       { label: '农田',   id: 'home_farm' },
-            alco:       { label: '酿酒桶', id: 'home_alco' },
-            trap:       { label: '陷阱',   id: 'home_trap' },
-            bigBox:     { label: '大箱子', id: 'home_box' },
-            well:       { label: '水井',   id: 'home_well' },
-            toilet:     { label: '厕所',   id: 'home_toilet' },
-            sleepPlace: { label: '床铺',   id: 'home_sleep' },
-        };
-        for (const [key, info] of Object.entries(facilityMap)) {
-            if (this._gm.buildingSaveData[key]?.own) {
-                // 有新提示？
-                const hint = this._gm.buildingSaveData[key]?.hint;
-                cells.push({
-                    id: info.id,
-                    name: hint ? `${info.label} !` : info.label,
-                    state: 'normal',
-                    data: key,
-                });
-            }
-        }
-
-        // 3. 固定动作按钮（出门/菜单已移到底栏快捷入口，不再重复）
-        cells.push({ id: 'build', name: '建造', state: 'normal' });
-
-        return {
-            title: '超苦逼冒险者',
-            breadcrumb: '主页',
-            columns: 4,
-            cells,
-            home: true,
-            onCellClick: (index, cell) => this.onHomeCellClick(cell.id),
-        };
-    }
-
-    // ===== 建造（网格形式：仅未建建筑，每格展示名称+需求摘要）=====
-    private openBuildList(): void {
-        const cells: GridCellData[] = [];
-        for (const key in BUILDING_DATA) {
-            if (key === 'build') continue; // 'build' 是分类入口，非真实建筑
-            const d = BUILDING_DATA[key];
-            const built = this._gm.buildingSaveData[key]?.own;
-            if (built) continue; // 已建的不显示（已在首页动态区）
-
-            const preBuilt = !d.building || this._gm.buildingSaveData[d.building]?.own;
-            const hasMat = this._gm.checkHaveResource(d.require || {});
-            const canBuild = preBuilt && hasMat;
-
-            // 简短需求摘要：如 "木头×8" 或 "木头×10 零件×4"
-            const reqStr = d.require && Object.keys(d.require).length > 0
-                ? Object.entries(d.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-                : '';
-
-            cells.push({
-                id: `build_${key}`,
-                name: `${d.name}${reqStr ? '\n' + reqStr : ''}${d.desc ? '\n' + d.desc : ''}`,
-                state: canBuild ? 'normal' : 'disabled',
-                type: 'list',  // 列表行：满宽展示完整信息
-                data: { key, canBuild },
-            });
-        }
-
-        if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '所有建筑均已建造', state: 'disabled', type: 'list' });
-        }
-
-
-        this._navigator.push({
-            title: '建造',
-            breadcrumb: '主页 > 建造',
-            columns: 1,  // 单列：每行一个建筑，横向撑满展示完整信息
-            cells,
-            onCellClick: (index, cell) => {
-                if (!cell.data?.canBuild) return;
-                this.doBuild(cell.data.key);
-            },
-        });
-    }
-
-    /** 执行建造动作（复用 ActionBuilding 完整逻辑） */
-    private doBuild(buildingId: string): void {
-        const r = ActionBuilding.instance.build(buildingId);
-        this._lastMsg = r.message;
-        // 刷新首页（设施动态区会更新）
-        this._navigator.setRoot(this.buildHomePage());
-        this._eventBus.emit(GameEvents.UI_REFRESH);
-    }
-
-    // ===== 菜单（原版风格：技能 + 设置 两页）=====
-    private openMenuGrid(): void {
-        this._navigator.push(this.buildMenuPage());
-    }
-
-    private buildMenuPage(): GridPage {
-        // 原版菜单只有两个入口：技能 / 设置
-        const cells: GridCellData[] = [
-            { id: 'skill', name: '技能', state: 'normal' },
-            { id: 'settings', name: '设置', state: 'normal' },
-        ];
-
-
-        return {
-            title: '菜单',
-            breadcrumb: '主页 > 菜单',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'skill') {
-                    this._navigator.push(this.buildMenuSkillPage());
-                } else if (cell.id === 'settings') {
-                    this._navigator.push(this.buildMenuSettingsPage());
-                }
-            },
-        };
-    }
-
-    /** 菜单 → 技能页 */
-    private buildMenuSkillPage(): GridPage {
-        const cells: GridCellData[] = [];
-        for (const key in SKILL_DATA) {
-            const d = SKILL_DATA[key];
-            const level = this._gm.skill[key] || 0;
-            // 原版：初始技能为空，后续根据条件获得（含天赋，也需习得 level>0 才显示）
-            if (level <= 0) continue;
-
-            const maxLv = d.maxLevel || 10;
-            const talentMark = d.isTalent ? '(天赋)' : '';
-            cells.push({
-                id: `skill_${key}`,
-                name: `${d.name}${talentMark}\nLv.${level}/${maxLv}\n${d.desc || ''}`,
-                state: level > 0 ? 'normal' : 'disabled',
-                type: 'list',
-            });
-        }
-
-        if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '尚未习得任何技能', state: 'disabled', type: 'list' });
-        }
-
-        return {
-            title: '技能',
-            breadcrumb: '菜单 > 技能',
-            columns: 1,  // 单列列表
-            cells,
-            onCellClick: (index, cell) => {},
-        };
-    }
-
-    /** 菜单 → 设置页（参照原版：存档/读档/云存档/音量/统计/帮助/转生/阵营/返回） */
-    private buildMenuSettingsPage(): GridPage {
-        const s = this._gm.settings;
-        const canReincarnate = ActionEvent.instance.canReincarnate();
-        const cells: GridCellData[] = [
-            { id: 'save', name: '保存游戏', state: 'normal' },
-            { id: 'load', name: '读取存档', state: 'normal' },
-            { id: 'cloud', name: '云存档', state: CloudSaveProvider.instance.enabled ? 'normal' : 'disabled' },
-            { id: 'autoSave', name: `自动存档: ${s.autoSave ? '开' : '关'}`, state: 'normal' },
-            { id: 'volLabel', name: `音量: ${Math.round(s.volume * 100)}%`, state: 'disabled' },
-            { id: 'volUp', name: '音量+', state: 'normal' },
-            { id: 'volDown', name: '音量-', state: 'normal' },
-            { id: 'stats', name: '游戏统计', state: 'normal' },
-            { id: 'help', name: '游戏帮助', state: 'normal' },
-            { id: 'reincarnation', name: canReincarnate ? '转生' : '转生(未满足条件)', state: canReincarnate ? 'normal' : 'disabled' },
-            { id: 'camp', name: this._gm.camp ? `阵营: ${this._gm.camp === 'fire' ? '火之阵营' : '冰之阵营'}` : '选择阵营', state: this._gm.camp ? 'disabled' : 'normal' },
-        ];
-
-
-        return {
-            title: '设置',
-            breadcrumb: '菜单 > 设置',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                switch (cell.id) {
-                    case 'save':
-                        this._saveMgr.save();
-                        this._lastMsg = '存档已保存';
-                        this._navigator.replace(this.buildMenuSettingsPage());
-                        break;
-                    case 'load':
-                        this._saveMgr.load();
-                        this._lastMsg = '已读档';
-                        this._eventBus.emit(GameEvents.UI_REFRESH);
-                        this._navigator.replace(this.buildMenuSettingsPage());
-                        break;
-                    case 'cloud':
-                        this.openCloudPanel();
-                        break;
-                    case 'autoSave':
-                        this._gm.settings.autoSave = !this._gm.settings.autoSave;
-                        if (this._gm.settings.autoSave) this._saveMgr.startAutoSave(60000);
-                        else this._saveMgr.stopAutoSave();
-                        this._lastMsg = `自动存档已${this._gm.settings.autoSave ? '开启' : '关闭'}`;
-                        this._navigator.replace(this.buildMenuSettingsPage());
-                        break;
-                    case 'volUp':
-                        this._gm.settings.volume = Math.min(1, this._gm.settings.volume + 0.1);
-                        this._navigator.replace(this.buildMenuSettingsPage());
-                        break;
-                    case 'volDown':
-                        this._gm.settings.volume = Math.max(0, this._gm.settings.volume - 0.1);
-                        this._navigator.replace(this.buildMenuSettingsPage());
-                        break;
-                    case 'stats':
-                        this.openStatsPanel();
-                        break;
-                    case 'help':
-                        this.openHelpPanel();
-                        break;
-                    case 'reincarnation':
-                        if (canReincarnate) this.openReincarnationPanel();
-                        break;
-                    case 'camp':
-                        this.openCampDialog();
-                        break;
-                }
-            },
-        };
-    }
-
-    /** 设置面板 */
-    /** 阵营选择弹窗（仅未选择时有效） */
-    private openCampDialog(): void {
-        if (this._gm.camp) {
-            this._lastMsg = `你已属于【${this._gm.camp === 'fire' ? '火之阵营' : '冰之阵营'}】，无法更改`;
-            this._navigator.replace(this.buildMenuPage());
-            return;
-        }
-        const options: DialogOption[] = [
-            { label: '🔥 火之阵营', data: 'fire', desc: '体温更暖（不易冻毙），代谢稳定使满腹/水分消耗 -15%，战斗中攻击 +5%' },
-            { label: '❄ 冰之阵营', data: 'ice', desc: '冷静使精神衰减 -50%，低温环境更稳' },
-        ];
-        this._dialogPanel?.show(
-            '选择你的阵营',
-            options,
-            (data: string) => {
-                const r = this._gm.chooseCamp(data as 'ice' | 'fire');
-                this._lastMsg = r.message;
-                this._navigator.replace(this.buildMenuPage());
-            },
-            () => {}
-        );
-    }
-
-    /** 云存档面板 */
-    private openCloudPanel(): void {
-        this._navigator.push(this.buildCloudPage());
-    }
-
-    private buildCloudPage(): GridPage {
-        const cells: GridCellData[] = [
-            { id: 'c_status', name: `状态: ${this._saveMgr.cloudStatusText()}`, state: 'disabled' },
-            { id: 'c_upload', name: '立即上传', state: 'normal' },
-            { id: 'c_download', name: '下载云端', state: 'normal' },
-        ];
-
-        return {
-            title: '云存档',
-            breadcrumb: '云存档',
-            columns: 4,
-            cells,
-            onCellClick: async (index, cell) => {
-                if (cell.id === 'c_upload') {
-                    const ok = await this._saveMgr.uploadToCloud();
-                    this._lastMsg = ok ? '已上传到云端' : '上传失败，检查网络/云配置';
-                    this._navigator.replace(this.buildCloudPage());
-                } else if (cell.id === 'c_download') {
-                    const ok = await this._saveMgr.downloadFromCloud();
-                    this._lastMsg = ok ? '已从云端恢复' : '下载失败/云端无存档';
-                    if (ok) this._eventBus.emit(GameEvents.UI_REFRESH);
-                    this._navigator.replace(this.buildCloudPage());
-                }
-            },
-        };
-    }
-
-    /** 转生面板 */
-    private openReincarnationPanel(): void {
-        const canReincarnate = ActionEvent.instance.canReincarnate();
-        const maouLevel = this._gm.maouLevel;
-        const cells: GridCellData[] = [
-            { id: 'info', name: `当前轮回: 第 ${maouLevel} 世`, state: 'disabled' },
-            { id: 'cond', name: canReincarnate ? '条件已满足，可以转生' : '需到达地牢10层或击败魔王', state: 'disabled' },
-            { id: 'desc', name: '转生将重置地牢进度与状态，但保留技能与魔王等级', state: 'disabled' },
-            { id: 'doReincarnate', name: '确认转生', state: canReincarnate ? 'normal' : 'disabled' },
-        ];
-
-        this._navigator.push({
-            title: '转生',
-            breadcrumb: '转生',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'doReincarnate' && canReincarnate) {
-                    const r = ActionEvent.instance.doReincarnation();
-                    this._lastMsg = r.message;
-                    this._navigator.setRoot(this.buildHomePage());
-                }
-            },
-        });
-    }
-
-    /** 统计面板 */
-    private openStatsPanel(): void {
-        const s = this._gm.playerState;
-        const td = this._gm.timeData;
-        const bag = this._gm.boxSaveData['bag'] || {};
-        const itemCount = Object.keys(bag).length;
-        const skillCount = Object.keys(this._gm.skill).filter(k => this._gm.skill[k] > 0).length;
-        const eventCount = Object.keys(this._gm.eventSaveData).filter(k => this._gm.eventSaveData[k]?.experienced).length;
-        const totalEvents = Object.keys(EVENT_DATA).length;
-        const ds = this._gm.dungeonSaveData;
-
-        const cells: GridCellData[] = [
-            { id: 'time', name: `游戏时间: ${td.day}天 ${td.hour}时`, state: 'disabled' },
-            { id: 'season', name: `季节: ${['春', '夏', '秋', '冬'][td.season]}`, state: 'disabled' },
-            { id: 'hp', name: `生命: ${Math.round(s.hp)}/100`, state: 'disabled' },
-            { id: 'full', name: `满腹: ${Math.round(s.full)}/100`, state: 'disabled' },
-            { id: 'moist', name: `水分: ${Math.round(s.moist)}/100`, state: 'disabled' },
-            { id: 'ps', name: `体力: ${Math.round(s.ps)}/100`, state: 'disabled' },
-            { id: 'san', name: `精神: ${Math.round(s.san)}/100`, state: 'disabled' },
-            { id: 'maou', name: `轮回: 第 ${this._gm.maouLevel} 世`, state: 'disabled' },
-            { id: 'items', name: `背包物品: ${itemCount} 种`, state: 'disabled' },
-            { id: 'skills', name: `已学技能: ${skillCount} 项`, state: 'disabled' },
-            { id: 'events', name: `已完成事件: ${eventCount}/${totalEvents}`, state: 'disabled' },
-            { id: 'dungeon', name: `地牢最深: ${ds?.deepest || 0} 层`, state: 'disabled' },
-        ];
-
-        this._navigator.push({
-            title: '统计',
-            breadcrumb: '统计',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {},
-        });
-    }
-
-    /** 帮助面板 */
-    private openHelpPanel(): void {
-        const cells: GridCellData[] = [
-            { id: 'h1', name: '【操作说明】', state: 'disabled' },
-            { id: 'h2', name: '点击网格格子进入对应功能', state: 'disabled' },
-            { id: 'h3', name: '弹窗可点击右上角×或蒙层关闭', state: 'disabled' },
-            { id: 'h4', name: '【生存指南】', state: 'disabled' },
-            { id: 'h5', name: '满腹/水分/精神随时间下降', state: 'disabled' },
-            { id: 'h6', name: '通过采集/狩猎/烹饪获取食物', state: 'disabled' },
-            { id: 'h7', name: '建造农田可稳定生产食材', state: 'disabled' },
-            { id: 'h8', name: '【战斗指南】', state: 'disabled' },
-            { id: 'h9', name: '装备武器提升攻击力', state: 'disabled' },
-            { id: 'h10', name: '学习技能获得永久加成', state: 'disabled' },
-            { id: 'h11', name: '地牢每层有战斗和宝箱', state: 'disabled' },
-            { id: 'h12', name: '【进阶提示】', state: 'disabled' },
-            { id: 'h13', name: '陷阱可捕获小动物', state: 'disabled' },
-            { id: 'h14', name: '完成事件解锁新内容', state: 'disabled' },
-            { id: 'h15', name: '到达地牢深层可转生', state: 'disabled' },
-        ];
-
-        this._navigator.push({
-            title: '帮助',
-            breadcrumb: '帮助',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {},
-        });
-    }
-
     // ===== 战斗面板 =====
     /** 战斗列表：列出所有可战斗的怪物（测试/主动挑战用） */
     private openBattleGrid(): void {
@@ -1428,7 +944,7 @@ export class MainScene extends Component {
                     this._lastMsg = r.message;
                     this._isDead = false;
                     this._dialogPanel?.hide();
-                    this._navigator.setRoot(this.buildHomePage());
+                    if (this._buildPage) this._navigator.setRoot(this._buildPage.buildHomePage());
                 } else if (data === 'respawn') {
                     this._gm.respawn();
                     this._isDead = false;

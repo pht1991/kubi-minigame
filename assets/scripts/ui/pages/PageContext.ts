@@ -63,4 +63,6 @@ export interface PageContext {
     restPage?: any;
     /** 刷新底栏「出门/回家」按钮（MainScene 实现，OutdoorPage 设户外状态后回调） */
     refreshGoButton: () => void;
+    /** 主页格子点击路由（MainScene 实现，BuildPage 构建首页时回调，保持原 onHomeCellClick 中央路由不变） */
+    onHomeCellClick: (id: string) => void;
 }
