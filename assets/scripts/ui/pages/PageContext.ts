@@ -42,4 +42,23 @@ export interface PageContext {
     battlePanel: BattlePanel;
     /** 反馈文案：弹 Toast + 立即存档（等价 MainScene._lastMsg setter） */
     setMsg: (msg: string) => void;
+
+    /**
+     * 各业务域 Page 实例引用（用于少数跨域导航，如建筑详情打开农田/陷阱/酿酒管理页）。
+     * 类型用 any 以避免 PageContext ↔ 具体 Page 类的循环 import；
+     * 由 MainScene 在创建所有 Page 后回填，各 Page 经 this.ctx.xxxPage 访问。
+     */
+    cookPage?: any;
+    craftPage?: any;
+    farmPage?: any;
+    trapPage?: any;
+    brewPage?: any;
+    outdoorPage?: any;
+    dungeonPage?: any;
+    skillPage?: any;
+    eventPage?: any;
+    menuPage?: any;
+    buildPage?: any;
+    bagPage?: any;
+    restPage?: any;
 }

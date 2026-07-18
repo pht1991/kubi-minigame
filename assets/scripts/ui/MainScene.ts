@@ -31,15 +31,12 @@ import { SaveIndicator } from './SaveIndicator';
 import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
 import { CookPage } from './pages/CookPage';
+import { CraftPage } from './pages/CraftPage';
 import {
     BUILDING_DATA,
     SKILL_DATA,
     ITEM_DATA,
     TRADE_DATA,
-    MAKE_DATA,
-    ALCHEMY_DATA,
-    MAGIC_DATA,
-    SCIENCE_DATA,
     COOK_DATA,
     PLACE_DATA,
     MST_DATA,
@@ -206,6 +203,7 @@ export class MainScene extends Component {
 
     /** 烹饪系统页面模块（从 MainScene 抽离，见 pages/CookPage.ts） */
     private _cookPage: CookPage | null = null;
+    private _craftPage: CraftPage | null = null;
 
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
@@ -285,6 +283,10 @@ export class MainScene extends Component {
             setMsg: (msg: string) => { this._lastMsg = msg; },
         };
         this._cookPage = new CookPage(pageCtx);
+        this._craftPage = new CraftPage(pageCtx);
+        // 回填各 Page 引用到 ctx，供少数跨域导航（如建筑详情打开农田/陷阱/酿酒管理页）
+        pageCtx.cookPage = this._cookPage;
+        pageCtx.craftPage = this._craftPage;
 
         // 创建底部快捷操作栏（固定在屏幕底部，不受 ScrollView 滚动影响）
         this.createBottomBar();
@@ -675,10 +677,10 @@ export class MainScene extends Component {
 
         // 已建设施入口 → 对应功能（已建设施直接打开详情弹窗，跳过中间列表页）
         const facilityRoutes: Record<string, () => void> = {
-            home_craft:   () => this.openCraftGrid('makeTable'),
-            home_alchemy: () => this.openCraftGrid('alchemyTable'),
-            home_magic:   () => this.openCraftGrid('magicTable'),
-            home_science: () => this.openCraftGrid('scienceTable'),
+            home_craft:   () => this._craftPage?.openCraftGrid('makeTable'),
+            home_alchemy: () => this._craftPage?.openCraftGrid('alchemyTable'),
+            home_magic:   () => this._craftPage?.openCraftGrid('magicTable'),
+            home_science: () => this._craftPage?.openCraftGrid('scienceTable'),
             home_cook:    () => this._cookPage?.openCookPanel(),
             home_farm:    () => this.openBuildingGrid(), // 农田在建筑详情里管理种植/收获
             home_alco:    () => this.openBrewPanel(),
@@ -696,7 +698,7 @@ export class MainScene extends Component {
             case 'menu': this.openMenuGrid(); break;
             // 以下为菜单内直达快捷方式（保留兼容）
             case 'bag': this.openBagPanel(); break;
-            case 'craft': this.openCraftGrid(); break;
+            case 'craft': this._craftPage?.openCraftGrid(); break;
             case 'cook': this._cookPage?.openCookPanel(); break;
             case 'building': this.openBuildingGrid(); break;
             case 'map': this.openMapGrid(); break;
@@ -943,127 +945,6 @@ export class MainScene extends Component {
 
     // ===== 制造 =====
     /** 构建制造工作台格子列表（供 push 与 rebuild 共用） */
-    private buildCraftCells(): GridCellData[] {
-        const cells: GridCellData[] = [];
-        const workbenches = ['makeTable', 'alchemyTable', 'magicTable', 'scienceTable'];
-        for (const wb of workbenches) {
-            const built = this._gm.buildingSaveData[wb];
-            cells.push({
-                id: wb,
-                name: BUILDING_DATA[wb]?.name || wb,
-                state: built ? 'normal' : 'disabled',
-                data: wb,
-            });
-        }
-        return cells;
-    }
-
-    private openCraftGrid(workbench?: string): void {
-        // 如果指定了工作台且已建设 → 跳过列表页，直接打开配方弹窗
-        if (workbench && this._gm.buildingSaveData[workbench]) {
-            this.openRecipeGrid(workbench);
-            return;
-        }
-
-        this._lastMsg = ''; // 进入制造时清空旧反馈，防止跨系统串显
-        this._navigator.push({
-            title: '制造',
-            breadcrumb: '制造',
-            columns: 4,
-            cells: this.buildCraftCells(),
-            rebuild: () => this.buildCraftCells(),
-            onCellClick: (index, cell) => this.openRecipeGrid(cell.id),
-        });
-    }
-
-    /** 获取工作台对应的配方表 */
-    private getRecipeData(workbench: string): Record<string, any> {
-        switch (workbench) {
-            case 'makeTable': return MAKE_DATA;
-            case 'alchemyTable': return ALCHEMY_DATA;
-            case 'magicTable': return MAGIC_DATA;
-            case 'scienceTable': return SCIENCE_DATA;
-            case 'alco': return ALCO_DATA;
-            default: return {};
-        }
-    }
-
-    /** 配方弹窗 */
-    private openRecipeGrid(workbench: string): void {
-        const recipeData = this.getRecipeData(workbench);
-
-        const options: DialogOption[] = Object.keys(recipeData).map(key => {
-            const recipe = recipeData[key];
-            const canMake = this._gm.checkHaveResource(recipe.require || {});
-            const reqStr = recipe.require && Object.keys(recipe.require).length > 0
-                ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-                : '无';
-            return {
-                label: `${ITEM_DATA[key]?.name || key}  [需求: ${reqStr}]`,
-                data: { workbench, recipeId: key, recipe },
-                disabled: !canMake,
-            };
-        });
-
-        this._dialogPanel?.show(
-            BUILDING_DATA[workbench]?.name || '制造',
-            options,
-            (data) => {
-                // 先选数量，再制造
-                const countOptions: DialogOption[] = [
-                    { label: '制造 ×1', data: { ...data, count: 1 } },
-                    { label: '制造 ×5', data: { ...data, count: 5 } },
-                    { label: '制造 ×10', data: { ...data, count: 10 } },
-                    { label: '制造 ×20', data: { ...data, count: 20 } },
-                ];
-                this._dialogPanel?.show(
-                    '选择数量',
-                    countOptions,
-                    (cd) => {
-                        const r = ActionCraft.instance.make(cd.recipeId, recipeData, cd.count);
-                        this._lastMsg = r.message;
-                        this._eventBus.emit(GameEvents.UI_REFRESH);
-                    },
-                    () => {}
-                );
-            },
-            () => {}
-        );
-    }
-
-    /** 配方详情网格（需求/产出/耗时 + 制造按钮） */
-    private openRecipeDetail(workbench: string, recipeId: string): void {
-        const recipeData = this.getRecipeData(workbench);
-        const recipe = recipeData[recipeId];
-        if (!recipe) return;
-
-        const requireStr = recipe.require && Object.keys(recipe.require).length > 0
-            ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
-        const canMake = this._gm.checkHaveResource(recipe.require || {});
-
-        const cells: GridCellData[] = [
-            { id: 'req', name: `需求: ${requireStr}`, state: 'disabled' },
-            { id: 'get', name: `产出: ${ITEM_DATA[recipe.get]?.name || recipe.get}×${recipe.amount || 1}`, state: 'disabled' },
-            { id: 'time', name: `耗时: ${recipe.timeNeed} 小时`, state: 'disabled' },
-            { id: 'make', name: '制造', state: canMake ? 'normal' : 'disabled' },
-        ];
-
-        this._navigator.push({
-            title: ITEM_DATA[recipeId]?.name || recipeId,
-            breadcrumb: ITEM_DATA[recipeId]?.name || recipeId,
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'make') {
-                    const r = ActionCraft.instance.make(recipeId, recipeData);
-                    this._lastMsg = r.message;
-                    this._navigator.pop(); // 返回配方列表（材料变化会刷新）
-                }
-            },
-        });
-    }
-
     /** 原版首页：动态设施区 + 建造 + 出门 + 菜单 */
     private buildHomePage(): GridPage {
         // 回主页 → 必然不在户外，重置底栏按钮为「出门」
