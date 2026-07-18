@@ -36,6 +36,9 @@ import { FarmPage } from './pages/FarmPage';
 import { TrapPage } from './pages/TrapPage';
 import { BrewPage } from './pages/BrewPage';
 import { OutdoorPage } from './pages/OutdoorPage';
+import { DungeonPage } from './pages/DungeonPage';
+import { SkillPage } from './pages/SkillPage';
+import { EventPage } from './pages/EventPage';
 import {
     BUILDING_DATA,
     SKILL_DATA,
@@ -212,6 +215,9 @@ export class MainScene extends Component {
     private _trapPage: TrapPage | null = null;
     private _brewPage: BrewPage | null = null;
     private _outdoorPage: OutdoorPage | null = null;
+    private _dungeonPage: DungeonPage | null = null;
+    private _skillPage: SkillPage | null = null;
+    private _eventPage: EventPage | null = null;
 
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
@@ -303,6 +309,12 @@ export class MainScene extends Component {
         pageCtx.brewPage = this._brewPage;
         this._outdoorPage = new OutdoorPage(pageCtx);
         pageCtx.outdoorPage = this._outdoorPage;
+        this._dungeonPage = new DungeonPage(pageCtx);
+        this._skillPage = new SkillPage(pageCtx);
+        this._eventPage = new EventPage(pageCtx);
+        pageCtx.dungeonPage = this._dungeonPage;
+        pageCtx.skillPage = this._skillPage;
+        pageCtx.eventPage = this._eventPage;
         pageCtx.refreshGoButton = () => this.refreshGoButton();
 
         // 创建底部快捷操作栏（固定在屏幕底部，不受 ScrollView 滚动影响）
@@ -719,9 +731,9 @@ export class MainScene extends Component {
             case 'cook': this._cookPage?.openCookPanel(); break;
             case 'building': this._outdoorPage?.openBuildingGrid(); break;
             case 'map': this._outdoorPage?.openMapGrid(); break;
-            case 'skill': this.openSkillGrid(); break;
-            case 'dungeon': this.openDungeonGrid(); break;
-            case 'quest': this.openQuestGrid(); break;
+            case 'skill': this._skillPage?.openSkillGrid(); break;
+            case 'dungeon': this._dungeonPage?.openDungeonGrid(); break;
+            case 'quest': this._eventPage?.openQuestGrid(); break;
             case 'battle': this.openBattleGrid(); break;
             case 'equip': this.openEquipPanel(); break;
         }
@@ -1063,395 +1075,6 @@ export class MainScene extends Component {
         // 刷新首页（设施动态区会更新）
         this._navigator.setRoot(this.buildHomePage());
         this._eventBus.emit(GameEvents.UI_REFRESH);
-    }
-
-    // ===== 出门 / 地点列表（渐进解锁，网格形式）=====
-    /** 商人是否在当前户外页可见（过滤地牢专属 / 季节 / 天数） */
-    // ===== 技能（全部技能一览 + 天赋/普通标识）=====
-    private openSkillGrid(): void {
-        const cells: GridCellData[] = [];
-        for (const key in SKILL_DATA) {
-            const data = SKILL_DATA[key];
-            const isTalent = !!(data as any).isTalent;
-            const level = this._gm.skill[key] || 0;
-            const tag = isTalent ? '【天】' : '【技】';
-            const levelStr = level > 0 ? ` Lv.${level}` : '';
-            cells.push({
-                id: key,
-                name: `${tag}${data.name}${levelStr}`,
-                state: 'normal',
-                data: key,
-            });
-        }
-
-        if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '暂无技能', state: 'disabled' });
-        }
-
-        this._navigator.push({
-            title: `技能 (${cells.length})`,
-            breadcrumb: '技能',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => this.openSkillDetail(cell.id),
-        });
-    }
-
-    /** 技能详情 + 学习动作 */
-    private openSkillDetail(skillId: string): void {
-        this._navigator.push(this.buildSkillDetailPage(skillId));
-    }
-
-    private buildSkillDetailPage(skillId: string): GridPage {
-        const data = SKILL_DATA[skillId];
-        const level = this._gm.skill[skillId] || 0;
-        const cost = ActionSkill.instance.previewCost(skillId);
-        const costStr = cost
-            ? Object.entries(cost).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '已满学/不可学';
-        const canLearn = !!cost && this._gm.checkHaveResource(cost);
-        const isTalent = !!(data as any).isTalent;
-        const isOne = !!(data as any).one;
-        const cells: GridCellData[] = [];
-        cells.push(
-            { id: 'name', name: `${data.name} [${isTalent ? '天赋' : '技能'}]`, state: 'disabled' },
-            { id: 'desc', name: data.desc || '', state: 'disabled' },
-            { id: 'lv', name: `当前等级: ${level}${isOne ? ' (唯一)' : ''}`, state: 'disabled' },
-        );
-        if ((data as any).buff) {
-            const buffVal = (data as any).buff;
-            const buffStr = isTalent
-                ? `每级加成: +${Math.round(buffVal * 100)}%`
-                : `每级效果: ${buffVal < 1 ? `×${buffVal}` : `+${Math.round(buffVal * 100)}%`}`;
-            cells.push({ id: 'buff', name: buffStr, state: 'disabled' });
-        }
-        cells.push(
-            { id: 'cost', name: `学习成本: ${costStr}`, state: 'disabled' },
-            { id: 'learn', name: level > 0 ? '升级' : '学习', state: canLearn ? 'normal' : 'disabled' },
-        );
-
-        return {
-            title: data.name,
-            breadcrumb: data.name,
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'learn') {
-                    const r = ActionSkill.instance.learn(skillId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildSkillDetailPage(skillId));
-                }
-            },
-        };
-    }
-
-    // ===== 地牢（楼层选择网格 + 增强探索 + 地牢商人）=====
-    private openDungeonGrid(): void {
-        this._navigator.push(this.buildDungeonPage());
-    }
-
-    private buildDungeonPage(): GridPage {
-        const ds = this._gm.dungeonSaveData;
-        const entered = !!(ds && ds.stairCount);
-        const maxFloor = ActionDungeon.instance.getMaxFloor();
-        const cells: GridCellData[] = [];
-
-
-        if (!entered) {
-            cells.push({ id: 'enter', name: '进入地牢', state: 'normal' });
-        } else {
-            // 操作按钮
-            cells.push({ id: 'explore', name: '探索房间', state: 'normal' });
-            cells.push({ id: 'descend', name: '下层', state: 'normal' });
-            cells.push({ id: 'leave', name: '离开地牢', state: 'normal' });
-
-            // 进度信息
-            cells.push({ id: 'info1', name: `当前层数: ${ds.stairCount} · 房间: ${ds.roomCount}`, state: 'disabled' });
-            cells.push({ id: 'info2', name: `最深: ${ds.deepest}`, state: 'disabled' });
-            cells.push({ id: 'info3', name: '⚠ 房间可能遇前缀怪物/陷阱', state: 'disabled' });
-
-            // 楼层总览（弹窗，不再嵌入网格）
-            cells.push({ id: 'floors', name: '查看楼层总览', state: 'normal' });
-        }
-
-        return {
-            title: '地牢',
-            breadcrumb: '地牢',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'enter') {
-                    const r = ActionDungeon.instance.enter();
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildDungeonPage());
-                    return;
-                }
-                if (cell.id === 'explore') {
-                    this.doDungeonExplore();
-                    return;
-                }
-                if (cell.id === 'descend') {
-                    const r = ActionDungeon.instance.descend();
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildDungeonPage());
-                    return;
-                }
-                if (cell.id === 'leave') {
-                    this._gm.dungeonSaveData = {};
-                    this._lastMsg = '已离开地牢';
-                    this._navigator.replace(this.buildDungeonPage());
-                    return;
-                }
-                // 点击楼层总览 → 弹出楼层选择弹窗
-                if (cell.id === 'floors') {
-                    this.showFloorOverview();
-                    return;
-                }
-            },
-        };
-    }
-
-    /** 执行地牢探索（增强版：战斗/宝箱/商人/空房间） */
-    private doDungeonExplore(): void {
-        const probe = ActionDungeon.instance.probeExploreEnhanced();
-        switch (probe.type) {
-            case 'battle':
-                if (probe.mstId) {
-                    this._lastMsg = `遭遇了 ${probe.mstName}！`;
-                    this._navigator.replace(this.buildDungeonPage());
-                    this.triggerBattle(probe.mstId, probe.prefix);
-                }
-                break;
-            case 'treasure':
-                this._lastMsg = `发现宝箱：${probe.reward}`;
-                this._navigator.replace(this.buildDungeonPage());
-                break;
-            case 'trap':
-                this._lastMsg = probe.reward || '踩中陷阱！';
-                this._navigator.replace(this.buildDungeonPage());
-                break;
-            case 'merchant':
-                this._lastMsg = '遇到了地牢商人！';
-                this._navigator.replace(this.buildDungeonPage());
-                this.showDungeonMerchant();
-                break;
-            default:
-                this._lastMsg = '这个房间空空如也';
-                this._navigator.replace(this.buildDungeonPage());
-                break;
-        }
-    }
-
-    /** 显示楼层详情弹窗 */
-    private showFloorDetail(floor: number): void {
-        const info = ActionDungeon.instance.getFloorInfo(floor);
-        const ds = this._gm.dungeonSaveData;
-        const isCurrent = ds?.stairCount === floor;
-        const isReached = floor <= (ds?.deepest || 0);
-        const descParts: string[] = [];
-        descParts.push(`第 ${floor} 层`);
-        if (isCurrent) descParts.push('【当前层】');
-        else if (isReached) descParts.push('【已探索】');
-        else descParts.push('【未到达】');
-        if (info.mstNames.length > 0) {
-            descParts.push(`怪物: ${info.mstNames.join('、')}`);
-        }
-        descParts.push(info.hasReward ? '有宝箱奖励' : '无宝箱奖励');
-
-        const infoOptions: DialogOption[] = descParts.map(text => ({
-            label: text,
-            data: null,
-            disabled: true,
-        }));
-        infoOptions.push({ label: '返回', data: { action: 'close' } });
-        this._dialogPanel?.show(`${floor}F 详情`, infoOptions, () => {}, () => {});
-    }
-
-    /** 楼层总览弹窗（所有楼层一览，点击查看详情） */
-    private showFloorOverview(): void {
-        const ds = this._gm.dungeonSaveData;
-        const maxFloor = ActionDungeon.instance.getMaxFloor();
-        const options: DialogOption[] = [];
-
-        for (let f = 1; f <= maxFloor; f++) {
-            const info = ActionDungeon.instance.getFloorInfo(f);
-            const isCurrent = f === ds?.stairCount;
-            const isReached = f <= (ds?.deepest || 0);
-            const mstPreview = info.mstNames.length > 0
-                ? info.mstNames.slice(0, 2).join('/') + (info.mstNames.length > 2 ? '…' : '')
-                : '无';
-            const label = isCurrent
-                ? `▶ ${f}F [${mstPreview}] ★当前`
-                : isReached
-                    ? `  ${f}F [${mstPreview}]`
-                    : `  ${f}F ???`;
-            options.push({
-                label,
-                data: { floor: f },
-                disabled: !isReached && !isCurrent,
-            });
-        }
-        options.push({ label: '─────', data: null, disabled: true });
-        options.push({ label: '关闭', data: { action: 'close' } });
-
-        this._dialogPanel?.show(
-            `楼层总览 (最深 ${ds?.deepest || 0}F)`,
-            options,
-            (data) => {
-                if (data.floor != null) {
-                    this.showFloorDetail(data.floor);
-                }
-            },
-            () => {}
-        );
-    }
-
-    /** 显示地牢商人交易弹窗 */
-    private showDungeonMerchant(): void {
-        const merchantIds = ActionDungeon.instance.getDungeonMerchants();
-        const gold = this._gm.boxSaveData['bag']?.['gold'] || 0;
-        const options: DialogOption[] = merchantIds.map(id => {
-            const trade = TRADE_DATA[id];
-            const price = ActionTrade.instance.getPrice(trade.give);
-            const giveName = ITEM_DATA[trade.give]?.name || trade.give;
-            return {
-                label: `${trade.name}：${giveName} ×1 (${price}金)`,
-                data: { action: 'open', traderId: id },
-                disabled: false,
-            };
-        });
-        options.push({ label: '离开商人', data: { action: 'leave' } });
-
-        this._dialogPanel?.show(
-            `地牢商人 (持有 ${gold} 金)`,
-            options,
-            (data) => {
-                if (data.action === 'open') {
-                    // 用统一交易面板打开该商人（金币不足可在面板内易货）
-                    this._tradePanel?.show(data.traderId, (msg) => { this._lastMsg = msg; });
-                }
-            },
-            () => {}
-        );
-    }
-
-    // ===== 事件（主页"事件"入口：可触发事件总览）=====
-    private openQuestGrid(): void {
-        const cells: GridCellData[] = Object.keys(EVENT_DATA)
-            .filter(id => !this._gm.eventSaveData[id]?.experienced)
-            .map(id => ({
-                id,
-                name: EVENT_DATA[id].name,
-                state: 'normal',
-                data: id,
-            }));
-        if (cells.length === 0) cells.push({ id: 'none', name: '暂无可触发事件', state: 'disabled' });
-
-        this._navigator.push({
-            title: '事件',
-            breadcrumb: '事件',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => this.openEventDetail(cell.id),
-        });
-    }
-
-    /** 事件详情 + 对话弹窗 + 触发动作 */
-    private openEventDetail(eventId: string): void {
-        this._navigator.push(this.buildEventDetailPage(eventId));
-    }
-
-    private buildEventDetailPage(eventId: string): GridPage {
-        const data = EVENT_DATA[eventId];
-        const dialogInfo = ActionEvent.instance.getDialogInfo(eventId);
-        const experienced = !!this._gm.eventSaveData[eventId]?.experienced;
-        const want = data.want || {};
-        const canTrigger = !experienced && this._gm.checkHaveResource(want);
-        const wantStr = Object.keys(want).length > 0
-            ? Object.entries(want).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
-        const getStr = data.get
-            ? Object.entries(data.get).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
-        const cells: GridCellData[] = [];
-        cells.push(
-            { id: 'name', name: data.name, state: 'disabled' },
-            { id: 'desc', name: data.desc || '', state: 'disabled' },
-            { id: 'want', name: `需求: ${wantStr}`, state: 'disabled' },
-            { id: 'get', name: `奖励: ${getStr}`, state: 'disabled' },
-        );
-
-        // 如果有 d_1 对话文本，先展示对话再触发；否则直接触发
-        if (dialogInfo && dialogInfo.dialogBefore.length > 0) {
-            cells.push({ id: 'talk', name: experienced ? '回顾对话' : '交谈', state: 'normal' });
-        }
-        cells.push({ id: 'trigger', name: experienced ? '已完成' : '触发', state: experienced ? 'disabled' : (canTrigger ? 'normal' : 'disabled') });
-
-        return {
-            title: data.name,
-            breadcrumb: data.name,
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'talk' && dialogInfo) {
-                    // 显示对话弹窗
-                    const dialogOptions: DialogOption[] = dialogInfo.dialogBefore.map(text => ({
-                        label: text,
-                        data: null,
-                        disabled: true,
-                    }));
-                    if (!experienced && canTrigger) {
-                        dialogOptions.push({ label: '→ 交付并触发', data: { action: 'trigger' } });
-                    }
-                    if (experienced && dialogInfo.dialogAfter.length > 0) {
-                        dialogInfo.dialogAfter.forEach(text => {
-                            dialogOptions.push({ label: text, data: null, disabled: true });
-                        });
-                    }
-                    dialogOptions.push({ label: '关闭', data: { action: 'close' } });
-                    this._dialogPanel?.show(
-                        `${data.name}`,
-                        dialogOptions,
-                        (d) => {
-                            if (d?.action === 'trigger' && !experienced) {
-                                const r = ActionEvent.instance.trigger(eventId);
-                                this._lastMsg = r.message;
-                                this._navigator.replace(this.buildEventDetailPage(eventId));
-                                // 触发后显示 d_2 对话
-                                if (dialogInfo.dialogAfter.length > 0) {
-                                    this.showEventAfterDialog(eventId, dialogInfo.dialogAfter);
-                                }
-                            }
-                        },
-                        () => {}
-                    );
-                } else if (cell.id === 'trigger' && !experienced) {
-                    const r = ActionEvent.instance.trigger(eventId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildEventDetailPage(eventId));
-                    // 触发后显示 d_2 对话
-                    if (dialogInfo && dialogInfo.dialogAfter.length > 0) {
-                        this.showEventAfterDialog(eventId, dialogInfo.dialogAfter);
-                    }
-                }
-            },
-        };
-    }
-
-    /** 显示事件完成后的对话 */
-    private showEventAfterDialog(eventId: string, dialogAfter: string[]): void {
-        const options: DialogOption[] = dialogAfter.map(text => ({
-            label: text,
-            data: null,
-            disabled: true,
-        }));
-        options.push({ label: '继续', data: { action: 'close' } });
-        this._dialogPanel?.show(
-            `${EVENT_DATA[eventId]?.name || '事件'} - 完成`,
-            options,
-            () => {},
-            () => {}
-        );
     }
 
     // ===== 菜单（原版风格：技能 + 设置 两页）=====
