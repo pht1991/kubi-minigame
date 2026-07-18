@@ -112,7 +112,7 @@ export class BagPanel extends ModalPanel {
             );
 
             if (typeof cell.count === 'number') {
-                this.mkInline(cellNode, cellW / 2 - 8, -this.CELL_H / 2 + 16, cellW - 12, 24, `×${cell.count}`, 18, new Color(150, 110, 70, 255));
+                this.mkInline(cellNode, cellW / 2 - 6, -this.CELL_H / 2 + 14, 50, 24, `×${cell.count}`, 17, new Color(150, 110, 70, 255));
             }
 
             if (cell.durability && cell.durability.max > 0) {
@@ -144,7 +144,7 @@ export class BagPanel extends ModalPanel {
                 fillG.fillColor = fillColor;
                 fillG.roundRect(-fillW / 2, -barH / 2, fillW, barH, 3); fillG.fill();
 
-                this.mkInline(cellNode, -barW / 2, barY + 12, barW, 14, `${cur}/${cell.durability.max}`, 11, new Color(80, 60, 40, 255));
+                this.mkInline(cellNode, -barW / 2 + 2, barY + 12, barW - 4, 14, `${cur}/${cell.durability.max}`, 10, new Color(100, 75, 50, 255));
             }
 
             if (!isDisabled && cell.id !== 'empty' && cell.id !== 'msg') {
