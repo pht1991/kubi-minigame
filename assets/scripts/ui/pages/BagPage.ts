@@ -166,8 +166,10 @@ export class BagPage extends BasePage {
         } else {
             if (canUse) options.push({ label: '使用', data: { action: 'use' } });
             if (canEquip) options.push({ label: '装备', data: { action: 'equip' } });
-            // 存入大箱子（任意物品均可，受大箱子容量限制）
-            options.push({ label: '存入大箱子', data: { action: 'store', boxType } });
+            // 存入大箱子：仅在家时可操作（出门不可能往家里存）
+            if (!this.ctx.outdoorPage?.isOutdoors) {
+                options.push({ label: '存入大箱子', data: { action: 'store', boxType } });
+            }
             options.push({ label: '丢弃', data: { action: 'drop' } });
         }
 
