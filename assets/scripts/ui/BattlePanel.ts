@@ -72,6 +72,8 @@ export class BattlePanel extends Component {
         pGfx.lineWidth = 4;
         pGfx.rect(-340, -550, 680, 1100);
         pGfx.stroke();
+        // 面板 Mask：裁剪子内容到面板矩形内
+        this._panelNode.addComponent(Mask).type = Mask.Type.RECT;
 
         // —— 标题 ——
         const titleNode = new Node('Title');

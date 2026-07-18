@@ -166,6 +166,8 @@ export class TradePanel extends Component {
         pg.lineWidth = 2.5; pg.strokeColor = C.border;
         pg.roundRect(-PW / 2, -PH / 2, PW, PH, 16); pg.stroke();
         this._panel.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
+        // 面板 Mask：裁剪所有子内容到面板矩形内
+        const pm = this._panel.addComponent(Mask); pm.type = Mask.Type.RECT;
 
         // 标题（左锚点避免宽容器溢出面板左边界）
         const tn = new Node('T');
@@ -351,7 +353,7 @@ export class TradePanel extends Component {
         const sv = new Node('BL'); const svt = sv.addComponent(UITransform);
         svt.setContentSize(PW - 48, lh); svt.setAnchorPoint(0.5, 1);
         sv.setPosition(0, by + 34, 0); sv.setParent(this._c!);
-        sv.addComponent(Mask);
+        sv.addComponent(Mask).type = Mask.Type.RECT;
         const sc = sv.addComponent(ScrollView); sc.horizontal = false; sc.vertical = true;
         sc.verticalScrollBar = null; sc.horizontalScrollBar = null; sc.inertia = true; sc.brake = 0.3;
 

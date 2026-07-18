@@ -68,6 +68,8 @@ export class DialogPanel extends Component {
         this._panelNode.on(Node.EventType.TOUCH_END, (event) => {
             event.propagationStopped = true;
         });
+        // 面板 Mask：裁剪子内容到面板矩形内
+        this._panelNode.addComponent(Mask).type = Mask.Type.RECT;
 
         // 标题
         const titleNode = new Node('Title');
@@ -122,7 +124,7 @@ export class DialogPanel extends Component {
         this._scrollT = scrollT;
 
         // Mask 限制可视区域
-        scrollNode.addComponent(Mask);
+        scrollNode.addComponent(Mask).type = Mask.Type.RECT;
 
         // ScrollView 组件
         const scrollView = scrollNode.addComponent(ScrollView);

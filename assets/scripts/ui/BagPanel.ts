@@ -64,6 +64,8 @@ export class BagPanel extends Component {
         this._panelNode.on(Node.EventType.TOUCH_END, (event) => {
             event.propagationStopped = true;
         });
+        // 面板 Mask：裁剪子内容到面板矩形内
+        this._panelNode.addComponent(Mask).type = Mask.Type.RECT;
 
         // 标题
         this._titleNode = new Node('Title');
@@ -112,7 +114,7 @@ export class BagPanel extends Component {
         this._scrollT.setAnchorPoint(0.5, 1);
         this._scrollNode.setPosition(0, 340, 0);
         this._scrollNode.setParent(this._panelNode);
-        this._scrollNode.addComponent(Mask);
+        this._scrollNode.addComponent(Mask).type = Mask.Type.RECT;
         this._scrollView = this._scrollNode.addComponent(ScrollView);
         this._scrollView.horizontal = false;
         this._scrollView.vertical = true;
