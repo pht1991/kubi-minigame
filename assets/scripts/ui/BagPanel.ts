@@ -112,7 +112,13 @@ export class BagPanel extends ModalPanel {
             );
 
             if (typeof cell.count === 'number') {
-                this.mkInline(cellNode, cellW / 2 - 6, -this.CELL_H / 2 + 14, 50, 24, `×${cell.count}`, 17, new Color(150, 110, 70, 255));
+                // 注意：mkInline 是 anchor(0,0.5) 左对齐，x 为左边界；此处用 mkText 右对齐(anchorX:1)，
+                // 让 x=cellW/2-6 成为右边界，把数量贴在格子右上角，避免向左对齐时整段甩出格子右缘。
+                this.mkText(
+                    cellNode, cellW / 2 - 6, -this.CELL_H / 2 + 14, 50, 24,
+                    `×${cell.count}`, 17, new Color(150, 110, 70, 255),
+                    { align: 'right', anchorX: 1, anchorY: 0.5 },
+                );
             }
 
             if (cell.durability && cell.durability.max > 0) {
