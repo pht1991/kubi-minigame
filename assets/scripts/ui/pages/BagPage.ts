@@ -8,6 +8,7 @@
  * ITEM_TYPE_LABEL / STATE_LABEL 原为主场景模块级常量（仅物品详情展示用），随 onItemClick 一并迁至此。
  */
 
+import { Node } from 'cc';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionItem } from '../../actions/ActionItem';
