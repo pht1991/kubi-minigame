@@ -40,7 +40,7 @@ export const C = {
     handle:   new Color(120, 80, 50, 255),
     disabled: new Color(175, 170, 163, 255),
     white:    new Color(255, 252, 245, 255),
-    maskDim:  new Color(0, 0, 0, 140),
+    maskDim:  new Color(0, 0, 0, 180),
 };
 
 export interface BtnRef { node: Node; label: Label; gfx: Graphics; }
