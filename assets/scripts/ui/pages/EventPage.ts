@@ -58,8 +58,10 @@ export class EventPage extends BasePage {
             { id: 'get', name: `奖励: ${getStr}`, state: 'disabled' },
         );
 
-        // 如果有 d_1 对话文本，先展示对话再触发；否则直接触发
-        if (dialogInfo && dialogInfo.dialogBefore.length > 0) {
+        // 有对话(d_1)或描述(desc)就提供「交谈」按钮，让玩家看到 NPC 说了什么
+        // （此前仅 d_1 才显示，导致纯 desc 事件如「饥饿的流浪汉」只能触发、看不到对话）
+        const hasTalk = dialogInfo.dialogBefore.length > 0 || (data.desc && data.desc.length > 0);
+        if (hasTalk) {
             cells.push({ id: 'talk', name: experienced ? '回顾对话' : '交谈', state: 'normal' });
         }
         cells.push({ id: 'trigger', name: experienced ? '已完成' : '触发', state: experienced ? 'disabled' : (canTrigger ? 'normal' : 'disabled') });
@@ -71,8 +73,11 @@ export class EventPage extends BasePage {
             cells,
             onCellClick: (index, cell) => {
                 if (cell.id === 'talk' && dialogInfo) {
-                    // 显示对话弹窗
-                    const dialogOptions: DialogOption[] = dialogInfo.dialogBefore.map(text => ({
+                    // 显示对话弹窗：优先用 d_1，纯 desc 事件（如流浪汉）用 desc
+                    const talkTexts = dialogInfo.dialogBefore.length > 0
+                        ? dialogInfo.dialogBefore
+                        : (data.desc ? [data.desc] : []);
+                    const dialogOptions: DialogOption[] = talkTexts.map(text => ({
                         label: text,
                         data: null,
                         disabled: true,
@@ -104,7 +109,8 @@ export class EventPage extends BasePage {
                     );
                 } else if (cell.id === 'trigger' && !experienced) {
                     const r = ActionEvent.instance.trigger(eventId);
-                    this.setMsg(r.message);
+                    // 叙事类事件(无奖励)触发后用 desc 作为反馈，避免只弹一个事件名 toast
+                    this.setMsg(r.success ? (data.get ? r.message : (data.desc || r.message)) : r.message);
                     this.navigator.replace(this.buildEventDetailPage(eventId));
                     // 触发后显示 d_2 对话
                     if (dialogInfo && dialogInfo.dialogAfter.length > 0) {
