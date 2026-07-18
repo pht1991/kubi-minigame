@@ -137,7 +137,7 @@ export class TradePanel extends ModalPanel {
 
         this._tx(by + 34, '购买数量', 22, C.title, true);
 
-        this._slider = new QSlider(this._content!, by + 90, (v) => {
+        this._slider = new QSlider(this._content!, -(by + 90), (v) => {
             this._qty = v; if (this._qLbl) this._qLbl.string = `×${v}`; this._updGP();
         });
         this._slider.setRange(this._mnqty, this._mqty, this._qty);
@@ -218,7 +218,7 @@ export class TradePanel extends ModalPanel {
         const bq = GameManager.instance.boxSaveData['bag']?.[this._bOffer!] || 0;
         this._mqty = Math.max(1, bq); this._mnqty = 1; this._qty = 1;
 
-        this._slider = new QSlider(this._content!, by + 42, (v) => {
+        this._slider = new QSlider(this._content!, -(by + 42), (v) => {
             this._qty = v; if (this._qLbl) this._qLbl.string = `×${v}`; this._updBP();
         });
         this._slider.setRange(this._mnqty, this._mqty, this._qty);
@@ -274,8 +274,9 @@ export class TradePanel extends ModalPanel {
     private _txI(p: Node, x: number, yy: number, text: string, sz: number, clr: Color, bold = false): Label {
         return this.mkInline(p, x, yy, PW - 56, Math.ceil(sz * 2) + 6, text, sz, clr, bold);
     }
-    private _txCI(p: Node | undefined, x: number, yy: number, w: number, h: number, text: string, sz: number, clr: Color): Label {
-        return this.mkCenter(p || this._content!, x, yy, w, h, text, sz, clr);
+    /** 居中文本（Y 向下为正，与 _tx 一致的 _content 坐标系约定） */
+    private _txCI(y: number, x: number, w: number, h: number, text: string, sz: number, clr: Color): Label {
+        return this.mkCenter(this._content!, x, -y, w, h, text, sz, clr);
     }
     private _btn(y: number, w: number, h: number, text: string, bg: Color, cb: () => void): { n: Node; l: Label; g: Graphics } {
         const r = this.mkButton(this._content!, 0, -y, w, h, text, bg, cb);
@@ -289,7 +290,7 @@ export class TradePanel extends ModalPanel {
     private _step(y: number, x: number, sign: number): void {
         const n = new Node('Step');
         const nt = n.addComponent(UITransform); nt.setContentSize(60, 60); nt.setAnchorPoint(0.5, 0.5);
-        n.setPosition(x, y, 0); n.setParent(this._content!);
+        n.setPosition(x, -y, 0); n.setParent(this._content!);
         const g = n.addComponent(Graphics);
         this.mkRect(g, -30, -30, 60, 60, 12, C.tabOn, C.accent, 2);
         this.mkCenter(n, 0, 0, 60, 60, sign > 0 ? '+' : '−', 34, C.white, true);
