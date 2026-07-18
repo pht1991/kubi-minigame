@@ -19,7 +19,6 @@
 import {
     _decorator, Component, Node, Label, UITransform, Color, Graphics,
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment,
-    Sprite, SpriteFrame, Texture2D, UIOpacity, ImageAsset, Vec2,
 } from 'cc';
 
 const { ccclass } = _decorator;
@@ -41,7 +40,7 @@ export const C = {
     handle:   new Color(120, 80, 50, 255),
     disabled: new Color(175, 170, 163, 255),
     white:    new Color(255, 252, 245, 255),
-    maskDim:  new Color(0, 0, 0, 100),
+    maskDim:  new Color(0, 0, 0, 140),
 };
 
 export interface BtnRef { node: Node; label: Label; gfx: Graphics; }
@@ -59,26 +58,13 @@ export abstract class ModalPanel extends Component {
 
     // ════ 外壳节点 ════
     protected _mask: Node | null = null;
+    protected _maskGfx: Graphics | null = null;
     protected _panel!: Node;
     protected _panelGfx!: Graphics;
     protected _titleNode!: Node;
     protected _titleLbl!: Label;
     protected _closeNode: Node | null = null;
     protected _content: Node | null = null;   // 子类内容构建区（anchor 0.5,1，位于标题下方）
-
-    /** 共享的 1×1 白色纹理（所有弹窗遮罩复用，只创建一次） */
-    private static _whiteSF: SpriteFrame | null = null;
-    private static getWhiteSpriteFrame(): SpriteFrame {
-        if (!ModalPanel._whiteSF) {
-            const tex = new Texture2D();
-            tex.initialize({ width: 1, height: 1, format: Texture2D.PixelFormat.RGBA8888 });
-            tex.uploadData(new Uint8Array([255, 255, 255, 255]), 1, 1);
-            const sf = new SpriteFrame();
-            sf.texture = tex;
-            ModalPanel._whiteSF = sf;
-        }
-        return ModalPanel._whiteSF;
-    }
 
     onLoad(): void {
         // 确保根节点有全屏 UITransfer（否则子节点 Graphics 在微信小游戏可能不渲染）
@@ -91,9 +77,9 @@ export abstract class ModalPanel extends Component {
 
     // ──── 骨架（只创建一次）────
     protected buildSkeleton(): void {
-        // 全屏遮罩（点击关闭 / 拦截穿透）—— 使用 Sprite+UIOpacity 而非 Graphics
-        // 原因：微信小游戏环境下 Graphics 在节点 inactive→active 切换时绘制可能丢失；
-        //       Sprite 是引擎最基础的渲染组件，兼容性最可靠
+        // 全屏遮罩（点击关闭 / 拦截穿透）。用 Graphics 绘制——
+        // 与面板背景(_panelGfx)完全相同的渲染机制，微信小游戏下已验证可靠。
+        // 注意：切勿改用 Sprite，其 size 依赖 onLoad 初始化，addComponent 后同步读取必崩。
         if (this.showMask) {
             this._mask = new Node('M');
             const mt = this._mask.addComponent(UITransform);
@@ -101,19 +87,8 @@ export abstract class ModalPanel extends Component {
             mt.setAnchorPoint(0.5, 0.5);
             this._mask.setPosition(0, 0, 0);
             this._mask.setParent(this.node);
-            // Sprite 渲染纯色矩形（黑色）
-            const sp = this._mask.addComponent(Sprite);
-            sp.type = Sprite.Type.SIMPLE;
-            // ⚠️ addComponent 后 Sprite.onLoad 尚未执行，_size 字段未初始化为 Vec2，
-            // 直接 sp.size.set(...) 会在 undefined 上崩；先确保 _size 存在再赋值
-            sp.sizeMode = Sprite.SizeMode.CUSTOM;
-            if (!(sp as any)._size) (sp as any)._size = new Vec2(750, 1334);
-            sp.size.set(750, 1334);
-            sp.spriteFrame = ModalPanel.getWhiteSpriteFrame();
-            sp.color = new Color(0, 0, 0, 255);
-            // UIOpacity 控制整体透明度（100 ≈ 40% 不透明度，等效于原 Graphics alpha=100/255）
-            const op = this._mask.addComponent(UIOpacity);
-            op.opacity = 100;
+            this._maskGfx = this._mask.addComponent(Graphics);
+            this._drawMask();
             this._mask.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
                 e.propagationStopped = true;
                 if (this.maskClose) this.hide();
@@ -183,6 +158,16 @@ export abstract class ModalPanel extends Component {
         g.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); g.stroke();
     }
 
+    /** 绘制全屏半透明遮罩（buildSkeleton 与 show 各调用一次，确保激活后渲染可靠） */
+    private _drawMask(): void {
+        if (!this._mask || !this._maskGfx) return;
+        const g = this._maskGfx;
+        g.clear();
+        g.fillColor = C.maskDim;
+        g.rect(-375, -667, 750, 1334);
+        g.fill();
+    }
+
     /** 自适应高度：重绘面板 + 重定位标题/关闭按钮。返回可用滚动可视高度推导用的面板高 */
     protected resizePanel(h: number): void {
         this.panelH = h;
@@ -197,6 +182,8 @@ export abstract class ModalPanel extends Component {
         this.node.active = true;
         // 置顶：确保盖住底栏与同级其它弹窗
         this.node.setSiblingIndex(this.node.parent!.children.length - 1);
+        // 激活后重绘遮罩（buildSkeleton 已绘一次，这里再确保一次渲染可靠）
+        if (this.showMask) this._drawMask();
         this.render();
     }
     public hide(): void {
