@@ -195,11 +195,11 @@ export class TradePanel extends ModalPanel {
             const out = ActionTrade.instance.previewBarter(this._tid, id, q);
             const row = new Node(`r_${id}`);
             const rt = row.addComponent(UITransform); rt.setContentSize(PW - 68, rh - 6); rt.setAnchorPoint(0.5, 0.5);
-            row.setPosition(0, -i * rh - 8, 0); row.setParent(cnt);
+            row.setPosition(0, -i * rh - rh / 2 - 6, 0); row.setParent(cnt);
             const rg = row.addComponent(Graphics); rg.fillColor = new Color(255, 252, 245);
             this.mkRect(rg, -(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10, new Color(255, 252, 245), C.border, 1.5);
 
-            this.mkInline(row, -16, 0, PW - 102, rh - 6,
+            this.mkInline(row, -(PW - 68) / 2 + 12, 0, PW - 102, rh - 6,
                 out >= 1 ? `${nm} ×${q}  → 换 ${this._gName} ×${out}` : `${nm} ×${q}  (价值不足)`,
                 19, out >= 1 ? C.body : C.disabled);
 
