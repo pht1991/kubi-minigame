@@ -132,7 +132,6 @@ export class TradePanel extends ModalPanel {
         if (this._mqty <= 0) {
             const r = stock.soldOut ? '商人货物已售罄' : '金币不足';
             this._tx(by + 34, r, 23, C.warn, true);
-            this._cf = this._btn(by + 84, 320, 76, '关闭', C.disabled, () => this.hide());
             return;
         }
 
@@ -182,7 +181,6 @@ export class TradePanel extends ModalPanel {
 
         if (items.length === 0) {
             this._tx(by + 34, '背包里没有可用于交换的物品', 21, C.warn);
-            this._btn(by + 80, 280, 72, '关闭', C.disabled, () => this.hide());
             return;
         }
 

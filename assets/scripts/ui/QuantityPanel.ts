@@ -51,12 +51,11 @@ export class QuantityPanel extends ModalPanel {
         // 全部
         this.mkButton(c, 0, -250, 220, 62, '全部', C.tabOn, () => this.setQty(this._max));
 
-        // 确定 / 取消
-        this.mkButton(c, -115, -340, 210, 72, '确定', C.accent2, () => {
+        // 确定（取消由右上角 × / 蒙层承担，避免与关闭按钮功能重复）
+        this.mkButton(c, 0, -340, 280, 72, '确定', C.accent2, () => {
             this.hide();
             this._onConfirm(this._qty);
         });
-        this.mkButton(c, 115, -340, 210, 72, '取消', C.track, () => this.hide());
     }
 
     private setQty(v: number): void {
