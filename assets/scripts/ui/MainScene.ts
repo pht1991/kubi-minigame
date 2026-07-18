@@ -241,26 +241,26 @@ export class MainScene extends Component {
         const bagNode = new Node('BagPanel');
         bagNode.layer = this.node.layer;
         this._bagPanel = bagNode.addComponent(BagPanel);
-        _modalLayer!.addChild(bagNode);
+        this._modalLayer!.addChild(bagNode);
 
         // 创建操作弹窗
         const dialogNode = new Node('DialogPanel');
         dialogNode.layer = this.node.layer;
         this._dialogPanel = dialogNode.addComponent(DialogPanel);
-        _modalLayer!.addChild(dialogNode);
+        this._modalLayer!.addChild(dialogNode);
 
         // 创建战斗面板
         const battleNode = new Node('BattlePanel');
         battleNode.layer = this.node.layer;
         this._battlePanel = battleNode.addComponent(BattlePanel);
         this._battlePanel.onEnd = (win) => this.onBattleEnd(win);
-        _modalLayer!.addChild(battleNode);
+        this._modalLayer!.addChild(battleNode);
 
         // 创建交易面板（独立模态窗口）
         const tradeNode = new Node('TradePanel');
         tradeNode.layer = this.node.layer;
         this._tradePanel = tradeNode.addComponent(TradePanel);
-        _modalLayer!.addChild(tradeNode);
+        this._modalLayer!.addChild(tradeNode);
 
         // 构建页面模块共享上下文（PageContext），并创建各业务域 Page 模块
         // —— 把原本散落在 MainScene 的页面构建逻辑按业务域外抽，MainScene 仅做装配与路由
