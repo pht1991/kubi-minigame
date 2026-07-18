@@ -26,6 +26,7 @@ import { DialogPanel, DialogOption } from './DialogPanel';
 import { BagPanel } from './BagPanel';
 import { BattlePanel } from './BattlePanel';
 import { TradePanel } from './TradePanel';
+import { TradeQtyPanel } from './TradeQtyPanel';
 import { Toast } from './Toast';
 import { SaveIndicator } from './SaveIndicator';
 import { GridPage, GridCellData } from '../data/types';
@@ -260,6 +261,13 @@ export class MainScene extends Component {
         tradeNode.layer = this.node.layer;
         this._tradePanel = tradeNode.addComponent(TradePanel);
         this._modalLayer!.addChild(tradeNode);
+
+        // 创建交易数量选择弹窗（TradePanel 内部懒取，挂同级 modalLayer）
+        const qtyNode = new Node('TradeQty');
+        qtyNode.layer = this.node.layer;
+        const qtyPanel = qtyNode.addComponent(TradeQtyPanel);
+        this._modalLayer!.addChild(qtyNode);
+        this._tradePanel.setQtyPanel(qtyPanel);
 
         // 构建页面模块共享上下文（PageContext），并创建各业务域 Page 模块
         // —— 把原本散落在 MainScene 的页面构建逻辑按业务域外抽，MainScene 仅做装配与路由

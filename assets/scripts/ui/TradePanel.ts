@@ -4,22 +4,21 @@
  * 布局：固定分区绝对定位（Header / Tab / Body 三区独立坐标，杜绝游标累加重叠）
  *   - Header: y=0~130   （商品信息，始终可见）
  *   - Tab:   y=148      （金币购买 / 以物易货）
- *   - Body:  y=225+     （动态内容区）
+ *   - Body:  y=225+     （动态内容区：特殊商人领取 / 购买入口 / 易货列表）
  *
- * 交互：
- *   - 金币购买：滑动条 + 步进器 + 实时预览「花费X→获得Y」
- *   - 以物易物：选物品(列表) → 定数量 → 预览「给A×q→换B×r」
- *   - give==='gold' 特殊商人：直接领取
+ * 数量选择已抽离为独立弹窗 TradeQtyPanel：
+ *   - 金币购买 → 点击后弹出 TradeQtyPanel（滑块选数量 → 确认交易）
+ *   - 以物易物 → 选物品后弹出 TradeQtyPanel（滑块选数量 → 确认/重选）
  */
 
 import {
     Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType,
 } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
-import { QSlider } from './QSlider';
 import { ITEM_DATA, TRADE_DATA } from '../data/data';
 import { ActionTrade } from '../actions/ActionTrade';
 import { GameManager } from '../core/GameManager';
+import { TradeQtyPanel, TradeQtyConfig } from './TradeQtyPanel';
 
 const PW = 680;    // 面板宽
 const PH = 1000;   // 面板高
@@ -27,7 +26,7 @@ const PH = 1000;   // 面板高
 
 // ═════════════════ TradePanel ═══════════════
 export class TradePanel extends ModalPanel {
-    protected panelW = PW;    // 覆盖基类默认 640×900
+    protected panelW = PW;
     protected panelH = PH;
 
     private _tid = '';
@@ -36,18 +35,25 @@ export class TradePanel extends ModalPanel {
     private _price = 0;
     private _isGold = false;
     private _mode: 'gold' | 'barter' = 'gold';
-    private _bStage: 'choose' | 'amount' = 'choose';
-    private _bOffer: string | null = null;
-    private _qty = 1;
-    private _mqty = 1;
-    private _mnqty = 1;
 
-    private _slider: QSlider | null = null;
     private _onTrade: ((msg: string) => void) | null = null;
     private _tG: { n: Node; g: Graphics; l: Label } | null = null;
     private _tB: { n: Node; g: Graphics; l: Label } | null = null;
-    private _cf: { n: Node; l: Label; g: Graphics } | null = null;
-    private _qLbl: Label | null = null;
+
+    /** 懒创建的数量选择弹窗（与 TradePanel 同级挂 modalLayer） */
+    private _qtyPanel: TradeQtyPanel | null = null;
+
+    /** 外部注入数量弹窗（MainScene 创建后调用） */
+    public setQtyPanel(p: TradeQtyPanel): void { this._qtyPanel = p; }
+
+    private _getQty(): TradeQtyPanel {
+        if (!this._qtyPanel) {
+            this._qtyPanel = new Node('TradeQty').addComponent(TradeQtyPanel);
+            // 挂到与 TradePanel 同级（modalLayer），确保遮罩完整覆盖
+            (this._qtyPanel.node.parent = this.node.parent) && null;
+        }
+        return this._qtyPanel;
+    }
 
     // ════ 对外接口 ════
     show(traderId: string, onTraded?: (msg: string) => void): void {
@@ -55,7 +61,7 @@ export class TradePanel extends ModalPanel {
         const d = TRADE_DATA[traderId];
         this._give = d?.give || ''; this._gName = ITEM_DATA[this._give]?.name || this._give;
         this._price = ActionTrade.instance.getPrice(this._give); this._isGold = this._give === 'gold';
-        this._mode = 'gold'; this._bStage = 'choose'; this._bOffer = null;
+        this._mode = 'gold';
         super.show(d?.name || '商人');
     }
 
@@ -63,42 +69,41 @@ export class TradePanel extends ModalPanel {
     protected render(): void {
         if (!this._content) return;
         this.clearContent();
-        this._slider = null; this._tG = null; this._tB = null;
-        this._cf = null; this._qLbl = null;
+        this._tG = null; this._tB = null;
 
         const stock = ActionTrade.instance.getStock(this._tid);
 
         // ════ Zone 1: Header (y=0 ~ 130) ════
         if (this._isGold) {
-            this._tx(0, `[回收] 任意物品 → 金币`, 26, C.title, true);
-            this._tx(36, `收益：金币 ×${stock.available}（随时可领取）`, 21, C.body);
+            this._tx(0, `[回收] \u4efb\u610f\u7269\u54c1 \u2192 \u91d1\u5e01`, 26, C.title, true);
+            this._tx(36, `\u6536\u76ca\uff1a\u91d1\u5e01 \u00d7${stock.available}\uff08\u968f\u65f6\u53ef\u9886\u53d6\uff09`, 21, C.body);
         } else {
-            this._tx(0, `[出售] ${this._gName}`, 26, C.title, true);
-            this._tx(36, `单价：${this._price} 金币 / 个`, 21, C.body);
-            const st = stock.soldOut ? `已售罄，${stock.restockHours}h 后补货` : `库存：剩余 ${stock.available}/${stock.max}`;
+            this._tx(0, `[\u51fa\u552e] ${this._gName}`, 26, C.title, true);
+            this._tx(36, `\u5355\u4ef7\uff1a${this._price} \u91d1\u5e01 / \u4e2a`, 21, C.body);
+            const st = stock.soldOut ? `\u5df2\u552e\u7b4c\uff0c${stock.restockHours}h \u540e\u8865\u8d27` : `\u5e93\u5b58\uff1a\u5269\u4f59 ${stock.available}/${stock.max}`;
             this._tx(68, st, 21, stock.soldOut ? C.warn : C.sub);
         }
 
         // ════ Zone 2: Tab (y=148) ════
         if (!this._isGold) {
             const ty = 148, tw = 300, th = 54, gap = 14;
-            this._tG = this._tabN(-gap / 2 - tw / 2, ty, tw, th, '金币购买', () => this._sw('gold'));
-            this._tB = this._tabN(gap / 2 + tw / 2, ty, tw, th, '以物易货', () => this._sw('barter'));
+            this._tG = this._tabN(-gap / 2 - tw / 2, ty, tw, th, '\u91d1\u5e01\u8d2d\u4e70', () => this._sw('gold'));
+            this._tB = this._tabN(gap / 2 + tw / 2, ty, tw, th, '\u4ee5\u7269\u6613\u8d27', () => this._sw('barter'));
             this._rstab();
         }
 
-        // ════ Zone 3: Body (起始 y=225) ════
+        // ════ Zone 3: Body ════
         const bodyY = !this._isGold ? 225 : 150;
         if (this._isGold) this._bGoldSpec(bodyY);
-        else if (this._mode === 'gold') this._bGoldBuy(bodyY);
-        else if (this._bStage === 'choose') this._bBarterList(bodyY);
-        else this._bBarterAmt(bodyY);
+        else if (this._mode === 'gold') this._bGoldEntry(bodyY);
+        else this._bBarterList(bodyY);
     }
 
     // ════ 标签切换 ════
     private _sw(m: 'gold' | 'barter'): void {
         if (this._mode === m) return;
-        this._mode = m; this._bStage = 'choose'; this._bOffer = null; this.render();
+        this._mode = m;
+        this.render();
     }
     private _rstab(): void {
         if (this._tG) this._styT(this._tG, this._mode === 'gold');
@@ -113,66 +118,49 @@ export class TradePanel extends ModalPanel {
         t.l.color = on ? C.white : C.body;
     }
 
-    // ════ Body: 金币特殊商人 ════
+    // ════ Body: 金币特殊商人（直接领取）═════
     private _bGoldSpec(by: number): void {
-        this._tx(by, `可领取：金币 ×${ActionTrade.instance.getStock(this._tid).available}`, 23, C.body);
-        this._cf = this._btn(by + 48, 340, 84, '领取收益', C.accent2, () => this._do());
+        this._tx(by, `\u53ef\u9886\u53d6\uff1a\u91d1\u5e01 \u00d7${ActionTrade.instance.getStock(this._tid).available}`, 23, C.body);
+        this._btn(by + 48, 340, 84, '\u9886\u53d6\u6536\u76ca', C.accent2, () => this._do());
     }
 
-    // ════ Body: 金币购买 ════
-    private _bGoldBuy(by: number): void {
+    // ════ Body: 金币购买（入口 → 弹出数量弹窗）═════
+    private _bGoldEntry(by: number): void {
         const gold = GameManager.instance.boxSaveData['bag']?.['gold'] || 0;
         const stock = ActionTrade.instance.getStock(this._tid);
         const mbg = this._price > 0 ? Math.floor(gold / this._price) : 0;
-        this._mqty = Math.max(0, Math.min(stock.available, mbg));
-        this._mnqty = 1; this._qty = this._mqty > 0 ? 1 : 0;
+        const mqty = Math.max(0, Math.min(stock.available, mbg));
 
-        this._tx(by, `持有 ${gold} 金 | 单价 ${this._price} | 最多 ${this._mqty} 个`, 19, C.sub);
+        this._tx(by, `\u6301\u6709 ${gold} \u91d1 | \u5355\u4ef7 ${this._price} | \u6700\u591a ${mqty} \u4e2a`, 19, C.sub);
 
-        if (this._mqty <= 0) {
-            const r = stock.soldOut ? '商人货物已售罄' : '金币不足';
+        if (mqty <= 0) {
+            const r = stock.soldOut ? '\u5546\u4eba\u8d27\u7269\u5df2\u552e\u7b4c' : '\u91d1\u5e01\u4e0d\u8db3';
             this._tx(by + 34, r, 23, C.warn, true);
             return;
         }
 
-        this._tx(by + 34, '购买数量', 22, C.title, true);
-
-        this._slider = new QSlider(this._content!, -(by + 90), (v) => {
-            this._qty = v; if (this._qLbl) this._qLbl.string = `×${v}`; this._updGP();
+        // 「选择数量」按钮 → 弹出 TradeQtyPanel
+        this._btn(by + 50, 400, 84, '\u9009\u62e9\u6570\u91cf', C.accent, () => {
+            const cfg: TradeQtyConfig = {
+                title: `\u8d2d\u4e70\uff1a${this._gName}`,
+                infoLines: [`\u6301\u6709 ${gold} \u91d1 | \u5355\u4ef7 ${this._price} | \u6700\u591a ${mqty} \u4e2a`],
+                max: mqty,
+                initial: 1,
+                getPreview: (q) => [
+                    `\u82b1\u8d39\uff1a${this._price * q} \u91d1`,
+                    `\u2192 \u83b7\u5f97\uff1a${this._gName} \u00d7${q}`,
+                ],
+                confirmLabel: '\u786e\u8ba4\u8d2d\u4e70',
+                confirmColor: C.accent2,
+                onConfirm: (q) => { this._doWithQty(q, 'gold'); },
+            };
+            this._getQty().show(cfg);
         });
-        this._slider.setRange(this._mnqty, this._mqty, this._qty);
-
-        const sy = by + 152;
-        this._step(sy, -115, -1); this._step(sy, 115, 1);
-        this._qLbl = this._txCI(sy, 0, 110, 52, `×${this._qty}`, 28, C.title);
-
-        this._updGP();
-
-        this._cf = this._btn(by + 215, 400, 84, '确认购买', C.accent2, () => this._do());
-        this._updGC();
     }
 
-    private _updGP(): void {
-        if (!this._content) return;
-        const old = this._content.getChildByName('_gp'); if (old) old.destroy();
-        const pn = new Node('_gp'); pn.setParent(this._content!);
-        const cost = this._price * this._qty;
-        this._txI(pn, -PW / 2 + 28, -5, `花费：${cost} 金`, 21, C.body);
-        this._txI(pn, -PW / 2 + 28, -33, `→ 获得：${this._gName} ×${this._qty}`, 21, C.accent2, true);
-        this._updGC();
-    }
-    private _updGC(): void {
-        if (!this._cf) return;
-        const gold = GameManager.instance.boxSaveData['bag']?.['gold'] || 0;
-        const ok = gold >= this._price * this._qty && this._qty > 0;
-        this._cf.l.string = ok ? `确认购买(${this._price * this._qty}金)` : '金币不足';
-        this._cf.g.clear(); this._cf.g.fillColor = ok ? C.accent2 : C.disabled;
-        this._cf.g.roundRect(-200, -42, 400, 84, 14); this._cf.g.fill();
-    }
-
-    // ════ Body: 易货列表 ════
+    // ════ Body: 易货列表（选物品 → 弹出数量弹窗）═════
     private _bBarterList(by: number): void {
-        this._tx(by, '选择要交换的物品', 22, C.title, true);
+        this._tx(by, '\u9009\u62e9\u8981\u4ea4\u6362\u7684\u7269\u54c1', 22, C.title, true);
 
         const bag = GameManager.instance.boxSaveData['bag'] || {};
         const items = Object.keys(bag)
@@ -180,7 +168,7 @@ export class TradePanel extends ModalPanel {
             .sort((a, b) => (bag[b] || 0) - (bag[a] || 0));
 
         if (items.length === 0) {
-            this._tx(by + 34, '背包里没有可用于交换的物品', 21, C.warn);
+            this._tx(by + 34, '\u80cc\u5305\u91cc\u6ca1\u6709\u53ef\u7528\u4e8e\u4ea4\u6362\u7684\u7269\u54c1', 21, C.warn);
             return;
         }
 
@@ -198,85 +186,63 @@ export class TradePanel extends ModalPanel {
             this.mkRect(rg, -(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10, new Color(255, 252, 245), C.border, 1.5);
 
             this.mkInline(row, -(PW - 68) / 2 + 12, 0, PW - 102, rh - 6,
-                out >= 1 ? `${nm} ×${q}  → 换 ${this._gName} ×${out}` : `${nm} ×${q}  (价值不足)`,
+                out >= 1 ? `${nm} \u00d7${q}  \u2192 \u6362 ${this._gName} \u00d7${out}` : `${nm} \u00d7${q}  (\u4ef7\u503c\u4e0d\u8db3)`,
                 19, out >= 1 ? C.body : C.disabled);
 
             row.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
-                e.propagationStopped = true; this._bOffer = id; this._bStage = 'amount'; this.render();
+                e.propagationStopped = true;
+                // 弹出数量选择弹窗
+                const bq = bag[id] || 0;
+                const onm = ITEM_DATA[id]?.name || id;
+                const cfg: TradeQtyConfig = {
+                    title: `\u4ea4\u6362\u7269\uff1a${onm}`,
+                    infoLines: [`\u6301\u6709 ${q} \u4e2a`],
+                    max: Math.max(1, bq),
+                    initial: 1,
+                    getPreview: (qty) => {
+                        const r = ActionTrade.instance.previewBarter(this._tid, id, qty);
+                        return r >= 1
+                            ? [`\u7ed9\uff1a${onm} \u00d7${qty}`, `\u2192 \u6362\uff1a${this._gName} \u00d7${r}`]
+                            : [`\u7ed9\uff1a${onm} \u00d7${qty}`, `\u2192 \u4ef7\u503c\u4e0d\u8db3`];
+                    },
+                    confirmLabel: '\u786e\u8ba4\u6613\u8d27',
+                    confirmColor: C.accent,
+                    backLabel: '\u2190 \u91cd\u9009',
+                    onBack: () => { /* 返回列表，无需额外操作 */ },
+                    onConfirm: (qty) => { this._doWithOffer(id, qty); },
+                };
+                this._getQty().show(cfg);
             });
         });
 
         const mp = Math.round(ActionTrade.instance.getBarterMargin() * 100);
-        this._tx(by + lh + 44, `提示：易货 >> 卖货换金币再买 (${mp}%差价)`, 15, C.sub);
+        this._tx(by + lh + 44, `\u63d0\u793a\uff1a\u6613\u8d27 >> \u5356\u8d27\u6362\u91d1\u5e01\u518d\u4e70 (${mp}%\u5dee\u4ef7)`, 15, C.sub);
     }
 
-    // ════ Body: 易货数量 ════
-    private _bBarterAmt(by: number): void {
-        const onm = ITEM_DATA[this._bOffer!]?.name || this._bOffer!;
-        this._tx(by, `交换物：${onm}`, 22, C.title, true);
-
-        const bq = GameManager.instance.boxSaveData['bag']?.[this._bOffer!] || 0;
-        this._mqty = Math.max(1, bq); this._mnqty = 1; this._qty = 1;
-
-        this._slider = new QSlider(this._content!, -(by + 42), (v) => {
-            this._qty = v; if (this._qLbl) this._qLbl.string = `×${v}`; this._updBP();
-        });
-        this._slider.setRange(this._mnqty, this._mqty, this._qty);
-
-        const sy = by + 104;
-        this._step(sy, -115, -1); this._step(sy, 115, 1);
-        this._qLbl = this._txCI(sy, 0, 110, 52, `×${this._qty}`, 28, C.title);
-
-        this._updBP();
-
-        this._btn(by + 170, 190, 68, '← 重选', C.tabOff, () => {
-            this._bStage = 'choose'; this._bOffer = null; this.render();
-        });
-        this._cf = this._btn(by + 170, 280, 68, '确认易货', C.accent, () => this._do());
-        this._updBC();
-    }
-
-    private _updBP(): void {
-        if (!this._content) return;
-        const old = this._content.getChildByName('_bp'); if (old) old.destroy();
-        const pn = new Node('_bp'); pn.setParent(this._content!);
-        const onm = ITEM_DATA[this._bOffer!]?.name || this._bOffer!;
-        const out = ActionTrade.instance.previewBarter(this._tid, this._bOffer!, this._qty);
-        this._txI(pn, -PW / 2 + 28, -5, `给：${onm} ×${this._qty}`, 21, C.body);
-        this._txI(pn, -PW / 2 + 28, -33,
-            out >= 1 ? `→ 换：${this._gName} ×${out}` : `→ 价值不足`,
-            21, out >= 1 ? C.accent : C.warn, true);
-        this._updBC();
-    }
-    private _updBC(): void {
-        if (!this._cf) return;
-        const out = ActionTrade.instance.previewBarter(this._tid, this._bOffer!, this._qty);
-        const ok = out >= 1;
-        this._cf.l.string = ok ? '确认易货' : '无法交换';
-        this._cf.g.clear(); this._cf.g.fillColor = ok ? C.accent : C.disabled;
-        this._cf.g.roundRect(-140, -34, 280, 68, 12); this._cf.g.fill();
-    }
-
-    // ════ 确认交易 ════
-    private _do(): void {
+    // ════ 执行交易（带数量的版本）═════
+    private _doWithQty(qty: number, mode: 'gold'): void {
         let r;
-        if (this._isGold) r = ActionTrade.instance.trade(this._tid);
-        else if (this._mode === 'gold') r = ActionTrade.instance.trade(this._tid, this._qty);
-        else r = ActionTrade.instance.barter(this._tid, this._bOffer!, this._qty);
+        if (mode === 'gold') r = ActionTrade.instance.trade(this._tid, qty);
+        else r = ActionTrade.instance.barter(this._tid, '', qty); // unreachable guard
+        if (this._onTrade) this._onTrade(r.message);
+        this.render();
+    }
+    private _doWithOffer(offerId: string, qty: number): void {
+        const r = ActionTrade.instance.barter(this._tid, offerId, qty);
         if (this._onTrade) this._onTrade(r.message);
         this.render();
     }
 
-    // ═════ 薄封装：把原私有助手对接到基类公共助手（集中修复点在基类）═════
+    // ════ 兼容旧接口（特殊商人无数量）═════
+    private _do(): void {
+        const r = ActionTrade.instance.trade(this._tid);
+        if (this._onTrade) this._onTrade(r.message);
+        this.render();
+    }
+
+    // ═════ 薄封装：对接基类公共助手 ═════
     private _tx(y: number, text: string, sz: number, clr: Color, bold = false): Label {
         return this.mkText(this._content!, 0, -y, PW - 48, Math.ceil(sz * 2.2) + 8, text, sz, clr, { bold, align: 'left' });
-    }
-    private _txI(p: Node, x: number, yy: number, text: string, sz: number, clr: Color, bold = false): Label {
-        return this.mkInline(p, x, yy, PW - 56, Math.ceil(sz * 2) + 6, text, sz, clr, bold);
-    }
-    /** 居中文本（Y 向下为正，与 _tx 一致的 _content 坐标系约定） */
-    private _txCI(y: number, x: number, w: number, h: number, text: string, sz: number, clr: Color): Label {
-        return this.mkCenter(this._content!, x, -y, w, h, text, sz, clr);
     }
     private _btn(y: number, w: number, h: number, text: string, bg: Color, cb: () => void): { n: Node; l: Label; g: Graphics } {
         const r = this.mkButton(this._content!, 0, -y, w, h, text, bg, cb);
@@ -285,19 +251,5 @@ export class TradePanel extends ModalPanel {
     private _tabN(x: number, y: number, w: number, h: number, text: string, cb: () => void): { n: Node; g: Graphics; l: Label } {
         const r = this.mkTab(this._content!, x, -y, w, h, text, cb);
         return { n: r.node, g: r.gfx, l: r.label };
-    }
-    /** 步进按钮（Label 放子节点，避免与 Graphics 同节点冲突） */
-    private _step(y: number, x: number, sign: number): void {
-        const n = new Node('Step');
-        const nt = n.addComponent(UITransform); nt.setContentSize(60, 60); nt.setAnchorPoint(0.5, 0.5);
-        n.setPosition(x, -y, 0); n.setParent(this._content!);
-        const g = n.addComponent(Graphics);
-        this.mkRect(g, -30, -30, 60, 60, 12, C.tabOn, C.accent, 2);
-        this.mkCenter(n, 0, 0, 60, 60, sign > 0 ? '+' : '−', 34, C.white, true);
-        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
-            e.propagationStopped = true;
-            const nv = Math.min(this._mqty, Math.max(this._mnqty, this._qty + sign));
-            if (nv !== this._qty && this._slider) this._slider.setValue(nv);
-        });
     }
 }
