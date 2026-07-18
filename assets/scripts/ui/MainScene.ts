@@ -90,34 +90,50 @@ export class MainScene extends Component {
         }
     }
 
-    /** 创建全局 Toast 弹窗（Canvas 下置顶，跨页面常驻） */
+    /**
+     * 建立显式 UI 分层容器，替代原先靠 setSiblingIndex 时序竞争管理层级的脆弱方式。
+     * 层级从底到顶（sibling index 递增）：
+     *   _contentLayer  (index 0, 占位语义层；实际导航内容由场景预置的 GridComponent/StatusBar 承载)
+     *   [GridComponent / StatusBar]  —— 场景预置的导航主内容 + 顶部状态栏
+     *   _bottomBarLayer —— 固定底部快捷栏
+     *   _modalLayer    —— 所有模态弹窗（Bag/Dialog/Battle/Trade），show 时仍可在层内 setSiblingIndex 抢置顶
+     *   _toastLayer    —— 全局浮层（Toast / SaveIndicator），永远最顶
+     * 各层相对层级由本方法固定的 addChild 顺序保证，不再依赖任何运行时的 setSiblingIndex。
+     */
+    private createUILayers(): void {
+        const mk = (name: string): Node => {
+            const n = new Node(name);
+            n.layer = this.node.layer;
+            return n;
+        };
+        // Content 层：空占位语义节点，置于最底（在场景预置内容节点之前）
+        this._contentLayer = mk('UILayer_Content');
+        this.node.insertChild(this._contentLayer, 0);
+        // BottomBar 层（Content 之上）
+        this._bottomBarLayer = mk('UILayer_BottomBar');
+        this.node.addChild(this._bottomBarLayer);
+        // Modal 层（BottomBar 之上，盖住底栏）
+        this._modalLayer = mk('UILayer_Modal');
+        this.node.addChild(this._modalLayer);
+        // Toast 层（永远最顶）
+        this._toastLayer = mk('UILayer_Toast');
+        this.node.addChild(this._toastLayer);
+    }
+
+    /** 创建全局 Toast 弹窗（挂 _toastLayer，永远最顶层，跨页面常驻） */
     private createToast(): void {
         const toastNode = new Node('Toast');
         toastNode.layer = this.node.layer;
-        const canvas = this.node.scene?.getChildByName('Canvas');
-        if (canvas) {
-            canvas.addChild(toastNode);
-            toastNode.setSiblingIndex(canvas.children.length - 1); // 置顶
-        } else {
-            this.node.addChild(toastNode);
-            toastNode.setSiblingIndex(this.node.children.length - 1);
-        }
+        this._toastLayer!.addChild(toastNode);
         toastNode.setPosition(0, 360, 0); // 屏幕中上部
         toastNode.addComponent(Toast);    // onLoad 内自动构建背景/文字/透明
     }
 
-    /** 创建常驻角落存档状态指示器（保存中↔已保存，静默不弹窗） */
+    /** 创建常驻角落存档状态指示器（挂 _toastLayer，在 Toast 之下由层内创建顺序保证，静默不弹窗） */
     private createSaveIndicator(): void {
         const node = new Node('SaveIndicator');
         node.layer = this.node.layer;
-        const canvas = this.node.scene?.getChildByName('Canvas');
-        if (canvas) {
-            canvas.addChild(node);
-            node.setSiblingIndex(canvas.children.length - 1); // 置顶（仍在 Toast 之下由创建顺序保证）
-        } else {
-            this.node.addChild(node);
-            node.setSiblingIndex(this.node.children.length - 1);
-        }
+        this._toastLayer!.addChild(node);
         // 右下角：x 靠右、y 在底部快捷栏上方
         node.setPosition(285, -560, 0);
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
@@ -180,6 +196,12 @@ export class MainScene extends Component {
     /** 底部快捷操作栏 */
     private _bottomBar: Node | null = null;
 
+    /** 显式分层容器：Content(导航主内容) < BottomBar(固定底栏) < Modal(弹窗) < Toast(全局浮层) */
+    private _contentLayer: Node | null = null;
+    private _bottomBarLayer: Node | null = null;
+    private _modalLayer: Node | null = null;
+    private _toastLayer: Node | null = null;
+
     @property(Node)
     statusBarNode: Node | null = null;
 
@@ -200,6 +222,9 @@ export class MainScene extends Component {
 
     /** start 在所有组件 onLoad 之后执行，确保 GridComponent 已注册监听 */
     start(): void {
+        // 先建立显式分层容器（Content < BottomBar < Modal < Toast），消除 setSiblingIndex 时序竞争
+        this.createUILayers();
+
         // 先创建常驻存档指示器（早于 Toast，保证 Toast 在最顶层）
         this.createSaveIndicator();
 
@@ -216,26 +241,26 @@ export class MainScene extends Component {
         const bagNode = new Node('BagPanel');
         bagNode.layer = this.node.layer;
         this._bagPanel = bagNode.addComponent(BagPanel);
-        this.node.addChild(bagNode);
+        _modalLayer!.addChild(bagNode);
 
         // 创建操作弹窗
         const dialogNode = new Node('DialogPanel');
         dialogNode.layer = this.node.layer;
         this._dialogPanel = dialogNode.addComponent(DialogPanel);
-        this.node.addChild(dialogNode);
+        _modalLayer!.addChild(dialogNode);
 
         // 创建战斗面板
         const battleNode = new Node('BattlePanel');
         battleNode.layer = this.node.layer;
         this._battlePanel = battleNode.addComponent(BattlePanel);
         this._battlePanel.onEnd = (win) => this.onBattleEnd(win);
-        this.node.addChild(battleNode);
+        _modalLayer!.addChild(battleNode);
 
         // 创建交易面板（独立模态窗口）
         const tradeNode = new Node('TradePanel');
         tradeNode.layer = this.node.layer;
         this._tradePanel = tradeNode.addComponent(TradePanel);
-        this.node.addChild(tradeNode);
+        _modalLayer!.addChild(tradeNode);
 
         // 构建页面模块共享上下文（PageContext），并创建各业务域 Page 模块
         // —— 把原本散落在 MainScene 的页面构建逻辑按业务域外抽，MainScene 仅做装配与路由
@@ -370,20 +395,14 @@ export class MainScene extends Component {
         barTf.setContentSize(700, BAR_H);
         barTf.setAnchorPoint(0.5, 0.5);   // 还原默认锚点
 
-        // 挂载到 MainScene(this.node) 下，与所有弹窗(Bag/Dialog/Battle/Trade)同级。
-        // 这样弹窗显示时 setSiblingIndex(父内最后) 置顶即可盖住底栏；
-        // 若挂到 Canvas 层并置顶，弹窗(在 MainScene 层)将永远盖不过底栏，导致点击穿透。
-        this.node.addChild(this._bottomBar);
+        // 挂载到 _bottomBarLayer（显式分层：Content < BottomBar < Modal < Toast）。
+        // 底栏位于导航内容之上、弹窗之下，由层级容器顺序固定，无需 setSiblingIndex。
+        this._bottomBarLayer!.addChild(this._bottomBar);
 
         // 绝对坐标定位（不依赖 Widget，避免 ScrollView 边界缓存失效）
         // 设计分辨率 750×1334，锚点默认(0.5,0.5)，Canvas 中心为原点
         const BOTTOM_MARGIN = 3;
         this._bottomBar.setPosition(0, -1334 / 2 + BAR_H / 2 + BOTTOM_MARGIN, 0);
-
-        // 提升渲染层级（确保在最上层不被其他 UI 遮挡）
-        if (this._bottomBar.parent) {
-            this._bottomBar.setSiblingIndex(this._bottomBar.parent.children.length - 1);
-        }
 
         // 背景（暖色）
         const gfx = this._bottomBar.addComponent(Graphics);
