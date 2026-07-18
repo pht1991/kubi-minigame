@@ -76,7 +76,9 @@ export class DialogPanel extends ModalPanel {
             const rowNode = new Node(`Option_${i}`);
             const rowT = rowNode.addComponent(UITransform);
             rowT.setContentSize(580, optionHeight);
-            rowT.setAnchorPoint(0.5, 1);
+            // 锚点(0.5,0.5)：背景 Graphics 按节点原点居中绘制，命中区也必须居中，
+            // 否则(0.5,1)时命中区会比可见背景上移半格 → 点下半行/文字下方空白无效。
+            rowT.setAnchorPoint(0.5, 0.5);
             rowNode.setPosition(0, -topPadding - i * (optionHeight + spacing), 0);
             rowNode.setParent(this._contentNode);
 

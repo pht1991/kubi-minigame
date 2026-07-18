@@ -294,7 +294,7 @@ export abstract class ModalPanel extends Component {
      */
     protected mkButton(parent: Node, x: number, y: number, w: number, h: number, text: string, bg: Color, cb: () => void): BtnRef {
         const n = new Node('Btn');
-        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 1);
+        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 0.5);
         n.setPosition(x, y, 0); n.setParent(parent);
         const g = n.addComponent(Graphics);
         this.mkRect(g, -w / 2, -h / 2, w, h, 14, bg, new Color(150, 110, 70, 200), 2);
@@ -306,7 +306,7 @@ export abstract class ModalPanel extends Component {
     /** Tab 按钮：结构同上（Graphics + 子节点 Label），样式由调用方用 gfx 自绘（见 TradePanel 用法） */
     protected mkTab(parent: Node, x: number, y: number, w: number, h: number, text: string, cb: () => void): BtnRef {
         const n = new Node('Tab');
-        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 1);
+        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 0.5);
         n.setPosition(x, y, 0); n.setParent(parent);
         const g = n.addComponent(Graphics);
         const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, Math.min(23, h * 0.43), C.body, true);

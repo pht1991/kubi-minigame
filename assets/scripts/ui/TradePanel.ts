@@ -194,7 +194,7 @@ export class TradePanel extends ModalPanel {
             const q = bag[id] || 0, nm = ITEM_DATA[id]?.name || id;
             const out = ActionTrade.instance.previewBarter(this._tid, id, q);
             const row = new Node(`r_${id}`);
-            const rt = row.addComponent(UITransform); rt.setContentSize(PW - 68, rh - 6); rt.setAnchorPoint(0.5, 1);
+            const rt = row.addComponent(UITransform); rt.setContentSize(PW - 68, rh - 6); rt.setAnchorPoint(0.5, 0.5);
             row.setPosition(0, -i * rh - 8, 0); row.setParent(cnt);
             const rg = row.addComponent(Graphics); rg.fillColor = new Color(255, 252, 245);
             this.mkRect(rg, -(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10, new Color(255, 252, 245), C.border, 1.5);
