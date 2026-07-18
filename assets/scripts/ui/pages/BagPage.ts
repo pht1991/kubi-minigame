@@ -11,7 +11,7 @@
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionItem } from '../../actions/ActionItem';
-import { ITEM_DATA, EQUIP_TYPE_DATA } from '../../data/data';
+import { ITEM_DATA, EQUIP_TYPE_DATA, BIG_BOX_BASE_SIZE } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
 import { DialogOption } from '../DialogPanel';
 
@@ -70,31 +70,33 @@ const STATE_LABEL: Record<string, string> = {
 };
 
 export class BagPage extends BasePage {
-    /** 构建背包格子列表（供 push 与 rebuild 共用） */
-    private buildBagCells(): GridCellData[] {
-        const bag = this.gm.boxSaveData['bag'] || {};
-        const equippedIds = new Set(Object.values(this.gm.currentEquip).filter(Boolean) as string[]);
-        const cells: GridCellData[] = Object.keys(bag).map(itemId => {
+    /** 构建指定箱子格子列表（bag=背包 / bigBox=大箱子；供 push 与 rebuild 共用） */
+    private buildBoxCells(boxType: 'bag' | 'bigBox' = 'bag'): GridCellData[] {
+        const box = this.gm.boxSaveData[boxType] || {};
+        const equippedIds = boxType === 'bag'
+            ? new Set(Object.values(this.gm.currentEquip).filter(Boolean) as string[])
+            : new Set<string>();
+        const emptyHint = boxType === 'bag' ? '背包是空的' : '大箱子是空的';
+        const cells: GridCellData[] = Object.keys(box).map(itemId => {
             const baseName = ITEM_DATA[itemId]?.name || itemId;
             const isEquipped = equippedIds.has(itemId);
             const item = ITEM_DATA[itemId];
             // 工具/武器类展示耐久度条（未初始化视为满耐久）
             let durability: { cur: number; max: number } | undefined;
             if (item && item.durable !== undefined) {
-                // 0 视为未初始化（旧 DURABLE_INIT 预置 / 尚未装备），按满耐久显示
                 durability = { cur: this.gm.durableSaveData[itemId] || item.durable, max: item.durable };
             }
             return {
                 id: itemId,
                 name: isEquipped ? `${baseName}\n[已装备]` : baseName,
-                count: bag[itemId],
+                count: box[itemId],
                 state: 'normal' as const,
                 data: itemId,
                 durability,
             };
         });
         if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '背包是空的', state: 'disabled' });
+            cells.push({ id: 'empty', name: emptyHint, state: 'disabled' });
         }
         return cells;
     }
@@ -107,25 +109,38 @@ export class BagPage extends BasePage {
         this.setMsg('');
         this.bagPanel.show(
             () => `背包 (${Object.keys(this.gm.boxSaveData['bag'] || {}).length})`,
-            () => this.buildBagCells(),
-            (id) => this.onItemClick(id),
+            () => this.buildBoxCells('bag'),
+            (id) => this.onItemClick(id, 'bag'),
         );
     }
 
-    /** 物品点击 → DialogPanel 弹出操作选项 */
-    private onItemClick(itemId: string): void {
+    /** 打开大箱子面板（家居仓储，独立于背包） */
+    public openBigBoxPanel(): void {
+        this.setMsg('');
+        this.bagPanel.show(
+            () => `大箱子 (${Object.keys(this.gm.boxSaveData['bigBox'] || {}).length}/${this.gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE})`,
+            () => this.buildBoxCells('bigBox'),
+            (id) => this.onItemClick(id, 'bigBox'),
+        );
+    }
+
+    /** 物品点击 → DialogPanel 弹出操作选项（boxType 决定在背包还是大箱子中操作） */
+    private onItemClick(itemId: string, boxType: 'bag' | 'bigBox' = 'bag'): void {
         const itemData = ITEM_DATA[itemId];
         if (!itemData) return;
 
-        const canUse = !!(itemData as any).effect || itemData.type === 'food' || itemData.type === 'cooked';
-        const canEquip = !!(itemData as any).equipType || itemData.type === 'equip' || itemData.type === 'weapon'
-            || itemData.type === 'head' || itemData.type === 'body' || itemData.type === 'foot';
+        const type = (itemData as any).type as string;
+        const canUse = !!(itemData as any).effect || type === 'food' || type === 'cooked'
+            || type === 'bigBoxSizeBonus';
+        const canEquip = !!(itemData as any).equipType || type === 'equip' || type === 'weapon'
+            || type === 'head' || type === 'body' || type === 'foot';
         const isEquipped = Object.values(this.gm.currentEquip).includes(itemId);
+        const count = this.gm.boxSaveData[boxType]?.[itemId] || 0;
 
         // 构建物品信息文本
         const infoLines: string[] = [itemData.name];
         if (itemData.desc) infoLines.push(itemData.desc);
-        infoLines.push(`类型: ${ITEM_TYPE_LABEL[itemData.type] || itemData.type || '未知'}`);
+        infoLines.push(`类型: ${ITEM_TYPE_LABEL[type] || type || '未知'}`);
         if (itemData.attack) infoLines.push(`攻击: ${itemData.attack}`);
         if (itemData.def) infoLines.push(`防御: ${itemData.def}`);
         if (itemData.heal) infoLines.push(`回复HP: ${itemData.heal}`);
@@ -143,28 +158,34 @@ export class BagPage extends BasePage {
         for (const line of infoLines) {
             options.push({ label: line, data: null, disabled: true });
         }
-        if (isEquipped) {
+
+        if (boxType === 'bigBox') {
+            // 大箱子内物品：仅提供取出到背包（使用/装备需先取出）
+            options.push({ label: '取出到背包', data: { action: 'takeOut', boxType } });
+        } else if (isEquipped) {
             // 已装备：仅提供状态标识与卸下，避免同类型重复装备
             options.push({ label: '状态：已装备', data: null, disabled: true });
             options.push({ label: '卸下', data: { action: 'unequip' } });
         } else {
-            if (canUse) options.push({ label: '食用', data: { action: 'use' } });
+            if (canUse) options.push({ label: '使用', data: { action: 'use' } });
             if (canEquip) options.push({ label: '装备', data: { action: 'equip' } });
+            // 存入大箱子（任意物品均可，受大箱子容量限制）
+            options.push({ label: '存入大箱子', data: { action: 'store', boxType } });
             options.push({ label: '丢弃', data: { action: 'drop' } });
         }
 
         this.dialogPanel?.show(
-            `${itemData.name} ×${this.gm.boxSaveData['bag']?.[itemId] || 0}`,
+            `${itemData.name} ×${count}`,
             options,
             (data) => {
-                this.onItemAction(data.action, itemId);
+                if (data) this.onItemAction(data.action, itemId, boxType);
             },
             () => {}
         );
     }
 
     /** 物品具体操作执行（弹窗内回调，执行后刷新当前页面） */
-    private onItemAction(action: string, itemId: string): void {
+    private onItemAction(action: string | null | undefined, itemId: string, boxType: 'bag' | 'bigBox' = 'bag'): void {
         switch (action) {
             case 'use': {
                 const r = ActionItem.instance.use(itemId);
@@ -193,11 +214,37 @@ export class BagPage extends BasePage {
                 this.setMsg(r.message);
                 break;
             }
+            case 'takeOut': {
+                // 大箱子 → 背包
+                const r = this.transfer(itemId, 'bigBox', 'bag');
+                this.setMsg(r.message);
+                break;
+            }
+            case 'store': {
+                // 背包 → 大箱子
+                const r = this.transfer(itemId, 'bag', 'bigBox');
+                this.setMsg(r.message);
+                break;
+            }
         }
-        // 操作完成后：背包弹窗原地刷新（[已装备]标记/数量/空态），并广播 UI_REFRESH
-        // 让当前导航页（如地点详情的 canGather）随装备变化重算
+        // 操作完成后：弹窗原地刷新（数量/空态/[已装备]标记），并广播 UI_REFRESH
         this.bagPanel?.refresh();
         this.eventBus.emit(GameEvents.UI_REFRESH);
+    }
+
+    /** 在背包与大箱子之间转移物品（受大箱子容量限制） */
+    private transfer(itemId: string, from: 'bag' | 'bigBox', to: 'bag' | 'bigBox'): { success: boolean; message: string } {
+        const src = this.gm.boxSaveData[from] || {};
+        if ((src[itemId] || 0) < 1) return { success: false, message: '没有该物品' };
+        if (to === 'bigBox') {
+            const cap = this.gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE;
+            const used = Object.keys(this.gm.boxSaveData['bigBox'] || {}).length;
+            if (used >= cap) return { success: false, message: '大箱子已满，请先扩容' };
+        }
+        this.gm.changeItem({ [itemId]: -1 }, from);
+        this.gm.changeItem({ [itemId]: 1 }, to);
+        this.eventBus.emit(GameEvents.UI_REFRESH);
+        return { success: true, message: '已转移' };
     }
 
     // ===== 装备栏 =====

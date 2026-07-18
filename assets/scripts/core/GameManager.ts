@@ -10,6 +10,8 @@ import {
 } from '../data/types';
 import {
     MAX_STATE,
+    BIG_BOX_BASE_SIZE,
+    BAG_BASE_SIZE,
     BOX_INIT,
     PLAYER_STATE_INIT,
     BUILDING_INIT,
@@ -37,6 +39,8 @@ export class GameManager {
     skill: Record<string, number>;
     /** 所有箱子数据 */
     boxSaveData: Record<string, Record<string, number>>;
+    /** 各箱子容量上限（背包/大箱子等），由扩容道具提升 */
+    boxSize: Record<string, number>;
     /** 建筑数据 */
     buildingSaveData: Record<string, any>;
     /** 物品耐久度 */
@@ -100,6 +104,8 @@ export class GameManager {
         // BOX_INIT.bag.things 是物品数据，需要深拷贝
         this.boxSaveData = { bag: JSON.parse(JSON.stringify(BOX_INIT.bag.things)) };
         this.boxSaveData.cooker = {}; // 炊具箱：烹饪专用容器
+        this.boxSaveData.bigBox = JSON.parse(JSON.stringify(BOX_INIT.bigBox.things)); // 大箱子：家居仓储
+        this.boxSize = { bag: BAG_BASE_SIZE, bigBox: BIG_BOX_BASE_SIZE }; // 容量上限（背包不强制，大箱子强制）
         this.buildingSaveData = JSON.parse(JSON.stringify(BUILDING_INIT));
         this.durableSaveData = JSON.parse(JSON.stringify(DURABLE_INIT));
         this.eventSaveData = JSON.parse(JSON.stringify(EVENT_INIT));
@@ -325,6 +331,7 @@ export class GameManager {
             skill: { ...this.skill },
             placeSaveData: JSON.parse(JSON.stringify(this.placeSaveData)),
             boxSaveData: JSON.parse(JSON.stringify(this.boxSaveData)),
+            boxSize: JSON.parse(JSON.stringify(this.boxSize)),
             buildingSaveData: JSON.parse(JSON.stringify(this.buildingSaveData)),
             durableSaveData: { ...this.durableSaveData },
             eventSaveData: JSON.parse(JSON.stringify(this.eventSaveData)),
@@ -369,6 +376,9 @@ export class GameManager {
         }
         this.placeSaveData = mergedPlaces;
         this.boxSaveData = data.boxSaveData;
+        // 旧存档可能无 bigBox 箱，防御性补建
+        if (!this.boxSaveData.bigBox) this.boxSaveData.bigBox = {};
+        this.boxSize = data.boxSize || { bag: BAG_BASE_SIZE, bigBox: BIG_BOX_BASE_SIZE };
         this.buildingSaveData = data.buildingSaveData;
         this.durableSaveData = data.durableSaveData;
         this.eventSaveData = data.eventSaveData;

@@ -585,7 +585,7 @@ export class MainScene extends Component {
             home_farm:    () => this._outdoorPage?.openBuildingGrid(), // 农田在建筑详情里管理种植/收获
             home_alco:    () => this._brewPage?.openBrewPanel(),
             home_trap:    () => this._outdoorPage?.openBuildingGrid(), // 陷阱检查在建筑详情
-            home_box:     () => this._bagPage?.openBagPanel(),      // 大箱子=背包弹窗
+            home_box:     () => this._bagPage?.openBigBoxPanel(),   // 大箱子=独立仓储面板
             home_well:    () => this._outdoorPage?.openBuildingGrid(), // 取水在建筑详情
             home_toilet:  () => this._outdoorPage?.openBuildingGrid(),
             home_sleep:   () => { if (this._restPage) this._navigator.push(this._restPage.openRestPage()); },

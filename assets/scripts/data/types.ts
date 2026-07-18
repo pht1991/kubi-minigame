@@ -244,6 +244,8 @@ export interface SaveData {
     currentEquip: Record<string, string>;
     skill: Record<string, number>;
     boxSaveData: Record<string, Record<string, number>>;
+    /** 各箱子容量上限（背包/大箱子等），由对应扩容道具提升；仅大箱子强制容量 */
+    boxSize: Record<string, number>;
     buildingSaveData: Record<string, any>;
     durableSaveData: Record<string, number>;
     eventSaveData: Record<string, any>;
