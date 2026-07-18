@@ -35,6 +35,7 @@ import { CraftPage } from './pages/CraftPage';
 import { FarmPage } from './pages/FarmPage';
 import { TrapPage } from './pages/TrapPage';
 import { BrewPage } from './pages/BrewPage';
+import { OutdoorPage } from './pages/OutdoorPage';
 import {
     BUILDING_DATA,
     SKILL_DATA,
@@ -210,6 +211,7 @@ export class MainScene extends Component {
     private _farmPage: FarmPage | null = null;
     private _trapPage: TrapPage | null = null;
     private _brewPage: BrewPage | null = null;
+    private _outdoorPage: OutdoorPage | null = null;
 
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
@@ -299,6 +301,9 @@ export class MainScene extends Component {
         pageCtx.farmPage = this._farmPage;
         pageCtx.trapPage = this._trapPage;
         pageCtx.brewPage = this._brewPage;
+        this._outdoorPage = new OutdoorPage(pageCtx);
+        pageCtx.outdoorPage = this._outdoorPage;
+        pageCtx.refreshGoButton = () => this.refreshGoButton();
 
         // 创建底部快捷操作栏（固定在屏幕底部，不受 ScrollView 滚动影响）
         this.createBottomBar();
@@ -479,7 +484,7 @@ export class MainScene extends Component {
     /** 刷新底栏第3按钮文字（出门 ↔ 回家） */
     private refreshGoButton(): void {
         if (this._goBtnLabel) {
-            this._goBtnLabel.string = this._isOutdoors ? '回家' : '出门';
+            this._goBtnLabel.string = this._outdoorPage?.isOutdoors ? '回家' : '出门';
         }
     }
 
@@ -492,8 +497,8 @@ export class MainScene extends Component {
     private onNavChanged(): void {
         const cur = this._navigator.current;
         if (cur && (cur as any).home) {
-            this._isOutdoors = false;
-            this._rolledTraders = []; // 回家清空在场商人，下次出门重新随机
+            this._outdoorPage.isOutdoors = false;
+            this._outdoorPage.rolledTraders = []; // 回家清空在场商人，下次出门重新随机
         }
         this.refreshGoButton();
     }
@@ -507,7 +512,7 @@ export class MainScene extends Component {
         }
 
         // 户外时「出门」按钮已变为「回家」，点击直接回主页（不 popTo 清理后再 push 地图）
-        if (action === 'goout' && this._isOutdoors) {
+        if (action === 'goout' && this._outdoorPage?.isOutdoors) {
             this._navigator.setRoot(this.buildHomePage());
             return; // buildHomePage 内部已重置 _isOutdoors=false 并刷新按钮
         }
@@ -521,7 +526,7 @@ export class MainScene extends Component {
                 this._navigator.push(this.openRestPage());
                 break;
             case 'goout':
-                this.openGoOutList();
+                this._outdoorPage?.openGoOutList();
                 break;
             case 'menu':
                 this.openMenuGrid();
@@ -694,26 +699,26 @@ export class MainScene extends Component {
             home_magic:   () => this._craftPage?.openCraftGrid('magicTable'),
             home_science: () => this._craftPage?.openCraftGrid('scienceTable'),
             home_cook:    () => this._cookPage?.openCookPanel(),
-            home_farm:    () => this.openBuildingGrid(), // 农田在建筑详情里管理种植/收获
+            home_farm:    () => this._outdoorPage?.openBuildingGrid(), // 农田在建筑详情里管理种植/收获
             home_alco:    () => this._brewPage?.openBrewPanel(),
-            home_trap:    () => this.openBuildingGrid(), // 陷阱检查在建筑详情
+            home_trap:    () => this._outdoorPage?.openBuildingGrid(), // 陷阱检查在建筑详情
             home_box:     () => this.openBagPanel(),      // 大箱子=背包弹窗
-            home_well:    () => this.openBuildingGrid(), // 取水在建筑详情
-            home_toilet:  () => this.openBuildingGrid(),
+            home_well:    () => this._outdoorPage?.openBuildingGrid(), // 取水在建筑详情
+            home_toilet:  () => this._outdoorPage?.openBuildingGrid(),
             home_sleep:   () => this._navigator.push(this.openRestPage()),
         };
         if (facilityRoutes[id]) { facilityRoutes[id](); return; }
 
         switch (id) {
             case 'build': this.openBuildList(); break;
-            case 'goOut': this.openGoOutList(); break;
+            case 'goOut': this._outdoorPage?.openGoOutList(); break;
             case 'menu': this.openMenuGrid(); break;
             // 以下为菜单内直达快捷方式（保留兼容）
             case 'bag': this.openBagPanel(); break;
             case 'craft': this._craftPage?.openCraftGrid(); break;
             case 'cook': this._cookPage?.openCookPanel(); break;
-            case 'building': this.openBuildingGrid(); break;
-            case 'map': this.openMapGrid(); break;
+            case 'building': this._outdoorPage?.openBuildingGrid(); break;
+            case 'map': this._outdoorPage?.openMapGrid(); break;
             case 'skill': this.openSkillGrid(); break;
             case 'dungeon': this.openDungeonGrid(); break;
             case 'quest': this.openQuestGrid(); break;
@@ -960,8 +965,8 @@ export class MainScene extends Component {
     /** 原版首页：动态设施区 + 建造 + 出门 + 菜单 */
     private buildHomePage(): GridPage {
         // 回主页 → 必然不在户外，重置底栏按钮为「出门」
-        this._isOutdoors = false;
-        this._rolledTraders = []; // 回家清空在场商人，下次出门重新随机
+        this._outdoorPage.isOutdoors = false;
+        this._outdoorPage.rolledTraders = []; // 回家清空在场商人，下次出门重新随机
         this.refreshGoButton();
 
         const cells: GridCellData[] = [];
@@ -1062,636 +1067,6 @@ export class MainScene extends Component {
 
     // ===== 出门 / 地点列表（渐进解锁，网格形式）=====
     /** 商人是否在当前户外页可见（过滤地牢专属 / 季节 / 天数） */
-    private isTraderVisible(key: string): boolean {
-        const d = TRADE_DATA[key];
-        if (!d) return false;
-        if (d.type === 'dungeon') return false; // 地牢专属商人仅地牢商人弹窗出现
-        if (d.season) {
-            const SEASON_EN = ['spring', 'summer', 'autumn', 'winter'];
-            if (d.season !== SEASON_EN[this._gm.timeData.season]) return false;
-        }
-        if (d.day && this._gm.timeData.day < d.day) return false; // 第N天后才出现
-        return true;
-    }
-
-    /** 每次出门最多出现的商人数（避免扎堆） */
-    private static readonly MAX_TRADERS_PER_OUTING = 4;
-
-    /**
-     * 随机摇出当前在场商人（参照原版贸易系统：商人随机出现，不是全部列出）。
-     * 每个可见商人按出现概率掷骰，命中的进入在场列表。
-     * 概率优先级：TRADE_DATA[key].prob（可选，便于精确还原原版各商人概率）> 类别默认值。
-     * 最终截取至 MAX_TRADERS_PER_OUTING 个，避免出门页被商人淹没。
-     */
-    private rollVisibleTraders(): string[] {
-        const visible = Object.keys(TRADE_DATA).filter(k => this.isTraderVisible(k));
-        const rolled = visible.filter(k => {
-            const d = TRADE_DATA[k] as any;
-            const p = d.prob ?? this.defaultTraderProb(d);
-            return Math.random() < p;
-        });
-        // 极端兜底：若全部未命中（概率极低），至少随机保留一个在场，避免空场导致无法交易
-        if (rolled.length === 0 && visible.length > 0) {
-            rolled.push(visible[Math.floor(Math.random() * visible.length)]);
-        }
-        // 截取上限：随机打乱后取前 N，保证多样性
-        if (rolled.length > MainScene.MAX_TRADERS_PER_OUTING) {
-            // Fisher-Yates partial shuffle — only shuffle first M elements
-            for (let i = rolled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [rolled[i], rolled[j]] = [rolled[j], rolled[i]];
-            }
-            rolled.length = MainScene.MAX_TRADERS_PER_OUTING;
-        }
-        return rolled;
-    }
-
-    /** 未显式指定 prob 时的默认出现概率（低频：每次出门只遇到少数商人） */
-    private defaultTraderProb(d: any): number {
-        if (d.give === 'gold') return 0.9;       // 金币商队高概率（核心金币来源）
-        if (d.season) return 0.5;                // 季节限定商人中等概率（本身稀缺）
-        if (d.type === 'upgrade') return 0.25;   // 升级商人较低频
-        if (d.type === 'potion' || d.type === 'scroll') return 0.15;  // 特殊商人稀少
-        return 0.2;                              // 其余资源/功能商人默认 20%
-    }
-
-    private openGoOutList(): void {
-        // 进入地图列表即视为「出门在外」，底栏按钮变「回家」
-        this._isOutdoors = true;
-        this.refreshGoButton();
-
-        // 本次出门随机摇出在场商人（回家后缓存清空，再出门重摇）
-        if (this._rolledTraders.length === 0) this._rolledTraders = this.rollVisibleTraders();
-
-        const cells: GridCellData[] = [];
-        for (const key in PLACE_DATA) {
-            const p = PLACE_DATA[key];
-
-            // requireEvent 过滤：未满足解锁条件的不显示
-            if (p.requireEvent) {
-                const eventDone = this._gm.eventSaveData[p.requireEvent]?.experienced;
-                if (!eventDone) continue;
-            }
-
-            const psd = this._gm.placeSaveData[key] || {};
-            const visited = !!psd.visited;
-            const timeNeed = p.timeNeed || 1;
-
-            // 资源概要标签（简短）
-            let resHint = '';
-            if (p.resource) {
-                const resCount = Object.keys(p.resource).length;
-                if (resCount >= 3) resHint = '资源丰富';
-                else if (resCount >= 2) resHint = '资源较多';
-                else if (resCount >= 1) resHint = '有资源';
-            }
-            if (p.mst && Object.keys(p.mst).length > 0) resHint += resHint ? ' 有怪' : '危险';
-
-            cells.push({
-                id: `place_${key}`,
-                name: `${p.name}\n${resHint || '未知'} 耗时${timeNeed}h`,
-                state: 'normal',
-                type: 'list',  // 列表行：满宽展示
-                isNew: !visited, // 未探索地点显示红色「新」badge
-                data: { placeKey: key, timeNeed },
-            });
-        }
-
-        // 商人（与地点平铺，点击进交易二级页；仅展示本次随机在场的一批）
-        for (const key of this._rolledTraders) {
-            const d = TRADE_DATA[key];
-            const giveName = d.give === 'gold' ? '金币' : (ITEM_DATA[d.give]?.name || d.give);
-            const refresh = d.time ? ` 每${d.time}h补货` : '';
-            const stock = ActionTrade.instance.getStock(key);
-            const stockStr = d.give === 'gold' ? '领取金币' : `剩余${stock.available}/${stock.max}`;
-            cells.push({
-                id: `trader_${key}`,
-                name: `${d.name}\n出售:${giveName} · ${stockStr}${refresh}`,
-                state: 'normal',
-                type: 'list',
-                data: { traderId: key },
-            });
-        }
-
-        if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '还没有可前往的地点', state: 'disabled', type: 'list' });
-        }
-
-        this._navigator.push({
-            title: '出门',
-            breadcrumb: '主页 > 出门',
-            columns: 1,  // 单列：每行一个地点，横向撑满展示完整信息
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.data?.traderId) {
-                    this.openTradeDetail(cell.data.traderId);
-                } else if (cell.data?.placeKey) {
-                    this.travelToPlace(cell.data.placeKey, cell.data.timeNeed);
-                }
-            },
-        });
-    }
-
-    /** 前往地点（消耗时间 + 进入详情页） */
-    private travelToPlace(placeKey: string, timeNeed: number): void {
-        // 消耗旅行时间
-        ActionExecutor.instance.execute({}, {}, timeNeed);
-        // 标记访问
-        if (!this._gm.placeSaveData[placeKey]) this._gm.placeSaveData[placeKey] = {};
-        this._gm.placeSaveData[placeKey].visited = true;
-        // 进入地点详情
-        this.openPlaceDetail(placeKey);
-    }
-
-    // ===== 建筑（原有：建筑详情/升级/子功能入口，保留兼容）=====
-    private openBuildingGrid(): void {
-        const cells: GridCellData[] = Object.keys(BUILDING_DATA)
-            .filter(key => key !== 'build') // 'build' 是原 UI 分类入口，非真实建筑
-            .map(key => {
-                const d = BUILDING_DATA[key];
-                const built = this._gm.buildingSaveData[key]?.own;
-                const preBuilt = !d.building || this._gm.buildingSaveData[d.building]?.own;
-                const hasMat = this._gm.checkHaveResource(d.require || {});
-                const canBuild = !built && preBuilt && hasMat;
-                return {
-                    id: key,
-                    name: d.name,
-                    state: (built || canBuild) ? 'normal' : 'disabled',
-                    data: key,
-                };
-            });
-
-        this._navigator.push({
-            title: '建筑',
-            breadcrumb: '建筑',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => this.openBuildingDetail(cell.id),
-        });
-    }
-
-    /** 建筑详情 + 建造/升级动作 */
-    private openBuildingDetail(buildingId: string): void {
-        this._navigator.push(this.buildBuildingDetailPage(buildingId));
-    }
-
-    private buildBuildingDetailPage(buildingId: string): GridPage {
-        const d = BUILDING_DATA[buildingId];
-        const built = this._gm.buildingSaveData[buildingId]?.own;
-        const reqStr = d.require && Object.keys(d.require).length > 0
-            ? Object.entries(d.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
-        const timeNeed = d.timeNeed || 4;
-
-        const cells: GridCellData[] = [];
-        cells.push(
-            { id: 'name', name: d.name, state: 'disabled' },
-            { id: 'desc', name: d.desc || '', state: 'disabled' },
-        );
-        if (!built) {
-            const preName = d.building ? BUILDING_DATA[d.building]?.name || d.building : null;
-            const canBuild = (!preName || this._gm.buildingSaveData[d.building]?.own)
-                && this._gm.checkHaveResource(d.require || {});
-            cells.push(
-                { id: 'pre', name: preName ? `前置: ${preName}` : '前置: 无', state: 'disabled' },
-                { id: 'req', name: `材料: ${reqStr}`, state: 'disabled' },
-                { id: 'time', name: `耗时: ${timeNeed} 小时`, state: 'disabled' },
-                { id: 'build', name: '建造', state: canBuild ? 'normal' : 'disabled' },
-            );
-        } else {
-            cells.push({ id: 'built', name: '已建造', state: 'disabled' });
-            // 农田子功能入口
-            if (buildingId === 'farm') {
-                const farmData = this._gm.buildingSaveData['farm'];
-                const slots = ActionBuilding.instance.getFarmSlots();
-                const readyCount = slots.filter(s => s.ready).length;
-                cells.push({
-                    id: 'farm_manage',
-                    name: `农田管理 (${slots.length}/${farmData?.size || 2}${readyCount > 0 ? ` · ${readyCount}可收` : ''})`,
-                    state: 'normal',
-                });
-            }
-            // 陷阱子功能入口
-            if (buildingId === 'trap') {
-                const trapData = this._gm.buildingSaveData['trap'];
-                const slots = ActionBuilding.instance.getTrapSlots();
-                const canCheckCount = slots.filter(s => s.canCheck).length;
-                cells.push({
-                    id: 'trap_manage',
-                    name: `陷阱管理 (${slots.length}/${trapData?.size || 2}${canCheckCount > 0 ? ` · ${canCheckCount}可查` : ''})`,
-                    state: 'normal',
-                });
-            }
-            // 酿酒子功能入口
-            if (buildingId === 'alco') {
-                const slots = ActionBrew.instance.getBrewSlots();
-                const readyCount = slots.filter(s => s.ready).length;
-                cells.push({
-                    id: 'brew_manage',
-                    name: `酿酒管理 (${slots.length}/${ActionBrew.MAX_SLOTS}${readyCount > 0 ? ` · ${readyCount}可收` : ''})`,
-                    state: 'normal',
-                });
-            }
-            // 水井子功能入口
-            if (buildingId === 'well') {
-                const frozen = TimeSystem.instance.isWinter();
-                cells.push({
-                    id: 'well_collect',
-                    name: frozen ? '取水 (冬季封冻)' : '取水',
-                    state: frozen ? 'disabled' : 'normal',
-                });
-            }
-        }
-
-        // 升级链（BUILDING_UPDATE_DATA[buildingId + 'Update']）
-        const upType = `${buildingId}Update`;
-        const upGroup = BUILDING_UPDATE_DATA[upType];
-        if (upGroup) {
-            const level = this._gm.getBuildingLevel(upType);
-            const keys = Object.keys(upGroup);
-            if (level < keys.length) {
-                const nextId = keys[level];
-                const nextData = upGroup[nextId];
-                const nextReqStr = Object.entries(nextData.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
-                cells.push(
-                    { id: 'lv', name: `升级至 Lv.${level + 1}`, state: 'disabled' },
-                    { id: 'upreq', name: `材料: ${nextReqStr}`, state: 'disabled' },
-                    { id: 'upgrade', name: '升级', state: this._gm.checkHaveResource(nextData.require) ? 'normal' : 'disabled' },
-                );
-            } else {
-                cells.push({ id: 'max', name: '已升至满级', state: 'disabled' });
-            }
-        }
-
-        return {
-            title: d.name,
-            breadcrumb: d.name,
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'build') {
-                    const r = ActionBuilding.instance.build(buildingId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildBuildingDetailPage(buildingId));
-                } else if (cell.id === 'upgrade') {
-                    const lvl = this._gm.getBuildingLevel(upType);
-                    const next = Object.keys(upGroup)[lvl];
-                    const r = ActionBuilding.instance.upgrade(upType, next);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildBuildingDetailPage(buildingId));
-                } else if (cell.id === 'farm_manage') {
-                    this._farmPage?.openFarmPanel();
-                } else if (cell.id === 'trap_manage') {
-                    this._trapPage?.openTrapPanel();
-                } else if (cell.id === 'brew_manage') {
-                    this._brewPage?.openBrewPanel();
-                } else if (cell.id === 'well_collect') {
-                    const r = ActionBuilding.instance.collectWell();
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildBuildingDetailPage(buildingId));
-                }
-            },
-        };
-    }
-
-    // ===== 地图辅助方法 =====
-
-    /**
-     * 检查资源需求是否满足（混合：属性 + 物品）
-     * require 中：
-     *   - 'ps' = 玩家体力属性 → 用 playerState.ps 对比
-     *   - 其余键 = 背包物品ID → 用 checkHaveResource 检查库存
-     */
-    private canMeetResourceRequire(require: Record<string, number> | undefined): boolean {
-        return this.checkResourceRequireDetail(require).ok;
-    }
-
-    /**
-     * 详细校验资源需求，返回 { ok, msg }。ok=false 时 msg 说明第一个未满足的原因。
-     * 用于资源格点击时给出「需要先装备【斧头】/耐久不足/体力不足/材料不足」等具体提示。
-     */
-    private checkResourceRequireDetail(require: Record<string, number> | undefined): { ok: boolean; msg: string } {
-        if (!require || Object.keys(require).length === 0) return { ok: true, msg: '' };
-        for (const [key, need] of Object.entries(require)) {
-            if (key === 'ps') {
-                if (this._gm.playerState.ps < need) return { ok: false, msg: `体力不足（需要 ${need}）` };
-            } else if (this._gm.isToolItem(key)) {
-                const toolCheck = this._gm.canUseTools({ [key]: need });
-                if (!toolCheck.ok) return { ok: false, msg: toolCheck.msg };
-            } else {
-                if (!this._gm.checkHaveResource({ [key]: need })) {
-                    const name = ITEM_DATA[key]?.name || key;
-                    return { ok: false, msg: `缺少材料【${name}】` };
-                }
-            }
-        }
-        return { ok: true, msg: '' };
-    }
-
-    /** 根据资源 circle 值返回生长状态文本 */
-    private growthStatus(circle: number, amount: number): string {
-        if (amount <= 0) return '枯竭';
-        if (circle <= 0) return '停止';
-        if (circle >= 1) return '较快';
-        if (circle >= 0.5) return '正常';
-        if (circle >= 0.2) return '较慢';
-        return '非常慢';
-    }
-
-    /** 格式化需求字段：{ps:5, axe:1} → "体力5 斧头1" */
-    private formatRequire(require: Record<string, number> | undefined): string {
-        if (!require || Object.keys(require).length === 0) return '无';
-        const parts: string[] = [];
-        for (const [k, v] of Object.entries(require)) {
-            if (k === 'ps') {
-                parts.push(`体力${v}`);
-            } else {
-                const itemName = ITEM_DATA[k]?.name || k;
-                parts.push(`${itemName}${v > 1 ? v : ''}`);
-            }
-        }
-        return parts.join(' ');
-    }
-
-    /** 格式化获得物：{bark:2, wood:5} → "树皮2 木头5" */
-    private formatThings(things: Record<string, number> | undefined): string {
-        if (!things) return '';
-        const parts: string[] = [];
-        for (const [id, cnt] of Object.entries(things)) {
-            const itemName = ITEM_DATA[id]?.name || id;
-            parts.push(`${itemName}${cnt > 1 ? cnt : ''}`);
-        }
-        return parts.join(' ');
-    }
-
-    /** 格式化资源行详细信息（不含标题行） */
-    private formatResourceRow(res: any, amount: number): string {
-        const growth = this.growthStatus(res.circle ?? 0.1, amount);
-        const things = this.formatThings(res.things);
-        const req = this.formatRequire(res.require);
-
-        const lines: string[] = [];
-        lines.push(`总量:${amount}  ${growth}`);
-        if (things) lines.push(`获得: ${things}`);
-        lines.push(`需要: ${req}`);
-
-        return lines.join('\n');
-    }
-
-    /** 简单截断（按字符数） */
-    private truncate(str: string, maxLen: number): string {
-        if (!str) return str;
-        return str.length > maxLen ? str.slice(0, maxLen) + '…' : str;
-    }
-
-    // ===== 地图（地点列表 + 探索进度）=====
-    private openMapGrid(): void {
-        this._isOutdoors = true;
-        this.refreshGoButton();
-
-        // 本次出门随机摇出在场商人（与出门页共用缓存，保证两入口看到同一批）
-        if (this._rolledTraders.length === 0) this._rolledTraders = this.rollVisibleTraders();
-
-        const cells: GridCellData[] = [];
-        for (const key in PLACE_DATA) {
-            const p = PLACE_DATA[key];
-            const psd = this._gm.placeSaveData[key] || {};
-            const visited = !!psd.visited;
-
-            cells.push({
-                id: key,
-                name: `${p.name}${visited ? ' ✓' : ''}`,
-                state: visited ? 'normal' : 'selected',
-                data: key,
-            });
-        }
-
-        // 商人（与地点同网格平铺，点击进交易二级页；仅展示本次随机在场的一批）
-        for (const key of this._rolledTraders) {
-            const d = TRADE_DATA[key];
-            cells.push({
-                id: `trader_${key}`,
-                name: d.name,
-                state: 'normal',
-                data: { traderId: key },
-            });
-        }
-
-        if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '没有可探索的地点', state: 'disabled' });
-        }
-
-        this._navigator.push({
-            title: '地图',
-            breadcrumb: '地图',
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.data?.traderId) {
-                    this.openTradeDetail(cell.data.traderId);
-                    return;
-                }
-                if (cell.id !== 'empty') {
-                    if (!this._gm.placeSaveData[cell.id]?.visited) {
-                        if (!this._gm.placeSaveData[cell.id]) this._gm.placeSaveData[cell.id] = {};
-                        this._gm.placeSaveData[cell.id].visited = true;
-                    }
-                    this.openPlaceDetail(cell.id);
-                }
-            },
-        });
-    }
-
-    /** 按筛选条件列出地点（内部复用，不再作为独立导航层） */
-    private openMapFiltered(filter: string): void {
-        const cells: GridCellData[] = [];
-        for (const key in PLACE_DATA) {
-            const p = PLACE_DATA[key];
-            const psd = this._gm.placeSaveData[key] || {};
-            const visited = !!psd.visited;
-
-            if (filter === 'visited' && !visited) continue;
-            if (filter === 'new' && visited) continue;
-
-            cells.push({
-                id: key,
-                name: `${p.name}${visited ? ' ✓' : ''}`,
-                state: 'normal',
-                data: key,
-            });
-        }
-
-        if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '该筛选下无地点', state: 'disabled' });
-        }
-
-        const filterNames: Record<string, string> = { all: '全部', visited: '已探索', new: '未探索' };
-
-        this._navigator.push({
-            title: `地图·${filterNames[filter] || filter}`,
-            breadcrumb: filterNames[filter] || filter,
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id !== 'empty') {
-                    // 标记为已访问
-                    if (!this._gm.placeSaveData[cell.id]?.visited) {
-                        if (!this._gm.placeSaveData[cell.id]) this._gm.placeSaveData[cell.id] = {};
-                        this._gm.placeSaveData[cell.id].visited = true;
-                    }
-                    this.openPlaceDetail(cell.id);
-                }
-            },
-        });
-    }
-
-    /** 地点详情：采集 / 拾荒 / 狩猎 / 事件 */
-    private openPlaceDetail(placeId: string): void {
-        this._isOutdoors = true;
-        this.refreshGoButton();
-
-        this._lastMsg = ''; // 进入地点时清空旧反馈，防止跨系统串显
-        this._navigator.push(this.buildPlaceDetailPage(placeId));
-    }
-
-    private buildPlaceDetailPage(placeId: string): GridPage {
-        const p = PLACE_DATA[placeId];
-
-        // ── 构建 cells（可被 rebuild 反复调用以刷新动态状态） ──
-        const buildCells = (): GridCellData[] => {
-            const psd = this._gm.placeSaveData[placeId] || {};
-            const cells: GridCellData[] = [];
-
-            // 地点描述
-            if (p.desc) cells.push({ id: 'desc', name: p.desc, state: 'disabled', type: 'list' });
-
-            // 资源采集（每资源一行）
-            // 交互设计：资源未枯竭时格子始终可点，点击时才校验需求并提示具体原因
-            //（装备/耐久/体力不足等），避免「置灰但看不到原因」；仅枯竭时才 disabled
-            if (p.resource) {
-                for (const resName in p.resource) {
-                    const res = p.resource[resName];
-                    const amount = psd.resource?.[resName]?.amount ?? res.initAmount ?? 0;
-                    const depleted = amount <= 0;
-                    const lines = this.formatResourceRow(res, amount);
-                    const actionLabel = res.action || '采集';
-                    cells.push({
-                        id: `gather_${resName}`,
-                        name: `${res.name}  [${actionLabel}]\n${lines}`,
-                        state: depleted ? 'disabled' : 'normal',
-                        type: 'list',
-                        data: { action: 'gather', resName },
-                    });
-                }
-            }
-
-            // 拾荒（无特殊需求，始终可用）
-            if (p.things && Object.keys(p.things).length > 0) {
-                const thingParts = Object.entries(p.things).map(([id, cnt]) => {
-                    const itemName = ITEM_DATA[id]?.name || id;
-                    const qtyDesc = cnt >= 10 ? '大量' : cnt >= 5 ? '较多' : cnt >= 3 ? '少量' : '较少';
-                    return `${itemName}${qtyDesc}`;
-                });
-                cells.push({
-                    id: 'scavenge',
-                    name: `拾荒  [拾荒]\n获得: ${thingParts.join('  ') || '未知'}`,
-                    state: 'normal',
-                    type: 'list',
-                });
-            }
-
-            // 狩猎
-            const mstList = psd.mst;
-            const activeMonsters: string[] = [];
-            if (mstList) {
-                for (const mstId in mstList) {
-                    const m = mstList[mstId];
-                    if ((m.amount ?? 0) > 0) {
-                        const mstName = MST_DATA[mstId]?.name || mstId;
-                        const qty = m.amount ?? 0;
-                        const qtyDesc = qty >= 10 ? '大量' : qty >= 5 ? '较多' : '较少';
-                        activeMonsters.push(`${mstName}${qtyDesc}`);
-                    }
-                }
-            }
-            if (activeMonsters.length > 0) {
-                cells.push({ id: 'hunt', name: `狩猎  [狩猎]\n发现: ${activeMonsters.join('  ')}`, state: 'normal', type: 'list' });
-            } else {
-                cells.push({ id: 'hunt', name: `狩猎  [狩猎]\n附近没有怪物`, state: 'disabled', type: 'list' });
-            }
-
-            // 事件
-            if (p.event) {
-                for (const evId in p.event) {
-                    if (EVENT_DATA[evId] && !this._gm.eventSaveData[evId]?.experienced) {
-                        const ev = EVENT_DATA[evId];
-                        cells.push({
-                            id: `event_${evId}`,
-                            name: `事件·${ev.name}  [对话]\n${ev.desc ? this.truncate(ev.desc, 40) : ''}`,
-                            state: 'normal',
-                            type: 'list',
-                            data: { action: 'event', evId },
-                        });
-                    }
-                }
-            }
-
-            // 长条富文本行统一跳过截断
-            for (const c of cells) { if (c.type === 'list') c.noTruncate = true; }
-            return cells;
-        };
-
-        return {
-            title: p.name,
-            breadcrumb: p.name,
-            columns: 1,
-            cells: buildCells(),
-            rebuild: buildCells,  // pop 回来 / UI_REFRESH 时重评 canGather 等动态状态
-            onCellClick: (index, cell) => {
-                const data = cell.data as any;
-                if (data?.action === 'gather') {
-                    // 点击时校验需求，不满足则提示具体原因（装备/耐久/体力/材料），不消耗
-                    const res = PLACE_DATA[placeId]?.resource?.[data.resName];
-                    const check = this.checkResourceRequireDetail(res?.require);
-                    if (!check.ok) {
-                        this._lastMsg = check.msg;
-                        this._navigator.replace(this.buildPlaceDetailPage(placeId));
-                        return;
-                    }
-                    const r = ActionMap.instance.gather(placeId, data.resName);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildPlaceDetailPage(placeId));
-                } else if (cell.id === 'scavenge') {
-                    const r = ActionMap.instance.scavenge(placeId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildPlaceDetailPage(placeId));
-                } else if (cell.id === 'hunt') {
-                    // 狩猎：随机抽怪后用交互式战斗面板
-                    const hunted = ActionMap.instance.probeHunt(placeId);
-                    if (hunted.mstId) {
-                        this._lastMsg = `遭遇了 ${hunted.mstName}！`;
-                        this._navigator.replace(this.buildPlaceDetailPage(placeId));
-                        this.triggerBattle(hunted.mstId);
-                        return;
-                    }
-                    this._lastMsg = '附近没有怪物';
-                    this._navigator.replace(this.buildPlaceDetailPage(placeId));
-                } else if (data?.action === 'event') {
-                    const r = ActionEvent.instance.trigger(data.evId);
-                    this._lastMsg = r.message;
-                    this._navigator.replace(this.buildPlaceDetailPage(placeId));
-                }
-            },
-        };
-    }
-
-    // ===== 贸易 =====
-    /** 商人详情入口（点击商人格子 → 打开交易面板） */
-    private openTradeDetail(traderId: string): void {
-        this._tradePanel?.show(traderId, (msg) => { this._lastMsg = msg; });
-    }
-
-
     // ===== 技能（全部技能一览 + 天赋/普通标识）=====
     private openSkillGrid(): void {
         const cells: GridCellData[] = [];
