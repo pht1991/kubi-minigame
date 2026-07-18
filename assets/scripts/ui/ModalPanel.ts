@@ -19,7 +19,7 @@
 import {
     _decorator, Component, Node, Label, UITransform, Color, Graphics,
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment,
-    Sprite, SpriteFrame, Texture2D, UIOpacity, ImageAsset,
+    Sprite, SpriteFrame, Texture2D, UIOpacity, ImageAsset, Vec2,
 } from 'cc';
 
 const { ccclass } = _decorator;
@@ -104,6 +104,10 @@ export abstract class ModalPanel extends Component {
             // Sprite 渲染纯色矩形（黑色）
             const sp = this._mask.addComponent(Sprite);
             sp.type = Sprite.Type.SIMPLE;
+            // ⚠️ addComponent 后 Sprite.onLoad 尚未执行，_size 字段未初始化为 Vec2，
+            // 直接 sp.size.set(...) 会在 undefined 上崩；先确保 _size 存在再赋值
+            sp.sizeMode = Sprite.SizeMode.CUSTOM;
+            if (!(sp as any)._size) (sp as any)._size = new Vec2(750, 1334);
             sp.size.set(750, 1334);
             sp.spriteFrame = ModalPanel.getWhiteSpriteFrame();
             sp.color = new Color(0, 0, 0, 255);
