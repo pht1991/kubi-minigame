@@ -187,7 +187,7 @@ export class TradePanel extends ModalPanel {
         }
 
         const lh = 480, rh = 76;
-        const { view: sv, content: cnt } = this.mkScroll(this._content!, 0, by + 34, PW - 48, lh);
+        const { view: sv, content: cnt } = this.mkScroll(this._content!, 0, -(by + 34), PW - 48, lh);
         cnt.getComponent(UITransform)!.setContentSize(PW - 48, Math.max(lh, items.length * rh + 16));
 
         items.forEach((id, i) => {
