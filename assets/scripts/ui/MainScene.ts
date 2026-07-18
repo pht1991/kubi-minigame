@@ -304,6 +304,7 @@ export class MainScene extends Component {
         pageCtx.bagPage = this._bagPage;
         pageCtx.onHomeCellClick = (id: string) => this.onHomeCellClick(id);
         pageCtx.refreshGoButton = () => this.refreshGoButton();
+        pageCtx.modalLayer = this._modalLayer!;
 
         // 初始化一级网格（须在所有 Page 创建之后，依赖 _buildPage）
         this.initHomeGrid();

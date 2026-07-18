@@ -14,6 +14,7 @@ import { ActionItem } from '../../actions/ActionItem';
 import { ITEM_DATA, EQUIP_TYPE_DATA, BIG_BOX_BASE_SIZE } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
 import { DialogOption } from '../DialogPanel';
+import { QuantityPanel } from '../QuantityPanel';
 
 /** 物品类型 → 中文显示名（物品详情弹窗中"类型"字段） */
 const ITEM_TYPE_LABEL: Record<string, string> = {
@@ -177,11 +178,57 @@ export class BagPage extends BasePage {
             `${itemData.name} ×${count}`,
             options,
             (data) => {
-                if (data) this.onItemAction(data.action, itemId, boxType);
+                if (!data) return;
+                // 存入大箱子 / 取出到背包：先选数量，避免一次只转 1 个
+                if (data.action === 'store') {
+                    this.openQuantity(itemId, 'bag', 'bigBox', `存入【${itemData.name}】到大箱子`);
+                } else if (data.action === 'takeOut') {
+                    this.openQuantity(itemId, 'bigBox', 'bag', `取出【${itemData.name}】到背包`);
+                } else {
+                    this.onItemAction(data.action, itemId, boxType);
+                }
             },
             () => {}
         );
     }
+
+    /** 数量选择后转移（store/takeOut 共用）：弹出 QuantityPanel 让用户选 N 个 */
+    private openQuantity(itemId: string, from: 'bag' | 'bigBox', to: 'bag' | 'bigBox', title: string): void {
+        const have = this.gm.boxSaveData[from]?.[itemId] || 0;
+        if (have < 1) { this.setMsg('没有该物品'); return; }
+
+        // 大箱子容量限制：仅当目标为新种类（大箱子尚无该物品）时受限
+        let capLimit = have;
+        if (to === 'bigBox') {
+            const bigBox = this.gm.boxSaveData['bigBox'] || {};
+            if (!bigBox[itemId]) {
+                const cap = this.gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE;
+                const used = Object.keys(bigBox).length;
+                capLimit = Math.min(have, Math.max(0, cap - used));
+            }
+        }
+        if (capLimit < 1) { this.setMsg('大箱子已满，请先扩容'); return; }
+
+        const panel = this.ensureQtyPanel();
+        panel.show(title, capLimit, (qty) => {
+            const r = this.transfer(itemId, from, to, qty);
+            this.setMsg(r.message);
+            // 操作完成后：弹窗原地刷新（数量/空态），并广播 UI_REFRESH
+            this.bagPanel?.refresh();
+            this.eventBus.emit(GameEvents.UI_REFRESH);
+        });
+    }
+
+    /** 懒创建数量选择弹窗（挂在 modalLayer，盖住底栏） */
+    private ensureQtyPanel(): QuantityPanel {
+        if (!this._qtyPanel) {
+            const node = new Node('QuantityPanel');
+            this.ctx.modalLayer!.addChild(node);
+            this._qtyPanel = node.addComponent(QuantityPanel);
+        }
+        return this._qtyPanel;
+    }
+    private _qtyPanel: QuantityPanel | null = null;
 
     /** 物品具体操作执行（弹窗内回调，执行后刷新当前页面） */
     private onItemAction(action: string | null | undefined, itemId: string, boxType: 'bag' | 'bigBox' = 'bag'): void {
@@ -214,14 +261,14 @@ export class BagPage extends BasePage {
                 break;
             }
             case 'takeOut': {
-                // 大箱子 → 背包
-                const r = this.transfer(itemId, 'bigBox', 'bag');
+                // 大箱子 → 背包（旧入口，无数量选择时单转 1 个；新流程走 openQuantity）
+                const r = this.transfer(itemId, 'bigBox', 'bag', 1);
                 this.setMsg(r.message);
                 break;
             }
             case 'store': {
-                // 背包 → 大箱子
-                const r = this.transfer(itemId, 'bag', 'bigBox');
+                // 背包 → 大箱子（同上）
+                const r = this.transfer(itemId, 'bag', 'bigBox', 1);
                 this.setMsg(r.message);
                 break;
             }
@@ -231,19 +278,23 @@ export class BagPage extends BasePage {
         this.eventBus.emit(GameEvents.UI_REFRESH);
     }
 
-    /** 在背包与大箱子之间转移物品（受大箱子容量限制） */
-    private transfer(itemId: string, from: 'bag' | 'bigBox', to: 'bag' | 'bigBox'): { success: boolean; message: string } {
+    /** 在背包与大箱子之间转移物品（受大箱子容量限制，支持批量 qty） */
+    private transfer(itemId: string, from: 'bag' | 'bigBox', to: 'bag' | 'bigBox', qty = 1): { success: boolean; message: string } {
         const src = this.gm.boxSaveData[from] || {};
-        if ((src[itemId] || 0) < 1) return { success: false, message: '没有该物品' };
+        const have = src[itemId] || 0;
+        if (have < qty) return { success: false, message: '数量不足' };
         if (to === 'bigBox') {
-            const cap = this.gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE;
-            const used = Object.keys(this.gm.boxSaveData['bigBox'] || {}).length;
-            if (used >= cap) return { success: false, message: '大箱子已满，请先扩容' };
+            // 仅当大箱子尚无该物品（新种类）时受容量限制；已有则只累加数量
+            if (!(this.gm.boxSaveData['bigBox'] || {})[itemId]) {
+                const cap = this.gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE;
+                const used = Object.keys(this.gm.boxSaveData['bigBox'] || {}).length;
+                if (used >= cap) return { success: false, message: '大箱子已满，请先扩容' };
+            }
         }
-        this.gm.changeItem({ [itemId]: -1 }, from);
-        this.gm.changeItem({ [itemId]: 1 }, to);
+        this.gm.changeItem({ [itemId]: -qty }, from);
+        this.gm.changeItem({ [itemId]: qty }, to);
         this.eventBus.emit(GameEvents.UI_REFRESH);
-        return { success: true, message: '已转移' };
+        return { success: true, message: `已转移 ${qty} 个` };
     }
 
     // ===== 装备栏 =====

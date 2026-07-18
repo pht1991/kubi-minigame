@@ -11,6 +11,7 @@
  * - setMsg 回调封装 MainScene 的「反馈即 Toast + 立即存档」行为，Page 不必关心实现细节
  */
 
+import { Node } from 'cc';
 import { GridNavigator } from '../../core/GridNavigator';
 import { GameManager } from '../../core/GameManager';
 import { EventBus } from '../../core/EventBus';
@@ -65,4 +66,6 @@ export interface PageContext {
     refreshGoButton: () => void;
     /** 主页格子点击路由（MainScene 实现，BuildPage 构建首页时回调，保持原 onHomeCellClick 中央路由不变） */
     onHomeCellClick: (id: string) => void;
+    /** 模态弹窗层（UIRoot 四层容器之一，MainScene 在 createUILayers 后回填）。新弹窗应 addChild 到此层，确保盖住底栏不被其遮挡 */
+    modalLayer?: Node;
 }
