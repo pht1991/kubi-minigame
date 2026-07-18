@@ -65,7 +65,14 @@ export abstract class ModalPanel extends Component {
     protected _closeNode: Node | null = null;
     protected _content: Node | null = null;   // 子类内容构建区（anchor 0.5,1，位于标题下方）
 
-    onLoad(): void { this.buildSkeleton(); }
+    onLoad(): void {
+        // 确保根节点有全屏 UITransfer（否则子节点 Graphics 在微信小游戏可能不渲染）
+        let rt = this.node.getComponent(UITransform);
+        if (!rt) { rt = this.node.addComponent(UITransform); }
+        rt.setContentSize(750, 1334);
+        rt.setAnchorPoint(0.5, 0.5);
+        this.buildSkeleton();
+    }
 
     // ──── 骨架（只创建一次）────
     protected buildSkeleton(): void {
@@ -74,9 +81,10 @@ export abstract class ModalPanel extends Component {
             this._mask = new Node('M');
             const mt = this._mask.addComponent(UITransform);
             mt.setContentSize(750, 1334);
+            mt.setAnchorPoint(0.5, 0.5);
+            this._mask.setPosition(0, 0, 0);
             this._mask.setParent(this.node);
-            const mg = this._mask.addComponent(Graphics);
-            mg.fillColor = C.maskDim; mg.rect(-375, -667, 750, 1334); mg.fill();
+            this._drawMask();
             this._mask.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
                 e.propagationStopped = true;
                 if (this.maskClose) this.hide();
@@ -137,6 +145,17 @@ export abstract class ModalPanel extends Component {
         this._closeNode = cn;
     }
 
+    /** 重绘全屏遮罩（show() 时调用，确保微信小游戏 Graphics 可靠渲染） */
+    private _drawMask(): void {
+        if (!this._mask) return;
+        let mg = this._mask.getComponent(Graphics);
+        if (!mg) { mg = this._mask.addComponent(Graphics); }
+        mg.clear();
+        mg.fillColor = C.maskDim;
+        mg.rect(-375, -667, 750, 1334);
+        mg.fill();
+    }
+
     /** 重绘面板背景（自适应高度时调用） */
     protected drawPanelBg(): void {
         const g = this._panelGfx; g.clear();
@@ -160,6 +179,8 @@ export abstract class ModalPanel extends Component {
         this.node.active = true;
         // 置顶：确保盖住底栏与同级其它弹窗
         this.node.setSiblingIndex(this.node.parent!.children.length - 1);
+        // 每次显示重绘遮罩（防止微信小游戏 Graphics 缓存/清除异常）
+        if (this.showMask && this._mask) this._drawMask();
         this.render();
     }
     public hide(): void {
