@@ -381,9 +381,9 @@ export class MainScene extends Component {
         gfx.rect(-350, -BAR_H / 2, 700, BAR_H);
         gfx.stroke();
 
-        // 按钮定义（4 个：休息/背包/出门/菜单）
+        // 按钮定义（3 个：背包 / 出门(回家) / 菜单）
+        // 注：「休息」已移除——休息仅限在家（床铺）使用，不应全局暴露（可卡 bug 随地恢复）
         const buttons: { label: string; action: () => void }[] = [
-            { label: '休息', action: () => this.onBottomAction('rest') },
             { label: '背包', action: () => this.onBottomAction('bag') },
             { label: '出门', action: () => this.onBottomAction('goout') },
             { label: '菜单', action: () => this.onBottomAction('menu') },
@@ -428,8 +428,8 @@ export class MainScene extends Component {
             }
             lblNode.setPosition(0, 0, 0);
 
-            // 保存第3个按钮（出门/回家）的 Label 引用，供动态切换文字
-            if (i === 2) this._goBtnLabel = lbl;
+            // 保存第2个按钮（出门/回家）的 Label 引用，供动态切换文字
+            if (i === 1) this._goBtnLabel = lbl;
 
             btnNode.setPosition(bx, by, 0);
             btnNode.addChild(lblNode);     // Label 作为按钮子节点

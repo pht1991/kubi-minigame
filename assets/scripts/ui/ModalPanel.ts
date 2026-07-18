@@ -60,7 +60,9 @@ export abstract class ModalPanel extends Component {
     protected _mask: Node | null = null;
     protected _maskGfx: Graphics | null = null;
     protected _panel!: Node;
-    protected _panelGfx!: Graphics;
+    protected _panelGfx!: Graphics;        // Mask 形状用（GRAPHICS_RECT 读此 Graphics 做 stencil）
+    protected _panelBg!: Node;             // 视觉背景（独立子节点，避免被 Mask 消费）
+    protected _panelBgGfx!: Graphics;      // 白色圆角矩形画在这上面
     protected _titleNode!: Node;
     protected _titleLbl!: Label;
     protected _closeNode: Node | null = null;
@@ -100,8 +102,20 @@ export abstract class ModalPanel extends Component {
         const pt = this._panel.addComponent(UITransform);
         pt.setContentSize(this.panelW, this.panelH); pt.setAnchorPoint(0.5, 0.5);
         this._panel.setPosition(0, 0, 0); this._panel.setParent(this.node);
+
+        // ⚠️ 视觉背景必须用独立子节点！
+        // 原因：Mask.Type.GRAPHICS_RECT 会把 _panel 自身的 Graphics 绘制消费为 stencil 数据，
+        //       不再作为视觉内容渲染。若把白色圆角矩形画在 _panelGfx 上，面板背景不可见。
+        this._panelBg = new Node('PBg');
+        const pbt = this._panelBg.addComponent(UITransform);
+        pbt.setContentSize(this.panelW, this.panelH); pbt.setAnchorPoint(0.5, 0.5);
+        this._panelBg.setPosition(0, 0, 0);
+        this._panelBg.setParent(this._panel);   // 作为 _panel 第一个子节点（渲染在最底层）
+        this._panelBgGfx = this._panelBg.addComponent(Graphics);
+
+        // Mask 形状用的 Graphics（_panel 自身上，GRAPHICS_RECT 读它做 stencil）
         this._panelGfx = this._panel.addComponent(Graphics);
-        this.drawPanelBg();
+        this.drawPanelBg();                    // 同时绘制视觉背景(_panelBgGfx) + Mask形状(_panelGfx)
         // 面板拦截事件，防止点击面板内部冒泡
         this._panel.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
         // ⚠️ 关键：Cocos 3.x Mask 必须显式设 type，否则不裁剪
@@ -149,13 +163,17 @@ export abstract class ModalPanel extends Component {
         this._closeNode = cn;
     }
 
-    /** 重绘面板背景（自适应高度时调用） */
+    /** 重绘面板背景（自适应高度时调用）—— 同时画视觉背景 + Mask 形状 */
     protected drawPanelBg(): void {
-        const g = this._panelGfx; g.clear();
-        g.fillColor = C.panelBg;
-        g.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); g.fill();
-        g.lineWidth = 3; g.strokeColor = C.border;
-        g.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); g.stroke();
+        // 视觉背景：画在 _panelBgGfx（独立子节点，不被 Mask 消费）
+        const vg = this._panelBgGfx; vg.clear();
+        vg.fillColor = C.panelBg;
+        vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); vg.fill();
+        vg.lineWidth = 3; vg.strokeColor = C.border;
+        vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); vg.stroke();
+        // Mask 形状：画在 _panelGfx（GRAPHICS_RECT 读此 Graphics 做 stencil 裁剪）
+        const mg = this._panelGfx; mg.clear();
+        mg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); mg.fill();
     }
 
     /** 绘制全屏半透明遮罩（buildSkeleton 与 show 各调用一次，确保激活后渲染可靠） */
@@ -171,6 +189,11 @@ export abstract class ModalPanel extends Component {
     /** 自适应高度：重绘面板 + 重定位标题/关闭按钮。返回可用滚动可视高度推导用的面板高 */
     protected resizePanel(h: number): void {
         this.panelH = h;
+        // 同步 _panel 和 _panelBg 的 UITransform 尺寸
+        const pt = this._panel.getComponent(UITransform);
+        if (pt) pt.setContentSize(this.panelW, h);
+        const pbt = this._panelBg.getComponent(UITransform);
+        if (pbt) pbt.setContentSize(this.panelW, h);
         this.drawPanelBg();
         if (this._titleNode) this._titleNode.setPosition(-this.panelW / 2 + 36, h / 2 - 42, 0);
         if (this._closeNode) this._closeNode.setPosition(this.panelW / 2 - 34, h / 2 - 34, 0);
@@ -182,8 +205,9 @@ export abstract class ModalPanel extends Component {
         this.node.active = true;
         // 置顶：确保盖住底栏与同级其它弹窗
         this.node.setSiblingIndex(this.node.parent!.children.length - 1);
-        // 激活后重绘遮罩（buildSkeleton 已绘一次，这里再确保一次渲染可靠）
+        // 激活后重绘遮罩 + 面板背景（buildSkeleton 已绘一次，这里再确保一次渲染可靠）
         if (this.showMask) this._drawMask();
+        this.drawPanelBg();
         this.render();
     }
     public hide(): void {
