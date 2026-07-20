@@ -6,9 +6,9 @@
  *   - Tab:   y=148      （金币购买 / 以物易货）
  *   - Body:  y=225+     （动态内容区：特殊商人领取 / 购买入口 / 易货列表）
  *
- * 数量选择已抽离为独立弹窗 TradeQtyPanel：
- *   - 金币购买 → 点击后弹出 TradeQtyPanel（滑块选数量 → 确认交易）
- *   - 以物易物 → 选物品后弹出 TradeQtyPanel（滑块选数量 → 确认/重选）
+ * 数量选择复用公共 QuantityPanel 弹窗：
+ *   - 金币购买 → 点击后弹出 QuantityPanel（±1/全部/确定 + 预览）
+ *   - 以物易物 → 选物品后弹出 QuantityPanel（同上）
  */
 
 import {
@@ -18,7 +18,7 @@ import { ModalPanel, C } from './ModalPanel';
 import { ITEM_DATA, TRADE_DATA } from '../data/data';
 import { ActionTrade } from '../actions/ActionTrade';
 import { GameManager } from '../core/GameManager';
-import { TradeQtyPanel, TradeQtyConfig } from './TradeQtyPanel';
+import { QuantityPanel, QtyOptions } from './QuantityPanel';
 
 const PW = 680;    // 面板宽
 const PH = 1000;   // 面板高
@@ -41,14 +41,14 @@ export class TradePanel extends ModalPanel {
     private _tB: { n: Node; g: Graphics; l: Label } | null = null;
 
     /** 懒创建的数量选择弹窗（与 TradePanel 同级挂 modalLayer） */
-    private _qtyPanel: TradeQtyPanel | null = null;
+    private _qtyPanel: QuantityPanel | null = null;
 
     /** 外部注入数量弹窗（MainScene 创建后调用） */
-    public setQtyPanel(p: TradeQtyPanel): void { this._qtyPanel = p; }
+    public setQtyPanel(p: QuantityPanel): void { this._qtyPanel = p; }
 
-    private _getQty(): TradeQtyPanel {
+    private _getQty(): QuantityPanel {
         if (!this._qtyPanel) {
-            this._qtyPanel = new Node('TradeQty').addComponent(TradeQtyPanel);
+            this._qtyPanel = new Node('TradeQty').addComponent(QuantityPanel);
             // 挂到与 TradePanel 同级（modalLayer），确保遮罩完整覆盖
             (this._qtyPanel.node.parent = this.node.parent) && null;
         }
@@ -139,22 +139,17 @@ export class TradePanel extends ModalPanel {
             return;
         }
 
-        // 「选择数量」按钮 → 弹出 TradeQtyPanel
+        // 「选择数量」按钮 → 弹出 QuantityPanel
         this._btn(by + 50, 400, 84, '\u9009\u62e9\u6570\u91cf', C.accent, () => {
-            const cfg: TradeQtyConfig = {
-                title: `\u8d2d\u4e70\uff1a${this._gName}`,
+            const opts: QtyOptions = {
                 infoLines: [`\u6301\u6709 ${gold} \u91d1 | \u5355\u4ef7 ${this._price} | \u6700\u591a ${mqty} \u4e2a`],
-                max: mqty,
-                initial: 1,
+                confirmLabel: '\u786e\u8ba4\u8d2d\u4e70',
                 getPreview: (q) => [
                     `\u82b1\u8d39\uff1a${this._price * q} \u91d1`,
                     `\u2192 \u83b7\u5f97\uff1a${this._gName} \u00d7${q}`,
                 ],
-                confirmLabel: '\u786e\u8ba4\u8d2d\u4e70',
-                confirmColor: C.accent2,
-                onConfirm: (q) => { this._doWithQty(q, 'gold'); },
             };
-            this._getQty().show(cfg);
+            this._getQty().show(`\u8d2d\u4e70\uff1a${this._gName}`, mqty, (q) => this._doWithQty(q, 'gold'), opts);
         });
     }
 
@@ -191,27 +186,20 @@ export class TradePanel extends ModalPanel {
 
             row.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
                 e.propagationStopped = true;
-                // 弹出数量选择弹窗
+                // 弹出数量选择弹窗（复用 QuantityPanel）
                 const bq = bag[id] || 0;
                 const onm = ITEM_DATA[id]?.name || id;
-                const cfg: TradeQtyConfig = {
-                    title: `\u4ea4\u6362\u7269\uff1a${onm}`,
+                const opts: QtyOptions = {
                     infoLines: [`\u6301\u6709 ${q} \u4e2a`],
-                    max: Math.max(1, bq),
-                    initial: 1,
+                    confirmLabel: '\u786e\u8ba4\u6613\u8d27',
                     getPreview: (qty) => {
                         const r = ActionTrade.instance.previewBarter(this._tid, id, qty);
                         return r >= 1
                             ? [`\u7ed9\uff1a${onm} \u00d7${qty}`, `\u2192 \u6362\uff1a${this._gName} \u00d7${r}`]
                             : [`\u7ed9\uff1a${onm} \u00d7${qty}`, `\u2192 \u4ef7\u503c\u4e0d\u8db3`];
                     },
-                    confirmLabel: '\u786e\u8ba4\u6613\u8d27',
-                    confirmColor: C.accent,
-                    backLabel: '\u2190 \u91cd\u9009',
-                    onBack: () => { /* 返回列表，无需额外操作 */ },
-                    onConfirm: (qty) => { this._doWithOffer(id, qty); },
                 };
-                this._getQty().show(cfg);
+                this._getQty().show(`\u4ea4\u6362\u7269\uff1a${onm}`, bq, (qty) => this._doWithOffer(id, qty), opts);
             });
         });
 

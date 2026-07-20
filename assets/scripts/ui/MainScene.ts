@@ -26,7 +26,7 @@ import { DialogPanel, DialogOption } from './DialogPanel';
 import { BagPanel } from './BagPanel';
 import { BattlePanel } from './BattlePanel';
 import { TradePanel } from './TradePanel';
-import { TradeQtyPanel } from './TradeQtyPanel';
+import { QuantityPanel } from './QuantityPanel';
 import { Toast } from './Toast';
 import { SaveIndicator } from './SaveIndicator';
 import { GridPage, GridCellData } from '../data/types';
@@ -265,7 +265,7 @@ export class MainScene extends Component {
         // 创建交易数量选择弹窗（TradePanel 内部懒取，挂同级 modalLayer）
         const qtyNode = new Node('TradeQty');
         qtyNode.layer = this.node.layer;
-        const qtyPanel = qtyNode.addComponent(TradeQtyPanel);
+        const qtyPanel = qtyNode.addComponent(QuantityPanel);
         this._modalLayer!.addChild(qtyNode);
         this._tradePanel.setQtyPanel(qtyPanel);
 
