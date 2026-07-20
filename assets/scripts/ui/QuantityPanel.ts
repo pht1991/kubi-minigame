@@ -36,8 +36,6 @@ export class QuantityPanel extends ModalPanel {
     private _max = 1;
     private _onConfirm: (qty: number) => void = () => {};
     private _opts: QtyOptions | null = null;
-    private _qtyLabel: ReturnType<ModalPanel['mkCenter']> | null = null;
-    private _previewNode: ReturnType<ModalPanel['mkText']> | null = null;
 
     constructor() {
         super();
@@ -74,7 +72,7 @@ export class QuantityPanel extends ModalPanel {
 
         // ── 数量显示 N / M（居中大字）──
         const numY = o?.infoLines ? 110 : 100;
-        this._qtyLabel = this.mkCenter(c, 0, -numY, 320, 70, `${this._qty} / ${this._max}`, 44, C.title, true);
+        this.mkCenter(c, 0, -numY, 320, 70, `${this._qty} / ${this._max}`, 44, C.title, true);
 
         // ── − / + 步进按钮 ──
         const btnY = o?.infoLines ? 150 : 140;
@@ -85,21 +83,18 @@ export class QuantityPanel extends ModalPanel {
         const allY = o?.infoLines ? 250 : 240;
         this.mkButton(c, 0, -allY, 220, 62, '全部', C.tabOn, () => this.setQty(this._max));
 
-        // ── 预览文本（交易场景：花费/获得）──
-        if (o?.getPreview) {
-            const lines = o.getPreview(this._qty);
-            const prevY = allY + 60;
-            // 预览区容器：多行居中
-            lines.forEach((line, i) => {
-                this.mkText(c, 0, -(prevY + i * 26), this.panelW - 80, 26, line,
-                    i === lines.length - 1 ? 20 : 19,
-                    i === lines.length - 1 ? C.accent2 : C.body,
-                    { align: 'center', anchorY: 1 });
-            });
-        }
+        // ── 预览文本（交易场景：花费/获得）── 提升到外层作用域，供确认按钮定位
+        const previewLines = o?.getPreview ? o.getPreview(this._qty) : [];
+        const prevY = allY + 60;
+        previewLines.forEach((line, i) => {
+            this.mkText(c, 0, -(prevY + i * 26), this.panelW - 80, 26, line,
+                i === previewLines.length - 1 ? 20 : 19,
+                i === previewLines.length - 1 ? C.accent2 : C.body,
+                { align: 'center', anchorY: 1 });
+        });
 
         // ── 确认按钮（取消由 × / 蒙层承担）──
-        const cfmY = o?.getPreview ? (allY + 60 + lines!.length * 26 + 30) : 340;
+        const cfmY = previewLines.length ? (prevY + previewLines.length * 26 + 30) : 340;
         this.mkButton(c, 0, -cfmY, 280, 72, o?.confirmLabel || '\u786e\u5b9a', C.accent2, () => {
             this.hide();
             this._onConfirm(this._qty);
@@ -108,11 +103,6 @@ export class QuantityPanel extends ModalPanel {
 
     private setQty(v: number): void {
         this._qty = Math.max(1, Math.min(this._max, v));
-        if (this._qtyLabel) this._qtyLabel.string = `${this._qty} / ${this._max}`;
-        // 刷新预览
-        if (this._opts?.getPreview && this._previewNode) {
-            // 重新渲染以更新预览文本
-            this.render();
-        }
+        this.render();   // 整面板重建即可同步数量/预览
     }
 }
