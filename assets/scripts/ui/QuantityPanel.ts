@@ -53,6 +53,22 @@ export class QuantityPanel extends ModalPanel {
         this._qty = this._max;            // 默认全选
         this._onConfirm = onConfirm;
         this._opts = opts || null;
+
+        // ── 动态计算面板高度（确保确认按钮不被裁切）──
+        const o = this._opts;
+        const initQty = this._qty;
+        const hasInfo = !!(o?.infoLines?.length);
+        const prevCount = o?.getPreview ? o.getPreview(initQty).length : 0;
+        // 基础模式：确定按钮在 y=-340，底部留白约 80 → 需要 420+
+        // 每行信息额外 +26px，每行预览额外 +26px
+        const minH = Math.max(470,
+            420
+            + (hasInfo ? (o!.infoLines!.length * 26) : 0)
+            + (prevCount * 26)
+            + 60   // 底部安全余量
+        );
+        if (this.panelH !== minH) this.resizePanel(minH);
+
         super.show(title);
     }
 
