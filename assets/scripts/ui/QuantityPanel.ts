@@ -65,7 +65,7 @@ export class QuantityPanel extends ModalPanel {
             420
             + (hasInfo ? (o!.infoLines!.length * 26) : 0)
             + (prevCount * 26)
-            + 60   // 底部安全余量
+            + 95   // 底部安全余量
         );
         if (this.panelH !== minH) this.resizePanel(minH);
 
