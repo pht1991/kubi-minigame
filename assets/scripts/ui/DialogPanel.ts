@@ -83,17 +83,14 @@ export class DialogPanel extends ModalPanel {
             rowNode.setParent(this._contentNode);
 
             const isDisabled = opt.disabled;
-            const bgColor = isDisabled ? new Color(232, 228, 222, 255) : new Color(255, 252, 245, 255);
-            const strokeColor = isDisabled ? new Color(200, 196, 190, 255) : new Color(210, 190, 160, 255);
+            // 选项行用暖色按钮底，与上方信息区的灰白背景形成明确区分
+            const bgColor = isDisabled ? new Color(225, 220, 215, 255) : new Color(245, 235, 218, 255);
+            const strokeColor = isDisabled ? new Color(190, 185, 180, 255) : new Color(210, 185, 145, 255);
             const bg = rowNode.addComponent(Graphics);
-            this.mkRect(bg, -290, -optionHeight / 2, 580, optionHeight, 6, bgColor, strokeColor, 1);
+            this.mkRect(bg, -290, -optionHeight / 2, 580, optionHeight, 8, bgColor, strokeColor, 1);
 
-            const textColor = isDisabled ? new Color(140, 135, 130, 255) : new Color(50, 40, 30, 255);
-            // 标签文字左对齐，右侧箭头提示可点击
-            this.mkInline(rowNode, -250, 0, 480, optionHeight, opt.label, 22, textColor);
-            if (!isDisabled) {
-                this.mkInline(rowNode, 250, 0, 40, optionHeight, '\u2192', 22, new Color(180, 150, 110, 255));
-            }
+            const textColor = isDisabled ? new Color(150, 145, 140, 255) : new Color(60, 45, 30, 255);
+            this.mkInline(rowNode, -240, 0, 520, optionHeight, opt.label, 22, textColor);
 
             if (!isDisabled) {
                 rowNode.on(NodeEventType.TOUCH_END, (event: EventTouch) => {
