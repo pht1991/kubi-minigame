@@ -10,10 +10,8 @@
 import { Node } from 'cc';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
-import { ITEM_DATA, BIG_BOX_BASE_SIZE, BUILDING_UPDATE_DATA } from '../../data/data';
+import { ITEM_DATA, BIG_BOX_BASE_SIZE } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
-import { ActionBuilding } from '../../actions/ActionBuilding';
-import { DialogOption } from '../DialogPanel';
 import { QuantityPanel } from '../QuantityPanel';
 
 export class BigBoxPage extends BasePage {
@@ -61,62 +59,16 @@ export class BigBoxPage extends BasePage {
     }
 
     /**
-     * 构建公共升级按钮信息（标题栏右侧，与 RestPage/其他可升级建筑统一接口）。
-     * 返回 { upgradeInfo, onUpgradeClick } 供 GridPage 展开使用。
-     * 点击升级按钮 → 弹 DialogPanel 显示详情+材料需求 → 确认后执行升级。
+     * 公共升级按钮信息（标题栏右侧）。
+     * 复用 BasePage.makeUpgradeInfo 共享助手，确保与大箱子/床铺/厨房/井/卫生间等全游戏统一。
      */
     private buildUpgradeInfo(): Partial<Pick<GridPage, 'upgradeInfo' | 'onUpgradeClick'>> {
-        const level = this.gm.getBuildingLevel('bigBoxUpdate');
-        const updateGroup = BUILDING_UPDATE_DATA['bigBoxUpdate'];
-        const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
-        const nextLevelId = levelKeys[level];
-
-        if (!nextLevelId) {
-            return {
-                upgradeInfo: { label: '', state: 'maxed' },
-            };
-        }
-
-        const upData = updateGroup[nextLevelId];
-        const nextItem = ITEM_DATA[nextLevelId];
-        const canMake = this.gm.checkHaveResource(upData.require || {});
-        const reqParts = Object.entries(upData.require || {})
-            .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
-            .join('  ');
-
-        return {
-            upgradeInfo: {
-                label: `升级 +4容量`,
-                state: canMake ? 'normal' : 'disabled',
-            },
-            onUpgradeClick: () => {
-                // 点击升级按钮 → 弹详情确认面板（含材料需求）
-                const options: DialogOption[] = [];
-                options.push({ label: nextItem?.name || nextLevelId, data: null, disabled: true });
-                if (nextItem?.desc) options.push({ label: nextItem.desc, data: null, disabled: true });
-                options.push({ label: `容量 +4`, data: null, disabled: true });
-                options.push({ label: `需求: ${reqParts}`, data: null, disabled: true, noTruncate: true });
-                if (canMake) {
-                    options.push({ label: '[确认升级]', data: { action: 'confirm', targetId: nextLevelId } });
-                } else {
-                    options.push({ label: '材料不足', data: null, disabled: true });
-                }
-                options.push({ label: '取消', data: null });
-
-                this.dialogPanel?.show(
-                    '大箱子升级',
-                    options,
-                    (data) => {
-                        if (data?.action === 'confirm') {
-                            const r = ActionBuilding.instance.upgrade('bigBoxUpdate', data.targetId);
-                            this.setMsg(r.message);
-                            this.navigator.replace(this.buildBigBoxPage());
-                        }
-                    },
-                    () => {}
-                );
-            },
-        };
+        return this.makeUpgradeInfo('bigBoxUpdate', {
+            title: '大箱子升级',
+            buttonLabel: '升级 +4容量',
+            effectText: '容量 +4',
+            onUpgraded: () => this.navigator.replace(this.buildBigBoxPage()),
+        });
     }
 
     private bigBoxCount(): number {

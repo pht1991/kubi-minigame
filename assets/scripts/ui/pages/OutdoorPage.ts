@@ -18,7 +18,7 @@ import { ActionBrew } from '../../actions/ActionBrew';
 import { ActionMap } from '../../actions/ActionMap';
 import { ActionEvent } from '../../actions/ActionEvent';
 import {
-    TRADE_DATA, PLACE_DATA, ITEM_DATA, BUILDING_DATA, BUILDING_UPDATE_DATA,
+    TRADE_DATA, PLACE_DATA, ITEM_DATA, BUILDING_DATA,
     MST_DATA, EVENT_DATA,
 } from '../../data/data';
 
@@ -269,38 +269,20 @@ export class OutdoorPage extends BasePage {
         }
 
         const upType = `${buildingId}Update`;
-        const upGroup = BUILDING_UPDATE_DATA[upType];
-        if (upGroup) {
-            const level = this.gm.getBuildingLevel(upType);
-            const keys = Object.keys(upGroup);
-            if (level < keys.length) {
-                const nextId = keys[level];
-                const nextData = upGroup[nextId];
-                const nextReqStr = Object.entries(nextData.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
-                cells.push(
-                    { id: 'lv', name: `升级至 Lv.${level + 1}`, state: 'disabled' },
-                    { id: 'upreq', name: `材料: ${nextReqStr}`, state: 'disabled' },
-                    { id: 'upgrade', name: '升级', state: this.gm.checkHaveResource(nextData.require) ? 'normal' : 'disabled' },
-                );
-            } else {
-                cells.push({ id: 'max', name: '已升至满级', state: 'disabled' });
-            }
-        }
 
         return {
             title: d.name,
             breadcrumb: d.name,
             columns: 4,
             cells,
+            // 升级按钮走公共标题栏接口（与所有可升级建筑统一），替代旧内联升级格
+            ...this.makeUpgradeInfo(upType, {
+                title: `${d.name}升级`,
+                onUpgraded: () => this.navigator.replace(this.buildBuildingDetailPage(buildingId)),
+            }),
             onCellClick: (index, cell) => {
                 if (cell.id === 'build') {
                     const r = ActionBuilding.instance.build(buildingId);
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.buildBuildingDetailPage(buildingId));
-                } else if (cell.id === 'upgrade') {
-                    const lvl = this.gm.getBuildingLevel(upType);
-                    const next = Object.keys(upGroup)[lvl];
-                    const r = ActionBuilding.instance.upgrade(upType, next);
                     this.setMsg(r.message);
                     this.navigator.replace(this.buildBuildingDetailPage(buildingId));
                 } else if (cell.id === 'farm_manage') {

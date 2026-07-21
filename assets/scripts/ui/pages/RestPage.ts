@@ -8,7 +8,6 @@
 
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
-import { ActionBuilding } from '../../actions/ActionBuilding';
 import { BUILDING_UPDATE_DATA, ITEM_DATA } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
 
@@ -42,8 +41,6 @@ export class RestPage extends BasePage {
         const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
         const currentLevelName = level >= levelKeys.length ? '已满级' :
             (level === 0 ? '地板' : ITEM_DATA[levelKeys[level - 1]]?.name || `Lv.${level}`);
-        const nextLevelId = levelKeys[level];
-        const canUpgrade = !!(updateGroup && nextLevelId);
 
         const cells: GridCellData[] = [];
 
@@ -69,25 +66,6 @@ export class RestPage extends BasePage {
             data: { restPs, restSan, restHours },
         });
 
-        // ── 升级区（有下一级时显示） ──
-        if (canUpgrade && nextLevelId) {
-            const upData = updateGroup[nextLevelId];
-            const nextItem = ITEM_DATA[nextLevelId];
-            const reqParts = Object.entries(upData.require || {})
-                .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
-                .join(' ');
-            cells.push({
-                id: `upgrade_${nextLevelId}`,
-                name: `${nextItem?.name || nextLevelId}    ${reqParts || ''}\n${nextItem?.desc || ''}`,
-                state: this.gm.checkHaveResource(upData.require || {}) ? 'normal' : 'disabled',
-                type: 'list',
-                noTruncate: true,
-                data: { action: 'upgrade', targetId: nextLevelId },
-            });
-        } else if (!canUpgrade && level > 0) {
-            cells.push({ id: 'maxed', name: '床铺已达最高等级', state: 'disabled', type: 'list' });
-        }
-
         // （返回由底栏「主页」按钮提供，不重复添加 cell）
 
         return {
@@ -95,6 +73,11 @@ export class RestPage extends BasePage {
             breadcrumb: '主页 > 床铺',
             columns: 1,
             cells,
+            // 升级按钮走公共标题栏接口（与大箱子/厨房/井/卫生间统一），替代旧内联升级格
+            ...this.makeUpgradeInfo('sleepPlaceUpdate', {
+                title: '床铺升级',
+                onUpgraded: () => this.navigator.replace(this.openRestPage()),
+            }),
             onCellClick: (idx, cell) => {
                 if (cell.id === 'sleep') {
                     // 睡觉：按床铺等级定量恢复，推进时间
@@ -115,10 +98,6 @@ export class RestPage extends BasePage {
                     this.setMsg(`你在${currentLevelName}上睡了一觉，恢复了 ${actualPs} 点体力和 ${actualSan} 点精神`);
                     this.navigator.replace(this.openRestPage());
                     this.eventBus.emit(GameEvents.UI_REFRESH);
-                } else if (cell.data?.action === 'upgrade') {
-                    const r = ActionBuilding.instance.upgrade('sleepPlaceUpdate', cell.data.targetId);
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.openRestPage());
                 }
             },
         };
