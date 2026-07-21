@@ -61,6 +61,7 @@ export interface PageContext {
     menuPage?: any;
     buildPage?: any;
     bagPage?: any;
+    bigBoxPage?: any;
     restPage?: any;
     /** 刷新底栏「出门/回家」按钮（MainScene 实现，OutdoorPage 设户外状态后回调） */
     refreshGoButton: () => void;

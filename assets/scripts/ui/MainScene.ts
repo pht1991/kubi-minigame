@@ -44,6 +44,7 @@ import { BuildPage } from './pages/BuildPage';
 import { MenuPage } from './pages/MenuPage';
 import { RestPage } from './pages/RestPage';
 import { BagPage } from './pages/BagPage';
+import { BigBoxPage } from './pages/BigBoxPage';
 import {
     BUILDING_DATA,
     SKILL_DATA,
@@ -190,6 +191,7 @@ export class MainScene extends Component {
     private _menuPage: MenuPage | null = null;
     private _restPage: RestPage | null = null;
     private _bagPage: BagPage | null = null;
+    private _bigBoxPage: BigBoxPage | null = null;
 
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
@@ -310,6 +312,8 @@ export class MainScene extends Component {
         pageCtx.restPage = this._restPage;
         this._bagPage = new BagPage(pageCtx);
         pageCtx.bagPage = this._bagPage;
+        this._bigBoxPage = new BigBoxPage(pageCtx);
+        pageCtx.bigBoxPage = this._bigBoxPage;
         pageCtx.onHomeCellClick = (id: string) => this.onHomeCellClick(id);
         pageCtx.refreshGoButton = () => this.refreshGoButton();
         pageCtx.modalLayer = this._modalLayer!;
@@ -594,7 +598,7 @@ export class MainScene extends Component {
             home_farm:    () => this._outdoorPage?.openBuildingGrid(), // 农田在建筑详情里管理种植/收获
             home_alco:    () => this._brewPage?.openBrewPanel(),
             home_trap:    () => this._outdoorPage?.openBuildingGrid(), // 陷阱检查在建筑详情
-            home_box:     () => this._bagPage?.openBigBoxPanel(),   // 大箱子=独立仓储面板
+            home_box:     () => this._bigBoxPage?.openBigBoxGrid(),   // 大箱子=独立导航页
             home_well:    () => this._outdoorPage?.openBuildingGrid(), // 取水在建筑详情
             home_toilet:  () => this._outdoorPage?.openBuildingGrid(),
             home_sleep:   () => { if (this._restPage) this._navigator.push(this._restPage.openRestPage()); },

@@ -113,16 +113,6 @@ export class BagPage extends BasePage {
         );
     }
 
-    /** 打开大箱子面板（家居仓储，独立于背包） */
-    public openBigBoxPanel(): void {
-        this.setMsg('');
-        this.bagPanel.show(
-            () => `大箱子 (${Object.keys(this.gm.boxSaveData['bigBox'] || {}).length}/${this.gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE})`,
-            () => this.buildBoxCells('bigBox'),
-            (id) => this.onItemClick(id, 'bigBox'),
-        );
-    }
-
     /** 物品点击 → DialogPanel 弹出操作选项（boxType 决定在背包还是大箱子中操作） */
     private onItemClick(itemId: string, boxType: 'bag' | 'bigBox' = 'bag'): void {
         const itemData = ITEM_DATA[itemId];
@@ -158,10 +148,7 @@ export class BagPage extends BasePage {
             options.push({ label: line, data: null, disabled: true });
         }
 
-        if (boxType === 'bigBox') {
-            // 大箱子内物品：仅提供取出到背包（使用/装备需先取出）
-            options.push({ label: '取出到背包', data: { action: 'takeOut', boxType } });
-        } else if (isEquipped) {
+        if (isEquipped) {
             // 已装备：仅提供状态标识与卸下，避免同类型重复装备
             options.push({ label: '状态：已装备', data: null, disabled: true });
             options.push({ label: '卸下', data: { action: 'unequip' } });
@@ -258,18 +245,6 @@ export class BagPage extends BasePage {
             }
             case 'drop': {
                 const r = ActionItem.instance.drop(itemId);
-                this.setMsg(r.message);
-                break;
-            }
-            case 'takeOut': {
-                // 大箱子 → 背包（旧入口，无数量选择时单转 1 个；新流程走 openQuantity）
-                const r = this.transfer(itemId, 'bigBox', 'bag', 1);
-                this.setMsg(r.message);
-                break;
-            }
-            case 'store': {
-                // 背包 → 大箱子（同上）
-                const r = this.transfer(itemId, 'bag', 'bigBox', 1);
                 this.setMsg(r.message);
                 break;
             }
