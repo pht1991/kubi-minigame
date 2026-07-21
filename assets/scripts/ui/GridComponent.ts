@@ -364,17 +364,14 @@ export class GridComponent extends Component {
         if (!btnTf) btnTf = btn.addComponent(UITransform);
         btnTf.setContentSize(BTN_W, BTN_H);
 
-        // 定位：titleLabel 在场景中 y≈180(相对GridContainer)，按钮同高
-        // titleLabel 的 UITransform 位置用于对齐
-        const titleTf = this.titleLabel?.getComponent(UITransform);
-        if (titleTf && this.titleLabel) {
-            const titleW = titleTf.width;
-            // 标题居中 → 标题右缘 ≈ titleW/2；按钮左起 = titleW/2 + 8
-            btn.setPosition(titleW / 2 + 8 + BTN_W / 2, this.titleLabel.getPosition().y || 0, 0);
-        } else {
-            // 兜底：放右上角区域
-            btn.setPosition(250, 170, 0);
-        }
+        // 定位：从场景布局常量推算，彻底不读运行时坐标（本构建 Node.getPosition/position 不可用）。
+        // TitleLabel 与升级按钮同为 GridContainer(GridComponent 挂载节点) 的子节点，
+        // TitleLabel 局部坐标 y=515（见 MainScene.scene），故按钮 Y 直接用该常量对齐标题中线。
+        // X：标题居中 → 右缘 = titleW/2；按钮中心 = titleW/2 + 8 + BTN_W/2（titleW 从 UITransform 读，getComponent 可用）。
+        const TITLE_Y = 515;
+        const titleTf = this.titleLabel ? this.titleLabel.getComponent(UITransform) : null;
+        const titleW = titleTf ? titleTf.width : 112;
+        btn.setPosition(titleW / 2 + 8 + BTN_W / 2, TITLE_Y, 0);
 
         // 背景 Graphics（暖杏色药丸）
         let gfx = btn.getComponent(Graphics);
