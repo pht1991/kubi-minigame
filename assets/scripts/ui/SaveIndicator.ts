@@ -5,7 +5,8 @@
  * 相比 Toast 弹窗，它不抢眼、不闪、不遮挡操作，适合自动存档这类高频低关注度的反馈。
  */
 
-import { _decorator, Component, Node, Label, UITransform, Color, Graphics } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, Graphics } from 'cc';
+import { C } from './theme';
 
 const { ccclass } = _decorator;
 
@@ -28,10 +29,10 @@ export class SaveIndicator extends Component {
 
         // 背景小药丸（淡暖白半透明 + 棕描边），低调不抢眼
         const g = this.node.addComponent(Graphics);
-        g.fillColor = new Color(255, 248, 240, 150);
+        g.fillColor = C.saveBg;
         g.roundRect(-95, -18, 190, 36, 18);
         g.fill();
-        g.strokeColor = new Color(200, 168, 130, 180);
+        g.strokeColor = C.saveBorder;
         g.lineWidth = 1;
         g.roundRect(-95, -18, 190, 36, 18);
         g.stroke();
@@ -46,7 +47,7 @@ export class SaveIndicator extends Component {
         lbl.string = '已保存';
         lbl.fontSize = 16;
         lbl.lineHeight = 20;
-        lbl.color = new Color(92, 61, 30, 255); // 深棕：完成态
+        lbl.color = C.title; // 深棕：完成态
         lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
         lbl.verticalAlign = Label.VerticalAlign.CENTER;
         lbl.overflow = Label.Overflow.CLAMP;
@@ -62,8 +63,8 @@ export class SaveIndicator extends Component {
         if (!this._label) return;
         if (this._savedCb) { this.unschedule(this._savedCb); this._savedCb = null; }
         this._label.string = text;
-        this._label.color = new Color(92, 61, 30, 255);
-        if (this._gfx) this._gfx.fillColor = new Color(255, 248, 240, 150);
+        this._label.color = C.title;
+        if (this._gfx) this._gfx.fillColor = C.saveBg;
     }
 
     /** 正在保存：琥珀色「保存中…」 */
@@ -71,8 +72,8 @@ export class SaveIndicator extends Component {
         if (!this._label) return;
         if (this._savedCb) { this.unschedule(this._savedCb); this._savedCb = null; }
         this._label.string = '保存中…';
-        this._label.color = new Color(180, 120, 40, 255);
-        if (this._gfx) this._gfx.fillColor = new Color(255, 240, 210, 175);
+        this._label.color = C.saveSaving;
+        if (this._gfx) this._gfx.fillColor = C.saveSavingBg;
     }
 
     /** 保存完成：0.5s 后切回「已保存 · HH:MM」（让「保存中」可见） */
@@ -82,8 +83,8 @@ export class SaveIndicator extends Component {
         const cb = () => {
             if (!this._label) return;
             this._label.string = text;
-            this._label.color = ok ? new Color(92, 61, 30, 255) : new Color(160, 50, 40, 255);
-            if (this._gfx) this._gfx.fillColor = new Color(255, 248, 240, 150);
+            this._label.color = ok ? C.title : C.saveFail;
+            if (this._gfx) this._gfx.fillColor = C.saveBg;
             this._savedCb = null;
         };
         this._savedCb = cb;

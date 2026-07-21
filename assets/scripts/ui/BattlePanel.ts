@@ -44,7 +44,7 @@ export class BattlePanel extends ModalPanel {
         bgT.setContentSize(750, 1334);
         this._bgNode.setParent(this.node);
         const bgGfx = this._bgNode.addComponent(Graphics);
-        bgGfx.fillColor = new Color(20, 15, 10, 230);
+        bgGfx.fillColor = C.battleBg;
         bgGfx.rect(-375, -667, 750, 1334); bgGfx.fill();
         this._bgNode.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
         this.node.insertChild(this._bgNode, 0); // 放到面板之下
@@ -53,7 +53,7 @@ export class BattlePanel extends ModalPanel {
         if (this._titleLbl) {
             this._titleLbl.horizontalAlign = Label.HorizontalAlign.CENTER;
             this._titleNode.setPosition(0, this.panelH / 2 - 50, 0);
-            this._titleLbl.color = new Color(160, 30, 30, 255);
+            this._titleLbl.color = C.battleTitle;
         }
 
         this.buildCombatUI();
@@ -125,7 +125,7 @@ export class BattlePanel extends ModalPanel {
         const sep = new Node('Separator');
         sep.setParent(panel);
         const sepGfx = sep.addComponent(Graphics);
-        sepGfx.strokeColor = new Color(180, 140, 100, 200);
+        sepGfx.strokeColor = C.battleSep;
         sepGfx.lineWidth = 2;
         sepGfx.moveTo(-310, 260); sepGfx.lineTo(310, 260); sepGfx.stroke();
 
@@ -136,10 +136,10 @@ export class BattlePanel extends ModalPanel {
         const { view: logView, content: logContent } = this.mkScroll(logContainer, 0, 120, 620, 220);
         this._logContent = logContent;
         const logMask = logView.getComponent(Graphics);
-        if (logMask) { logMask.fillColor = new Color(40, 35, 30, 180); logMask.clear(); logMask.rect(-310, -110, 620, 220); logMask.fill(); }
+        if (logMask) { logMask.fillColor = C.battleLogMask; logMask.clear(); logMask.rect(-310, -110, 620, 220); logMask.fill(); }
 
         // —— 结果文字（覆盖在面板上） ——
-        this._resultLabel = this.mkCenter(panel, 0, 0, 600, 80, '', 28, new Color(160, 30, 30));
+        this._resultLabel = this.mkCenter(panel, 0, 0, 600, 80, '', 28, C.battleTitle);
         this._resultLabel.node.active = false;
 
         // —— 继续按钮 ——
@@ -162,10 +162,10 @@ export class BattlePanel extends ModalPanel {
         this._actionGrid.setPosition(0, -300, 0);
 
         const actions = [
-            { id: 'attack', name: '攻击', color: new Color(200, 60, 40) },
-            { id: 'skill', name: '技能', color: new Color(60, 120, 200) },
-            { id: 'item', name: '道具', color: new Color(60, 160, 80) },
-            { id: 'flee', name: '逃跑', color: new Color(150, 150, 150) },
+            { id: 'attack', name: '攻击', color: C.actAttack },
+            { id: 'skill', name: '技能', color: C.actSkill },
+            { id: 'item', name: '道具', color: C.actItem },
+            { id: 'flee', name: '逃跑', color: C.actFlee },
         ];
         for (let i = 0; i < actions.length; i++) {
             const btn = this.makeActionBtn(actions[i], i);
@@ -265,10 +265,10 @@ export class BattlePanel extends ModalPanel {
 
         if (this._mstNameLabel) this._mstNameLabel.string = s.mstName;
         if (this._mstHpLabel) this._mstHpLabel.string = `生命 ${Math.max(0, Math.round(s.mstHp))} / ${s.mstMaxHp}`;
-        this.updateHpBar(this._mstHpBar!, this._mstHpBarGfx!, Math.max(0, s.mstHp), s.mstMaxHp, new Color(200, 60, 40, 255));
+        this.updateHpBar(this._mstHpBar!, this._mstHpBarGfx!, Math.max(0, s.mstHp), s.mstMaxHp, C.hpEnemy);
 
         if (this._playerHpLabel) this._playerHpLabel.string = `生命 ${Math.max(0, Math.round(s.playerCurHp))} / ${s.playerMaxHp}`;
-        this.updateHpBar(this._playerHpBar!, this._playerHpBarGfx!, Math.max(0, s.playerCurHp), s.playerMaxHp, new Color(60, 180, 60, 255));
+        this.updateHpBar(this._playerHpBar!, this._playerHpBarGfx!, Math.max(0, s.playerCurHp), s.playerMaxHp, C.hpPlayer);
 
         this.refreshLog(s);
 
@@ -277,7 +277,7 @@ export class BattlePanel extends ModalPanel {
             if (this._resultLabel) {
                 this._resultLabel.node.active = true;
                 this._resultLabel.string = s.win ? '胜利！' : '被击败了…';
-                this._resultLabel.color = s.win ? new Color(40, 140, 40, 255) : new Color(200, 40, 40, 255);
+                this._resultLabel.color = s.win ? C.win : C.lose;
             }
             if (this._continueBtn) this._continueBtn.active = true;
         } else {

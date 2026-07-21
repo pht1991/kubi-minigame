@@ -3,7 +3,7 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, Label, Color, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Widget } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Widget } from 'cc';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
@@ -31,6 +31,7 @@ import { Toast } from './Toast';
 import { SaveIndicator } from './SaveIndicator';
 import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
+import { C } from './theme';
 import { CookPage } from './pages/CookPage';
 import { CraftPage } from './pages/CraftPage';
 import { FarmPage } from './pages/FarmPage';
@@ -421,12 +422,10 @@ export class MainScene extends Component {
 
         // 背景（暖色）
         const gfx = this._bottomBar.addComponent(Graphics);
-        const bg = new Color(255, 248, 240, 255);
-        const border = new Color(200, 168, 130, 255);
-        gfx.fillColor = bg;
+        gfx.fillColor = C.barBg;
         gfx.rect(-350, -BAR_H / 2, 700, BAR_H);
         gfx.fill();
-        gfx.strokeColor = border;
+        gfx.strokeColor = C.barBorder;
         gfx.lineWidth = 1.5;
         gfx.rect(-350, -BAR_H / 2, 700, BAR_H);
         gfx.stroke();
@@ -452,12 +451,10 @@ export class MainScene extends Component {
 
             // 按钮背景
             const btnGfx = btnNode.addComponent(Graphics);
-            const btnBg = new Color(230, 220, 205, 255);
-            const btnBorder = new Color(180, 160, 130, 255);
-            btnGfx.fillColor = btnBg;
+            btnGfx.fillColor = C.barBtnBg;
             btnGfx.rect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H);
             btnGfx.fill();
-            btnGfx.strokeColor = btnBorder;
+            btnGfx.strokeColor = C.barBtnBorder;
             btnGfx.lineWidth = 1;
             btnGfx.rect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H);
             btnGfx.stroke();
@@ -468,7 +465,7 @@ export class MainScene extends Component {
             const lbl = lblNode.addComponent(Label);
             lbl.string = btn.label;
             lbl.fontSize = 20;
-            lbl.color = new Color(74, 55, 40, 255); // 深棕
+            lbl.color = C.barBtnText; // 深棕
             lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
             lbl.verticalAlign = Label.VerticalAlign.CENTER;
             lbl.overflow = Label.Overflow.CLAMP;

@@ -5,6 +5,7 @@
  */
 
 import { _decorator, Component, Node, Label, UITransform, UIOpacity, tween, Color, Graphics } from 'cc';
+import { C, S } from './theme';
 
 const { ccclass } = _decorator;
 
@@ -30,12 +31,12 @@ export class Toast extends Component {
 
         // 背景（暖羊皮纸浅色半透明圆角矩形，与整体 UI 一致）
         const g = this.node.addComponent(Graphics);
-        g.fillColor = new Color(255, 248, 240, 225);
-        g.roundRect(-W / 2, -H / 2, W, H, 14);
+        g.fillColor = new Color(C.panelBg.r, C.panelBg.g, C.panelBg.b, 225);
+        g.roundRect(-W / 2, -H / 2, W, H, S.panelRadius);
         g.fill();
-        g.strokeColor = new Color(200, 168, 130, 200);
+        g.strokeColor = new Color(C.panelBorder.r, C.panelBorder.g, C.panelBorder.b, 200);
         g.lineWidth = 1.5;
-        g.roundRect(-W / 2, -H / 2, W, H, 14);
+        g.roundRect(-W / 2, -H / 2, W, H, S.panelRadius);
         g.stroke();
 
         // 文字
@@ -46,9 +47,9 @@ export class Toast extends Component {
         lblTf.setAnchorPoint(0.5, 0.5);
         const lbl = lblNode.addComponent(Label);
         lbl.string = '';
-        lbl.fontSize = 20;
+        lbl.fontSize = S.font.body;
         lbl.lineHeight = 26;
-        lbl.color = new Color(92, 61, 30, 255); // 深棕，浅底上清晰可读
+        lbl.color = C.title; // 深棕，浅底上清晰可读
         lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
         lbl.verticalAlign = Label.VerticalAlign.CENTER;
         lbl.overflow = Label.Overflow.CLAMP;

@@ -1,5 +1,6 @@
-import { _decorator, Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType } from 'cc';
+import { _decorator, Node, Label, UITransform, Graphics, EventTouch, NodeEventType } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
+import { S } from './theme';
 import { GridCellData } from '../data/types';
 
 const { ccclass } = _decorator;
@@ -100,15 +101,15 @@ export class BagPanel extends ModalPanel {
 
             const bgGfx = cellNode.addComponent(Graphics);
             this.mkRect(
-                bgGfx, -cellW / 2, -this.CELL_H / 2, cellW, this.CELL_H, 8,
-                isDisabled ? new Color(232, 228, 222, 255) : new Color(253, 248, 240, 255),
-                isDisabled ? new Color(200, 196, 190, 255) : new Color(212, 196, 176, 255), 1,
+                bgGfx, -cellW / 2, -this.CELL_H / 2, cellW, this.CELL_H, S.cellRadius,
+                isDisabled ? C.cellBgDisabled : C.cellBg,
+                isDisabled ? C.cellStrokeDisabled : C.cellStroke, 1,
             );
 
             const hasDur = !!cell.durability;
             this.mkInline(
                 cellNode, -cellW / 2 + 6, hasDur ? 18 : 8, cellW - 12, hasDur ? 44 : 60,
-                cell.name, 20, isDisabled ? new Color(90, 85, 80, 255) : new Color(50, 40, 30, 255),
+                cell.name, S.font.cellName, isDisabled ? C.cellTextDisabled : C.cellText,
             );
 
             if (typeof cell.count === 'number') {
@@ -116,7 +117,7 @@ export class BagPanel extends ModalPanel {
                 // 让 x=cellW/2-6 成为右边界，把数量贴在格子右上角，避免向左对齐时整段甩出格子右缘。
                 this.mkText(
                     cellNode, cellW / 2 - 6, -this.CELL_H / 2 + 14, 50, 24,
-                    `×${cell.count}`, 17, new Color(150, 110, 70, 255),
+                    `×${cell.count}`, S.font.cellCount, C.cellCount,
                     { align: 'right', anchorX: 1, anchorY: 0.5 },
                 );
             }
@@ -134,13 +135,13 @@ export class BagPanel extends ModalPanel {
                 trackNode.setPosition(0, barY, 0);
                 trackNode.setParent(cellNode);
                 const trackG = trackNode.addComponent(Graphics);
-                trackG.fillColor = new Color(214, 204, 192, 255);
+                trackG.fillColor = C.durTrack;
                 trackG.roundRect(-barW / 2, -barH / 2, barW, barH, 3); trackG.fill();
 
                 const fillW = Math.max(2, barW * ratio);
-                const fillColor = ratio > 0.5 ? new Color(96, 168, 96, 255)
-                    : ratio > 0.25 ? new Color(216, 168, 64, 255)
-                    : new Color(200, 80, 70, 255);
+                const fillColor = ratio > 0.5 ? C.durHigh
+                    : ratio > 0.25 ? C.durMid
+                    : C.durLow;
                 const fillNode = new Node('DurFill');
                 const fillT = fillNode.addComponent(UITransform);
                 fillT.setContentSize(fillW, barH);
@@ -150,7 +151,7 @@ export class BagPanel extends ModalPanel {
                 fillG.fillColor = fillColor;
                 fillG.roundRect(-fillW / 2, -barH / 2, fillW, barH, 3); fillG.fill();
 
-                this.mkInline(cellNode, -barW / 2 + 2, barY + 12, barW - 4, 14, `${cur}/${cell.durability.max}`, 10, new Color(100, 75, 50, 255));
+                this.mkInline(cellNode, -barW / 2 + 2, barY + 12, barW - 4, 14, `${cur}/${cell.durability.max}`, S.font.durText, C.durText);
             }
 
             if (!isDisabled && cell.id !== 'empty' && cell.id !== 'msg') {

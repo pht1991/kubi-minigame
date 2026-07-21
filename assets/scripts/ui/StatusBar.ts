@@ -8,6 +8,7 @@ import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { TimeSystem } from '../systems/TimeSystem';
 import { MAX_STATE, TEMP_DATA } from '../data/data';
+import { C } from './theme';
 
 const { ccclass, property } = _decorator;
 
@@ -54,7 +55,7 @@ export class StatusBar extends Component {
         // 时间（深棕色）
         if (this.timeLabel) {
             this.timeLabel.string = this._timeSys.getTimeDesc();
-            this.timeLabel.color = new Color(60, 45, 30, 255);
+            this.timeLabel.color = C.body;
         }
 
         // 两行格式：标题\n数值，按百分比着色
@@ -69,16 +70,16 @@ export class StatusBar extends Component {
             const tempDesc = this.getTempDesc(s.temp);
             this.tempLabel.string = `体温\n${tempDesc}`;
             this.tempLabel.color = (s.temp >= 30 || s.temp <= -15)
-                ? new Color(200, 50, 40, 255)
-                : new Color(60, 45, 30, 255);
+                ? C.danger
+                : C.body;
         }
     }
 
     /** 按比例返回颜色：低于阈值=警告红，正常=深棕 */
     private ratioColor(ratio: number, dangerThreshold: number): Color {
         return ratio <= dangerThreshold
-            ? new Color(200, 50, 40, 255)
-            : new Color(70, 55, 40, 255);
+            ? C.danger
+            : C.body;
     }
 
     /** 获取体温描述 */

@@ -5,6 +5,7 @@
 
 import { _decorator, Component, Node, Label, Sprite, UIOpacity, Vec3, tween, Color, UITransform, Graphics, Widget } from 'cc';
 import { GridCellData } from '../data/types';
+import { C } from './theme';
 
 const { ccclass, property } = _decorator;
 
@@ -65,28 +66,26 @@ export class GridCell extends Component {
         const d = this._data;
         const isList = d.type === 'list';
 
-        // ── 背景色（按状态分层） ──
+        // ── 背景色（按状态分层，统一取自主题） ──
         const bgColors: Record<string, Color> = {
-            normal:   new Color(255, 252, 245, 255), // 暖白
-            selected: new Color(230, 245, 255, 255), // 淡蓝高亮
-            disabled: new Color(228, 224, 218, 255), // 浅灰（不透明）
-            cooldown: new Color(245, 235, 220, 255),
+            normal:   C.white,
+            selected: C.cellSelectedBg,
+            disabled: C.cellBgDisabled,
+            cooldown: C.cellCooldownBg,
         };
         const bgColor = bgColors[d.state] || bgColors.normal;
 
         // ── 描边色 ──
         const outlineColors: Record<string, Color> = {
-            normal:   new Color(210, 195, 170, 255), // 淡棕描边
-            selected: new Color(120, 180, 230, 255), // 蓝描边
-            disabled: new Color(180, 175, 168, 255), // 暖灰描边（不透明）
-            cooldown: new Color(200, 190, 165, 255),
+            normal:   C.cellStroke,
+            selected: C.cellSelectedStroke,
+            disabled: C.cellStrokeDisabled,
+            cooldown: C.cellCooldownStroke,
         };
         const outlineColor = outlineColors[d.state] || outlineColors.normal;
 
         // ── 文字色（全部不透明，确保可读性） ──
-        const textColor = d.state === 'disabled'
-            ? new Color(90, 85, 80, 255)   // 深灰（不透明）
-            : new Color(74, 55, 40, 255);  // 深棕
+        const textColor = d.state === 'disabled' ? C.cellTextDisabled : C.cellText;
 
         // 绘制矩形背景 + 描边（Cocos 3.8 Graphics 不支持 roundRect，使用 rect 替代）
         this.drawCellBg(bgColor, outlineColor);
@@ -161,7 +160,7 @@ export class GridCell extends Component {
                 this.countLabel.string = d.count != null && d.count > 1 ? `×${d.count}` : '';
                 this.countLabel.node.active = d.count != null && d.count > 1;
                 if (d.count != null && d.count > 1) {
-                    this.countLabel.color = new Color(120, 100, 70, 255);
+                    this.countLabel.color = C.cellCount;
                 }
             }
             if (this.badgeNode) {
@@ -197,7 +196,7 @@ export class GridCell extends Component {
 
         // 红底圆角
         const g = node.addComponent(Graphics);
-        g.fillColor = new Color(200, 50, 40, 255);
+        g.fillColor = C.danger;
         g.roundRect(-24, -14, 48, 28, 7);
         g.fill();
 
@@ -210,7 +209,7 @@ export class GridCell extends Component {
         const lbl = lblNode.addComponent(Label);
         lbl.string = '新';
         lbl.fontSize = 17;
-        lbl.color = new Color(255, 255, 255, 255);
+        lbl.color = C.white;
         lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
         lbl.verticalAlign = Label.VerticalAlign.CENTER;
         lbl.overflow = Label.Overflow.CLAMP;

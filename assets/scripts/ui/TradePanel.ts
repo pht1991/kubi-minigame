@@ -113,7 +113,7 @@ export class TradePanel extends ModalPanel {
         t.g.clear(); t.g.fillColor = on ? C.tabOn : C.tabOff;
         const w = 300, h = 54;
         t.g.roundRect(-w / 2, -h / 2, w, h, 12); t.g.fill();
-        t.g.lineWidth = 2; t.g.strokeColor = on ? C.accent : C.border;
+        t.g.lineWidth = 2; t.g.strokeColor = on ? C.accent : C.panelBorder;
         t.g.roundRect(-w / 2, -h / 2, w, h, 12); t.g.stroke();
         t.l.color = on ? C.white : C.body;
     }
@@ -177,8 +177,8 @@ export class TradePanel extends ModalPanel {
             const row = new Node(`r_${id}`);
             const rt = row.addComponent(UITransform); rt.setContentSize(PW - 68, rh - 6); rt.setAnchorPoint(0.5, 0.5);
             row.setPosition(0, -i * rh - rh / 2 - 6, 0); row.setParent(cnt);
-            const rg = row.addComponent(Graphics); rg.fillColor = new Color(255, 252, 245);
-            this.mkRect(rg, -(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10, new Color(255, 252, 245), C.border, 1.5);
+            const rg = row.addComponent(Graphics); rg.fillColor = C.white;
+            this.mkRect(rg, -(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10, C.white, C.panelBorder, 1.5);
 
             this.mkInline(row, -(PW - 68) / 2 + 12, 0, PW - 102, rh - 6,
                 out >= 1 ? `${nm} \u00d7${q}  \u2192 \u6362 ${this._gName} \u00d7${out}` : `${nm} \u00d7${q}  (\u4ef7\u503c\u4e0d\u8db3)`,

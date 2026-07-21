@@ -20,28 +20,12 @@ import {
     _decorator, Component, Node, Label, UITransform, Color, Graphics,
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment,
 } from 'cc';
+import { C, S, Btn, BtnStyle } from './theme';
 
 const { ccclass } = _decorator;
 
-// ── 统一主题色（所有弹窗共用，一处改全局生效）──
-export const C = {
-    panelBg: new Color(255, 248, 240, 255),
-    border:   new Color(200, 168, 130, 255),
-    title:    new Color(92, 61, 30, 255),
-    body:     new Color(50, 40, 30, 255),
-    sub:      new Color(120, 100, 80, 255),
-    warn:     new Color(180, 70, 50, 255),
-    accent:   new Color(196, 132, 64, 255),
-    accent2:  new Color(76, 128, 72, 255),
-    tabOn:    new Color(210, 162, 110, 255),
-    tabOff:   new Color(228, 218, 205, 255),
-    track:    new Color(216, 206, 190, 255),
-    fill:     new Color(200, 140, 70, 255),
-    handle:   new Color(120, 80, 50, 255),
-    disabled: new Color(175, 170, 163, 255),
-    white:    new Color(255, 252, 245, 255),
-    maskDim:  new Color(0, 0, 0, 180),
-};
+// 主题色统一在 ./theme 定义，这里仅转发导出以兼容既有 import { C } from './ModalPanel'
+export { C };
 
 export interface BtnRef { node: Node; label: Label; gfx: Graphics; }
 
@@ -152,8 +136,8 @@ export abstract class ModalPanel extends Component {
     private _buildClose(): void {
         const cn = new Node('X'); cn.addComponent(UITransform).setContentSize(44, 44);
         cn.setPosition(this.panelW / 2 - 34, this.panelH / 2 - 34, 0); cn.setParent(this._panel);
-        const cg = cn.addComponent(Graphics); cg.fillColor = new Color(200, 160, 130, 220);
-        cg.circle(0, 0, 20); cg.fill(); cg.lineWidth = 1.5; cg.strokeColor = new Color(160, 120, 90);
+        const cg = cn.addComponent(Graphics); cg.fillColor = C.closeBg;
+        cg.circle(0, 0, 20); cg.fill(); cg.lineWidth = 1.5; cg.strokeColor = C.closeStroke;
         cg.circle(0, 0, 20); cg.stroke();
         const cln = new Node('XL'); cln.setParent(cn); cln.addComponent(UITransform).setContentSize(44, 44);
         const cll = cln.addComponent(Label);
@@ -168,12 +152,12 @@ export abstract class ModalPanel extends Component {
         // 视觉背景：画在 _panelBgGfx（独立子节点，不被 Mask 消费）
         const vg = this._panelBgGfx; vg.clear();
         vg.fillColor = C.panelBg;
-        vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); vg.fill();
-        vg.lineWidth = 3; vg.strokeColor = C.border;
-        vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); vg.stroke();
+        vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, S.panelRadius); vg.fill();
+        vg.lineWidth = S.panelBorderW; vg.strokeColor = C.panelBorder;
+        vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, S.panelRadius); vg.stroke();
         // Mask 形状：画在 _panelGfx（GRAPHICS_RECT 读此 Graphics 做 stencil 裁剪）
         const mg = this._panelGfx; mg.clear();
-        mg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, 16); mg.fill();
+        mg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, S.panelRadius); mg.fill();
     }
 
     /** 绘制全屏半透明遮罩（buildSkeleton 与 show 各调用一次，确保激活后渲染可靠） */
@@ -291,14 +275,27 @@ export abstract class ModalPanel extends Component {
     /**
      * 按钮：节点上 Graphics 画背景 + Label 放【子节点】（避免与 Graphics 同节点冲突）。
      * 自带 TOUCH_END stopPropagation，cb 内自行处理关闭逻辑。
+     * bg 为纯色背景；边框/文字走统一主题（C.btnBorder）。特殊按钮请用 mkBtn(样式预设)。
      */
     protected mkButton(parent: Node, x: number, y: number, w: number, h: number, text: string, bg: Color, cb: () => void): BtnRef {
         const n = new Node('Btn');
         const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 0.5);
         n.setPosition(x, y, 0); n.setParent(parent);
         const g = n.addComponent(Graphics);
-        this.mkRect(g, -w / 2, -h / 2, w, h, 14, bg, new Color(150, 110, 70, 200), 2);
-        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, Math.min(24, h * 0.43), C.white, true);
+        this.mkRect(g, -w / 2, -h / 2, w, h, S.btnRadius, bg, C.btnBorder, S.btnBorderW);
+        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, Math.min(S.font.button, h * 0.43), C.white, true);
+        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
+        return { node: n, label: lbl, gfx: g };
+    }
+
+    /** 按钮（预设样式版）：传入 Btn.* 预设，或 {...Btn.primary, bg: 自定} 覆盖个别字段 */
+    protected mkBtn(parent: Node, x: number, y: number, w: number, h: number, text: string, style: BtnStyle, cb: () => void): BtnRef {
+        const n = new Node('Btn');
+        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 0.5);
+        n.setPosition(x, y, 0); n.setParent(parent);
+        const g = n.addComponent(Graphics);
+        this.mkRect(g, -w / 2, -h / 2, w, h, style.radius, style.bg, style.border, style.borderW);
+        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, style.fontSize ?? Math.min(S.font.button, h * 0.43), style.text, true);
         n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
         return { node: n, label: lbl, gfx: g };
     }

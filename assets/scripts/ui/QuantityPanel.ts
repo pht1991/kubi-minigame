@@ -18,6 +18,7 @@
 
 import { _decorator } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
+import { Btn } from './theme';
 
 const { ccclass } = _decorator;
 
@@ -90,14 +91,14 @@ export class QuantityPanel extends ModalPanel {
         const numY = o?.infoLines ? 110 : 100;
         this.mkCenter(c, 0, -numY, 320, 70, `${this._qty} / ${this._max}`, 44, C.title, true);
 
-        // ── − / + 步进按钮 ──
+        // ── − / + 步进按钮（预设样式）──
         const btnY = o?.infoLines ? 145 : 135;
-        this.mkButton(c, -115, -btnY, 60, 60, '\u2212', C.accent2, () => this.setQty(this._qty - 1));
-        this.mkButton(c, 115, -btnY, 60, 60, '+', C.accent, () => this.setQty(this._qty + 1));
+        this.mkBtn(c, -115, -btnY, 60, 60, '\u2212', Btn.neutral, () => this.setQty(this._qty - 1));
+        this.mkBtn(c, 115, -btnY, 60, 60, '+', Btn.primary, () => this.setQty(this._qty + 1));
 
         // ── 全部 ──
         const allY = o?.infoLines ? 230 : 220;
-        this.mkButton(c, 0, -allY, 180, 50, '全部', C.tabOn, () => this.setQty(this._max));
+        this.mkBtn(c, 0, -allY, 180, 50, '全部', Btn.neutral, () => this.setQty(this._max));
 
         // ── 预览文本（交易场景：花费/获得）── 提升到外层作用域，供确认按钮定位
         const previewLines = o?.getPreview ? o.getPreview(this._qty) : [];
@@ -111,7 +112,7 @@ export class QuantityPanel extends ModalPanel {
 
         // ── 确认按钮（取消由 × / 蒙层承担）──
         const cfmY = previewLines.length ? (prevY + previewLines.length * 26 + 24) : 310;
-        this.mkButton(c, 0, -cfmY, 220, 56, o?.confirmLabel || '\u786e\u5b9a', C.accent2, () => {
+        this.mkBtn(c, 0, -cfmY, 220, 56, o?.confirmLabel || '\u786e\u5b9a', Btn.confirm, () => {
             this.hide();
             this._onConfirm(this._qty);
         });

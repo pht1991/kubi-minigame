@@ -1,5 +1,6 @@
-import { _decorator, Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType } from 'cc';
-import { ModalPanel, C } from './ModalPanel';
+import { _decorator, Node, Label, UITransform, Graphics, EventTouch, NodeEventType } from 'cc';
+import { ModalPanel } from './ModalPanel';
+import { DialogOptionStyle as OS, S } from './theme';
 
 const { ccclass } = _decorator;
 
@@ -83,14 +84,14 @@ export class DialogPanel extends ModalPanel {
             rowNode.setParent(this._contentNode);
 
             const isDisabled = opt.disabled;
-            // 选项行用暖色按钮底，与上方信息区的灰白背景形成明确区分
-            const bgColor = isDisabled ? new Color(225, 220, 215, 255) : new Color(245, 235, 218, 255);
-            const strokeColor = isDisabled ? new Color(190, 185, 180, 255) : new Color(210, 185, 145, 255);
+            // 选项行用统一预设（暖杏按钮底 + 金棕描边），与上方信息区明确区分
+            const bgColor = isDisabled ? OS.bgDisabled : OS.bg;
+            const strokeColor = isDisabled ? OS.strokeDisabled : OS.stroke;
             const bg = rowNode.addComponent(Graphics);
-            this.mkRect(bg, -290, -optionHeight / 2, 580, optionHeight, 8, bgColor, strokeColor, 1);
+            this.mkRect(bg, -290, -optionHeight / 2, 580, optionHeight, OS.radius, bgColor, strokeColor, 1);
 
-            const textColor = isDisabled ? new Color(150, 145, 140, 255) : new Color(60, 45, 30, 255);
-            this.mkInline(rowNode, -240, 0, 520, optionHeight, opt.label, 22, textColor);
+            const textColor = isDisabled ? OS.textDisabled : OS.text;
+            this.mkInline(rowNode, -240, 0, 520, optionHeight, opt.label, S.font.option, textColor);
 
             if (!isDisabled) {
                 rowNode.on(NodeEventType.TOUCH_END, (event: EventTouch) => {

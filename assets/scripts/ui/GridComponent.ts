@@ -3,11 +3,12 @@
  * 核心组件：接收 GridPage 数据，动态生成/复用 GridCell，处理触摸事件
  */
 
-import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Vec3, UITransform, Sprite, Color, ScrollBar, Graphics, Widget } from 'cc';
+import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Graphics, Widget } from 'cc';
 import { GridPage, GridCellData } from '../data/types';
 import { GridCell } from './GridCell';
 import { GridNavigator } from '../core/GridNavigator';
 import { EventBus, GameEvents } from '../core/EventBus';
+import { C } from './theme';
 
 const { ccclass, property } = _decorator;
 
@@ -137,7 +138,7 @@ export class GridComponent extends Component {
         const t = viewNode.getComponent(UITransform);
         if (t) {
             gfx.clear();
-            gfx.fillColor = new Color(245, 240, 230, 255);
+            gfx.fillColor = C.infoBg;
             const ax = t.width * t.anchorX;
             const ay = t.height * t.anchorY;
             gfx.rect(-ax, -ay, t.width, t.height);
@@ -164,7 +165,7 @@ export class GridComponent extends Component {
         // 半透明暖棕滚动条
         const handleSprite = handle.getComponent(Sprite);
         if (handleSprite) {
-            handleSprite.color = new Color(180, 160, 130, 160);
+            handleSprite.color = C.scrollHandle;
         }
     }
 
@@ -194,12 +195,12 @@ export class GridComponent extends Component {
         // 标题（深棕 + 偏大字号风格）
         if (this.titleLabel) {
             this.titleLabel.string = page.title;
-            this.titleLabel.color = new Color(107, 68, 35, 255);
+            this.titleLabel.color = C.title;
         }
         // 面包屑（浅棕小字，完全不透明确保可读）
         if (this.breadcrumbLabel) {
             this.breadcrumbLabel.string = this._navigator.breadcrumbs.join(' > ');
-            this.breadcrumbLabel.color = new Color(156, 139, 110, 255);
+            this.breadcrumbLabel.color = C.sub;
         }
         // 返回按钮显隐 + 文字（深度=2 时显示「主页」表示直接回首页）
         if (this.backButton) {
