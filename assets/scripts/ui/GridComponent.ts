@@ -75,6 +75,10 @@ export class GridComponent extends Component {
     private _contentBgReady: boolean = false;
     /** 稳定刷新回调引用（供 on/off 精准注销，避免 .bind 每次生成新函数导致泄漏） */
     private _onRefresh = () => this.onUIRefresh();
+    /** 页脚容器节点（挂在自身节点下、scrollView 下方，固定不滚动） */
+    private _footerNode: Node | null = null;
+    /** 页脚追踪的格子组件（用于清除） */
+    private _footerCells: GridCell[] = [];
 
     onLoad(): void {
         // 监听刷新：UI_REFRESH（通用）+ SKILL_CHANGE（科研/事件授技解锁配方）+ EVENT_TRIGGER（事件完成解锁配方）
@@ -186,6 +190,7 @@ export class GridComponent extends Component {
         this._eventBus.off(GameEvents.UI_REFRESH, this._onRefresh);
         this._eventBus.off(GameEvents.SKILL_CHANGE, this._onRefresh);
         this._eventBus.off(GameEvents.EVENT_TRIGGER, this._onRefresh);
+        this.clearFooter();
     }
 
     /** UI 刷新回调 */
@@ -227,6 +232,8 @@ export class GridComponent extends Component {
         }
         // 渲染格子（渲染完成后会在 renderCells 内部重置滚动位置）
         this.renderCells(page.cells, page.onCellClick);
+        // 渲染页脚（固定在 scrollView 下方，不随内容滚动）
+        this.renderFooter(page);
     }
 
     /** 渲染格子列表 */
@@ -310,6 +317,121 @@ export class GridComponent extends Component {
         this._needScrollTop = true;
     }
 
+    /**
+     * 渲染页脚固定区域（ScrollView 外部，不随内容滚动）
+     *
+     * 布局策略：
+     * - 页脚节点挂在 GridComponent 自身节点下，作为 scrollView 的兄弟节点
+     * - 定位在 scrollView view 的底部边缘下方（y = viewBottom - footerHeight/2）
+     * - 页脚使用 list 样式满宽渲染（每格一个可点击行/按钮）
+     */
+    private renderFooter(page: GridPage): void {
+        // 先清除旧页脚
+        this.clearFooter();
+
+        if (!page.footer) return;
+        const footerCells = page.footer();
+        if (!footerCells || footerCells.length === 0) return;
+
+        // 懒创建页脚容器
+        if (!this._footerNode || !this._footerNode.isValid) {
+            this._footerNode = new Node('GridFooter');
+            this.node.addChild(this._footerNode);
+        }
+        // 清空残留子节点
+        const oldChildren = [...this._footerNode.children];
+        for (const ch of oldChildren) { if (ch.isValid) ch.destroy(); }
+        this._footerCells = [];
+
+        // 计算 footer 容器位置：紧贴 scrollView view 底部下方
+        let footerY = 0;  // 默认 y=0（view 底边附近）
+        if (this.scrollView && this.scrollView.view && this.scrollView.view.isValid) {
+            const viewTf = this.scrollView.view.getComponent(UITransform);
+            if (viewTf) {
+                // view 在其父节点（scrollView）中的位置；scrollView 的锚点通常在中下或中上
+                // 简化方案：footer 放在 view 的底部外侧
+                // view 高度的一半 + 间距 → footer 中心 y
+                const viewH = viewTf.height;
+                // view position relative to scrollView, but we need relative to GridComponent node
+                // 取 view 的世界/本地 Y 位置来定位
+                const viewPos = this.scrollView.view.position;
+                // footer 中心放在 view 底边下方 (viewPos.y - viewH/2 - footerH/2 - gap)
+                // 先用估算高度，精确值后面根据 contentSize 调整
+                footerY = viewPos.y - viewH / 2 - 10;
+            }
+        }
+
+        // 页脚容器 UITransform
+        let footerTf = this._footerNode.getComponent(UITransform);
+        if (!footerTf) footerTf = this._footerNode.addComponent(UITransform);
+
+        // 页脚参数：满宽(700)，单列列表样式，每行高 70
+        const footerW = 700;
+        const rowH = 70;
+        const gap = 8;
+        const totalFooterH = footerCells.length * rowH + (footerCells.length - 1) * gap + 16;
+        footerTf.setContentSize(footerW, totalFooterH);
+        this._footerNode.setPosition(0, footerY - totalFooterH / 2, 0);
+
+        // 给页脚加背景
+        let fgfx = this._footerNode.getComponent(Graphics);
+        if (!fgfx) fgfx = this._footerNode.addComponent(Graphics);
+        fgfx.clear();
+        fgfx.fillColor = C.panelBg;
+        fgfx.roundRect(-footerW / 2, -totalFooterH / 2, footerW, totalFooterH, 10);
+        fgfx.fill();
+        fgfx.strokeColor = C.panelBorder;
+        fgfx.lineWidth = 1;
+        fgfx.roundRect(-footerW / 2, -totalFooterH / 2, footerW, totalFooterH, 10);
+        fgfx.stroke();
+
+        // 逐格创建页脚格子（复用 cellPrefab）
+        if (!this.cellPrefab) return;
+
+        const halfFH = totalFooterH / 2;
+        for (let i = 0; i < footerCells.length; i++) {
+            const fd = footerCells[i];
+            const fnode = instantiate(this.cellPrefab);
+            fnode.setParent(this._footerNode);
+
+            let fcTf = fnode.getComponent(UITransform);
+            if (!fcTf) fcTf = fnode.addComponent(UITransform);
+            fcTf.setContentSize(footerW - 32, rowH);
+
+            // 定位：从顶部开始排列
+            const fy = halfFH - 8 - rowH / 2 - i * (rowH + gap);
+            fnode.setPosition(0, fy, 0);
+
+            const fcell = fnode.getComponent(GridCell) || fnode.addComponent(GridCell);
+            fcell.setData(fd);
+            fcell.setOnClick((clickedCell) => {
+                if (page.onFooterClick) {
+                    page.onFooterClick(footerCells.indexOf(clickedCell.data!), clickedCell.data!);
+                }
+            });
+
+            fnode.on(Node.EventType.TOUCH_START, () => { fcell.startLongPressDetect(); });
+            fnode.on(Node.EventType.TOUCH_END, () => { fcell.cancelLongPressDetect(); fcell.handleClick(); });
+            fnode.on(Node.EventType.TOUCH_CANCEL, () => { fcell.cancelLongPressDetect(); });
+
+            this._footerCells.push(fcell);
+        }
+    }
+
+    /** 仅清除页脚（不触 cells，供 renderFooter 内部复用） */
+    private clearFooter(): void {
+        for (const cell of this._footerCells) {
+            if (cell && cell.node && cell.node.isValid) {
+                cell.node.destroy();
+            }
+        }
+        this._footerCells = [];
+        if (this._footerNode && this._footerNode.isValid) {
+            this._footerNode.destroy();
+            this._footerNode = null;
+        }
+    }
+
     lateUpdate(): void {
         if (!this._needScrollTop) return;
         this._needScrollTop = false;
@@ -335,6 +457,14 @@ export class GridComponent extends Component {
             }
         }
         this._cells = [];
+
+        // 清除页脚格子
+        for (const cell of this._footerCells) {
+            if (cell && cell.node && cell.node.isValid) {
+                cell.node.destroy();
+            }
+        }
+        this._footerCells = [];
 
         // 第二遍：安全网——扫描 contentNode 上所有带 GridCell 组件的子节点
         // 防止任何异常路径导致节点创建了但没进入 _cells[] 追踪数组

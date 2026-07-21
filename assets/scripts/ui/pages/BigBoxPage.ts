@@ -45,25 +45,24 @@ export class BigBoxPage extends BasePage {
             };
         }
 
+        // 物品格子：纯网格4列，不含升级格
         const cells = this.buildBigBoxCells();
-        this.appendUpgradeCells(cells);
 
         return {
             title: `大箱子 (${this.bigBoxCount()}/${this.bigBoxCap()})`,
             breadcrumb: '大箱子',
             columns: 4,
             cells,
-            rebuild: () => {
-                const c = this.buildBigBoxCells();
-                this.appendUpgradeCells(c);
-                return c;
-            },
-            onCellClick: (index, cell) => this.onBigBoxCellClick(cell),
+            rebuild: () => this.buildBigBoxCells(),
+            onCellClick: (index, cell) => this.onBigBoxItemClick(cell.data),
+            // 升级格放 footer（固定在滚动区域下方，不随物品滚动）
+            footer: () => this.buildUpgradeFooter(),
+            onFooterClick: (index, cell) => this.onFooterCellClick(cell),
         };
     }
 
-    /** 追加大箱子升级区（对齐 RestPage 床铺升级范式：列下一级需求 + 点击升级） */
-    private appendUpgradeCells(cells: GridCellData[]): void {
+    /** 构建页脚升级格数据（固定在滚动区域下方） */
+    private buildUpgradeFooter(): GridCellData[] {
         const level = this.gm.getBuildingLevel('bigBoxUpdate');
         const updateGroup = BUILDING_UPDATE_DATA['bigBoxUpdate'];
         const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
@@ -74,29 +73,24 @@ export class BigBoxPage extends BasePage {
             const reqParts = Object.entries(upData.require || {})
                 .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
                 .join(' ');
-            cells.push({
+            return [{
                 id: `upgrade_${nextLevelId}`,
                 name: `[升级] ${nextItem?.name || nextLevelId}  容量 +4\n需求: ${reqParts}`,
                 state: this.gm.checkHaveResource(upData.require || {}) ? 'normal' : 'disabled',
                 type: 'list',
                 noTruncate: true,
                 data: { action: 'upgrade', targetId: nextLevelId },
-            });
-        } else {
-            cells.push({ id: 'maxed', name: '大箱子已达最高等级', state: 'disabled', type: 'list' });
+            }];
         }
+        return [{ id: 'maxed', name: '大箱子已达最高等级', state: 'disabled', type: 'list' }];
     }
 
-    /** 大箱子格子点击分发：升级格 → 升级；物品格 → 取出弹窗 */
-    private onBigBoxCellClick(cell: GridCellData): void {
+    /** 页脚点击分发：升级格 → 升级 */
+    private onFooterCellClick(cell: GridCellData): void {
         if (cell.data && typeof cell.data === 'object' && (cell.data as any).action === 'upgrade') {
             const r = ActionBuilding.instance.upgrade('bigBoxUpdate', (cell.data as any).targetId);
             this.setMsg(r.message);
             this.navigator.replace(this.buildBigBoxPage());
-            return;
-        }
-        if (typeof cell.data === 'string') {
-            this.onBigBoxItemClick(cell.data);
         }
     }
 

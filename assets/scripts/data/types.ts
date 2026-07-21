@@ -293,4 +293,12 @@ export interface GridPage {
     rebuild?: () => GridCellData[];
     /** 是否为主页（用于导航变化后同步底栏「出门/回家」按钮状态） */
     home?: boolean;
+    /**
+     * 页脚固定区域（渲染在 ScrollView 可视区域下方，不随内容滚动）。
+     * 适用于「升级按钮」等需常驻底部、不被滚动淹没的操作入口。
+     * 返回 null/undefined 时无页脚。
+     */
+    footer?: () => GridCellData[] | null;
+    /** 页脚格子点击回调 */
+    onFooterClick?: (index: number, cell: GridCellData) => void;
 }
