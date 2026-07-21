@@ -10,8 +10,9 @@
 import { Node } from 'cc';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
-import { ITEM_DATA, BIG_BOX_BASE_SIZE } from '../../data/data';
+import { ITEM_DATA, BIG_BOX_BASE_SIZE, BUILDING_UPDATE_DATA } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
+import { ActionBuilding } from '../../actions/ActionBuilding';
 import { DialogOption } from '../DialogPanel';
 import { QuantityPanel } from '../QuantityPanel';
 
@@ -24,14 +25,79 @@ export class BigBoxPage extends BasePage {
 
     /** 构建大箱子导航页（push / rebuild / replace 共用） */
     private buildBigBoxPage(): GridPage {
+        const hasBigBox = !!this.gm.buildingSaveData['bigBox']?.own;
+        if (!hasBigBox) {
+            // 未建造 → 提示去建造（对齐 RestPage「床铺」未建范式）
+            return {
+                title: '大箱子',
+                breadcrumb: '大箱子',
+                columns: 1,
+                cells: [
+                    { id: 'hint', name: '你还没有大箱子\n请先在「建造」中建造', state: 'disabled', type: 'list' },
+                    { id: 'goBuild', name: '前往建造', state: 'normal', type: 'list' },
+                ],
+                onCellClick: (idx, cell) => {
+                    if (cell.id === 'goBuild') {
+                        this.navigator.pop();
+                        this.ctx.buildPage?.openBuildList();
+                    }
+                },
+            };
+        }
+
+        const cells = this.buildBigBoxCells();
+        this.appendUpgradeCells(cells);
+
         return {
             title: `大箱子 (${this.bigBoxCount()}/${this.bigBoxCap()})`,
             breadcrumb: '大箱子',
             columns: 4,
-            cells: this.buildBigBoxCells(),
-            rebuild: () => this.buildBigBoxCells(),
-            onCellClick: (index, cell) => this.onBigBoxItemClick(cell.id),
+            cells,
+            rebuild: () => {
+                const c = this.buildBigBoxCells();
+                this.appendUpgradeCells(c);
+                return c;
+            },
+            onCellClick: (index, cell) => this.onBigBoxCellClick(cell),
         };
+    }
+
+    /** 追加大箱子升级区（对齐 RestPage 床铺升级范式：列下一级需求 + 点击升级） */
+    private appendUpgradeCells(cells: GridCellData[]): void {
+        const level = this.gm.getBuildingLevel('bigBoxUpdate');
+        const updateGroup = BUILDING_UPDATE_DATA['bigBoxUpdate'];
+        const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
+        const nextLevelId = levelKeys[level];
+        if (nextLevelId) {
+            const upData = updateGroup[nextLevelId];
+            const nextItem = ITEM_DATA[nextLevelId];
+            const reqParts = Object.entries(upData.require || {})
+                .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
+                .join(' ');
+            cells.push({
+                id: `upgrade_${nextLevelId}`,
+                name: `[升级] ${nextItem?.name || nextLevelId}  容量 +4\n需求: ${reqParts}`,
+                state: this.gm.checkHaveResource(upData.require || {}) ? 'normal' : 'disabled',
+                type: 'list',
+                noTruncate: true,
+                data: { action: 'upgrade', targetId: nextLevelId },
+            });
+        } else {
+            cells.push({ id: 'maxed', name: '大箱子已达最高等级', state: 'disabled', type: 'list' });
+        }
+    }
+
+    /** 大箱子格子点击分发：升级格 → 升级；物品格 → 取出弹窗 */
+    private onBigBoxCellClick(cell: GridCellData): void {
+        if (cell.data && typeof cell.data === 'object' && (cell.data as any).action === 'upgrade') {
+            const r = ActionBuilding.instance.upgrade('bigBoxUpdate', (cell.data as any).targetId);
+            this.setMsg(r.message);
+            this.navigator.replace(this.buildBigBoxPage());
+            return;
+        }
+        if (typeof cell.data === 'string') {
+            this.onBigBoxItemClick(cell.data);
+        }
     }
 
     private bigBoxCount(): number {

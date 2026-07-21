@@ -7,7 +7,7 @@
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { ActionExecutor, ActionResult } from './ActionExecutor';
-import { BUILDING_DATA, BUILDING_UPDATE_DATA, CROP_DATA, TRAP_DATA, ITEM_DATA } from '../data/data';
+import { BUILDING_DATA, BUILDING_UPDATE_DATA, CROP_DATA, TRAP_DATA, ITEM_DATA, BIG_BOX_BASE_SIZE } from '../data/data';
 import { TimeSystem } from '../systems/TimeSystem';
 
 export class ActionBuilding {
@@ -78,6 +78,10 @@ export class ActionBuilding {
             onDone: () => {
                 const key = `${type}_level`;
                 this._gm.buildingSaveData[key] = (this._gm.buildingSaveData[key] || 0) + 1;
+                // 大箱子升级：同步扩容（每级 +4，与 bigBoxSizeBonus 道具一致）
+                if (type === 'bigBoxUpdate') {
+                    this._gm.boxSize['bigBox'] = (this._gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE) + 4;
+                }
                 this._eventBus.emit(GameEvents.BUILDING_CHANGE, this._gm.buildingSaveData);
             },
         });
