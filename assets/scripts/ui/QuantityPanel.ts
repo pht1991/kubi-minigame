@@ -59,13 +59,13 @@ export class QuantityPanel extends ModalPanel {
         const initQty = this._qty;
         const hasInfo = !!(o?.infoLines?.length);
         const prevCount = o?.getPreview ? o.getPreview(initQty).length : 0;
-        // 基础模式：确定按钮在 y=-340，底部留白约 80 → 需要 420+
+        // 基础模式：确定按钮在 y=-310，底部留白约 70 → 需要 380+
         // 每行信息额外 +26px，每行预览额外 +26px
-        const minH = Math.max(470,
-            420
+        const minH = Math.max(420,
+            380
             + (hasInfo ? (o!.infoLines!.length * 26) : 0)
             + (prevCount * 26)
-            + 95   // 底部安全余量
+            + 75   // 底部安全余量
         );
         if (this.panelH !== minH) this.resizePanel(minH);
 
@@ -91,13 +91,13 @@ export class QuantityPanel extends ModalPanel {
         this.mkCenter(c, 0, -numY, 320, 70, `${this._qty} / ${this._max}`, 44, C.title, true);
 
         // ── − / + 步进按钮 ──
-        const btnY = o?.infoLines ? 150 : 140;
-        this.mkButton(c, -130, -btnY, 80, 80, '\u2212', C.accent2, () => this.setQty(this._qty - 1));
-        this.mkButton(c, 130, -btnY, 80, 80, '+', C.accent, () => this.setQty(this._qty + 1));
+        const btnY = o?.infoLines ? 145 : 135;
+        this.mkButton(c, -115, -btnY, 60, 60, '\u2212', C.accent2, () => this.setQty(this._qty - 1));
+        this.mkButton(c, 115, -btnY, 60, 60, '+', C.accent, () => this.setQty(this._qty + 1));
 
         // ── 全部 ──
-        const allY = o?.infoLines ? 250 : 240;
-        this.mkButton(c, 0, -allY, 220, 62, '全部', C.tabOn, () => this.setQty(this._max));
+        const allY = o?.infoLines ? 230 : 220;
+        this.mkButton(c, 0, -allY, 180, 50, '全部', C.tabOn, () => this.setQty(this._max));
 
         // ── 预览文本（交易场景：花费/获得）── 提升到外层作用域，供确认按钮定位
         const previewLines = o?.getPreview ? o.getPreview(this._qty) : [];
@@ -110,8 +110,8 @@ export class QuantityPanel extends ModalPanel {
         });
 
         // ── 确认按钮（取消由 × / 蒙层承担）──
-        const cfmY = previewLines.length ? (prevY + previewLines.length * 26 + 30) : 340;
-        this.mkButton(c, 0, -cfmY, 280, 72, o?.confirmLabel || '\u786e\u5b9a', C.accent2, () => {
+        const cfmY = previewLines.length ? (prevY + previewLines.length * 26 + 24) : 310;
+        this.mkButton(c, 0, -cfmY, 220, 56, o?.confirmLabel || '\u786e\u5b9a', C.accent2, () => {
             this.hide();
             this._onConfirm(this._qty);
         });
