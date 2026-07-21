@@ -73,10 +73,14 @@ export class GridComponent extends Component {
     private _needScrollTop: boolean = false;
     /** 标记：view 背景已初始化（防止重复 addComponent 触发警告） */
     private _contentBgReady: boolean = false;
+    /** 稳定刷新回调引用（供 on/off 精准注销，避免 .bind 每次生成新函数导致泄漏） */
+    private _onRefresh = () => this.onUIRefresh();
 
     onLoad(): void {
-        // 监听 UI 刷新事件
-        this._eventBus.on(GameEvents.UI_REFRESH, this.onUIRefresh.bind(this));
+        // 监听刷新：UI_REFRESH（通用）+ SKILL_CHANGE（科研/事件授技解锁配方）+ EVENT_TRIGGER（事件完成解锁配方）
+        this._eventBus.on(GameEvents.UI_REFRESH, this._onRefresh);
+        this._eventBus.on(GameEvents.SKILL_CHANGE, this._onRefresh);
+        this._eventBus.on(GameEvents.EVENT_TRIGGER, this._onRefresh);
 
         // 返回按钮
         if (this.backButton) {
@@ -179,7 +183,9 @@ export class GridComponent extends Component {
     }
 
     onDestroy(): void {
-        this._eventBus.off(GameEvents.UI_REFRESH, this.onUIRefresh.bind(this));
+        this._eventBus.off(GameEvents.UI_REFRESH, this._onRefresh);
+        this._eventBus.off(GameEvents.SKILL_CHANGE, this._onRefresh);
+        this._eventBus.off(GameEvents.EVENT_TRIGGER, this._onRefresh);
     }
 
     /** UI 刷新回调 */

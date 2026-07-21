@@ -86,23 +86,35 @@ export class CraftPage extends BasePage {
         };
     }
 
-    /** 配方格子（名称 + 需求摘要；材料不足置灰） */
+    /** 配方是否解锁：满足 科技/事件/建筑 前置门槛（原版制造台逐级开放逻辑） */
+    private isRecipeUnlocked(recipe: any): boolean {
+        if (recipe.science && this.gm.getScienceLevel(recipe.science) <= 0) return false;
+        if (recipe.event && !this.gm.eventSaveData[recipe.event]?.experienced) return false;
+        if (recipe.building && !this.gm.buildingSaveData[recipe.building]) return false;
+        return true;
+    }
+
+    /** 配方格子（仅列出已解锁配方；名称 + 需求摘要；材料不足置灰） */
     private buildRecipeCells(workbench: string): GridCellData[] {
         const recipeData = this.getRecipeData(workbench);
-        return Object.keys(recipeData).map(key => {
+        const cells: GridCellData[] = [];
+        for (const key of Object.keys(recipeData)) {
             const recipe = recipeData[key];
+            // 原版：前置 科技/事件/建筑 未达成 → 不展示，随进度逐步开放
+            if (!this.isRecipeUnlocked(recipe)) continue;
             const canMake = this.gm.checkHaveResource(recipe.require || {});
             const reqStr = recipe.require && Object.keys(recipe.require).length > 0
                 ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
                 : '无';
-            return {
+            cells.push({
                 id: key,
                 name: `${ITEM_DATA[key]?.name || key}\n需求: ${reqStr}`,
                 state: canMake ? 'normal' : 'disabled',
                 type: 'list',
                 data: key,
-            };
-        });
+            });
+        }
+        return cells;
     }
 
     /** 配方点击 → 校验材料 → QuantityPanel 选数量（受材料上限约束）→ 制造 */
