@@ -398,8 +398,8 @@ export class MainScene extends Component {
         if (this._bottomBar && this._bottomBar.isValid) return;
 
         const BAR_H = 70;
-        const BTN_W = 155;            // 4 按钮均分 700px：spacing=(700-620)/5=16
-        const BTN_H = 50;
+        const BTN_W = 205;            // 3 按钮均分 700px，留适当边距：spacing=(700-615)/4≈21
+        const BTN_H = 56;             // 按钮高度略增，与栏高比例更协调
 
         // 容器
         this._bottomBar = new Node('BottomBar');
@@ -446,14 +446,14 @@ export class MainScene extends Component {
             const btnTf = btnNode.addComponent(UITransform);
             btnTf.setContentSize(BTN_W, BTN_H);
 
-            // 按钮背景
+            // 按钮背景（圆角矩形）
             const btnGfx = btnNode.addComponent(Graphics);
             btnGfx.fillColor = C.barBtnBg;
-            btnGfx.rect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H);
+            btnGfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, 12);
             btnGfx.fill();
             btnGfx.strokeColor = C.barBtnBorder;
             btnGfx.lineWidth = 1;
-            btnGfx.rect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H);
+            btnGfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, 12);
             btnGfx.stroke();
 
             // 【关键修复3】Label 用独立子节点（避免与 Graphics 同节点渲染冲突导致文字不显示）
@@ -461,7 +461,7 @@ export class MainScene extends Component {
             lblNode.layer = this.node.layer;
             const lbl = lblNode.addComponent(Label);
             lbl.string = btn.label;
-            lbl.fontSize = 20;
+            lbl.fontSize = 22;
             lbl.color = C.barBtnText; // 深棕
             lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
             lbl.verticalAlign = Label.VerticalAlign.CENTER;
