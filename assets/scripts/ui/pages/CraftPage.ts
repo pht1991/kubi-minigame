@@ -7,7 +7,6 @@
 
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
-import { DialogOption } from '../DialogPanel';
 import { ActionCraft } from '../../actions/ActionCraft';
 import { GameEvents } from '../../core/EventBus';
 import {
@@ -19,6 +18,7 @@ import {
     SCIENCE_DATA,
     ALCO_DATA,
 } from '../../data/data';
+import { QuantityPanel } from '../QuantityPanel';
 
 export class CraftPage extends BasePage {
     /** 制造工作台列表页 cells */
@@ -68,79 +68,88 @@ export class CraftPage extends BasePage {
         }
     }
 
-    /** 配方弹窗 */
+    /** 配方列表页：替代原 DialogPanel 弹窗，对齐建造页面 list 范式（单列满宽、每格展示名称+需求） */
     private openRecipeGrid(workbench: string): void {
-        const recipeData = this.getRecipeData(workbench);
+        this.navigator.push(this.buildRecipePage(workbench));
+    }
 
-        const options: DialogOption[] = Object.keys(recipeData).map(key => {
+    /** 构建配方列表导航页（push / rebuild / replace 共用） */
+    private buildRecipePage(workbench: string): GridPage {
+        const wbName = BUILDING_DATA[workbench]?.name || '制造';
+        return {
+            title: wbName,
+            breadcrumb: wbName,
+            columns: 1,           // 单列：每行一个配方，横向撑满展示完整信息（同建造列表）
+            cells: this.buildRecipeCells(workbench),
+            rebuild: () => this.buildRecipeCells(workbench),
+            onCellClick: (index, cell) => this.onRecipeClick(workbench, cell.id),
+        };
+    }
+
+    /** 配方格子（名称 + 需求摘要；材料不足置灰） */
+    private buildRecipeCells(workbench: string): GridCellData[] {
+        const recipeData = this.getRecipeData(workbench);
+        return Object.keys(recipeData).map(key => {
             const recipe = recipeData[key];
             const canMake = this.gm.checkHaveResource(recipe.require || {});
             const reqStr = recipe.require && Object.keys(recipe.require).length > 0
                 ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
                 : '无';
             return {
-                label: `${ITEM_DATA[key]?.name || key}  [需求: ${reqStr}]`,
-                data: { workbench, recipeId: key, recipe },
-                disabled: !canMake,
+                id: key,
+                name: `${ITEM_DATA[key]?.name || key}\n需求: ${reqStr}`,
+                state: canMake ? 'normal' : 'disabled',
+                type: 'list',
+                data: key,
             };
         });
-
-        this.dialogPanel.show(
-            BUILDING_DATA[workbench]?.name || '制造',
-            options,
-            (data) => {
-                // 先选数量，再制造
-                const countOptions: DialogOption[] = [
-                    { label: '制造 ×1', data: { ...data, count: 1 } },
-                    { label: '制造 ×5', data: { ...data, count: 5 } },
-                    { label: '制造 ×10', data: { ...data, count: 10 } },
-                    { label: '制造 ×20', data: { ...data, count: 20 } },
-                ];
-                this.dialogPanel.show(
-                    '选择数量',
-                    countOptions,
-                    (cd) => {
-                        const r = ActionCraft.instance.make(cd.recipeId, recipeData, cd.count);
-                        this.setMsg(r.message);
-                        this.eventBus.emit(GameEvents.UI_REFRESH);
-                    },
-                    () => {}
-                );
-            },
-            () => {}
-        );
     }
 
-    /** 配方详情网格（需求/产出/耗时 + 制造按钮） */
-    private openRecipeDetail(workbench: string, recipeId: string): void {
+    /** 配方点击 → 校验材料 → QuantityPanel 选数量（受材料上限约束）→ 制造 */
+    private onRecipeClick(workbench: string, recipeId: string): void {
         const recipeData = this.getRecipeData(workbench);
         const recipe = recipeData[recipeId];
         if (!recipe) return;
+        if (!this.gm.checkHaveResource(recipe.require || {})) { this.setMsg('材料不足'); return; }
 
-        const requireStr = recipe.require && Object.keys(recipe.require).length > 0
-            ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
-        const canMake = this.gm.checkHaveResource(recipe.require || {});
+        // 按材料计算可制造的最大次数
+        let max = Infinity;
+        const bag = this.gm.boxSaveData['bag'] || {};
+        for (const k in (recipe.require || {})) {
+            max = Math.min(max, Math.floor((bag[k] || 0) / recipe.require[k]));
+        }
+        if (!isFinite(max) || max < 1) { this.setMsg('材料不足'); return; }
 
-        const cells: GridCellData[] = [
-            { id: 'req', name: `需求: ${requireStr}`, state: 'disabled' },
-            { id: 'get', name: `产出: ${ITEM_DATA[recipe.get]?.name || recipe.get}×${recipe.amount || 1}`, state: 'disabled' },
-            { id: 'time', name: `耗时: ${recipe.timeNeed} 小时`, state: 'disabled' },
-            { id: 'make', name: '制造', state: canMake ? 'normal' : 'disabled' },
-        ];
-
-        this.navigator.push({
-            title: ITEM_DATA[recipeId]?.name || recipeId,
-            breadcrumb: ITEM_DATA[recipeId]?.name || recipeId,
-            columns: 4,
-            cells,
-            onCellClick: (index, cell) => {
-                if (cell.id === 'make') {
-                    const r = ActionCraft.instance.make(recipeId, recipeData);
-                    this.setMsg(r.message);
-                    this.navigator.pop(); // 返回配方列表（材料变化会刷新）
-                }
+        const itemName = ITEM_DATA[recipeId]?.name || recipeId;
+        this.ensureQtyPanel().show(
+            `制造【${itemName}】`,
+            max,
+            (qty) => {
+                const r = ActionCraft.instance.make(recipeId, recipeData, qty);
+                this.setMsg(r.message);
+                this.eventBus.emit(GameEvents.UI_REFRESH); // GridComponent 监听后走 rebuild 刷新列表 disabled
             },
-        });
+            {
+                confirmLabel: '制造',
+                getPreview: (qty) => {
+                    const lines: string[] = [];
+                    for (const k in (recipe.require || {})) {
+                        lines.push(`消耗 ${ITEM_DATA[k]?.name || k} ×${recipe.require[k] * qty}`);
+                    }
+                    return lines;
+                },
+            }
+        );
     }
+
+    /** 懒创建数量选择弹窗（挂在 modalLayer，盖住底栏；与 BigBoxPage 同一范式） */
+    private ensureQtyPanel(): QuantityPanel {
+        if (!this._qtyPanel) {
+            const node = new Node('CraftQtyPanel');
+            this.ctx.modalLayer!.addChild(node);
+            this._qtyPanel = node.addComponent(QuantityPanel);
+        }
+        return this._qtyPanel;
+    }
+    private _qtyPanel: QuantityPanel | null = null;
 }
