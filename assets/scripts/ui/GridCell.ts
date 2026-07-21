@@ -247,8 +247,9 @@ export class GridCell extends Component {
 
     /**
      * 列表模式文字截断防溢出
-     * 列表格宽 636px、fontSize 20、约每行 21 个中文字；
-     * 2 行显示区约 42 中文字宽度，留余量后阈值设为 36
+     * 列表格宽 636px、fontSize 20、约每行 31 个中文字；
+     * 标签区高 100px、lineHeight 26 → 约 3.8 行可用；
+     * 阈值按 4 行估算（~124 中文字宽度），留换行余量后设为 110
      */
     private truncateForList(text: string): string {
         if (!text) return text;
@@ -258,7 +259,7 @@ export class GridCell extends Component {
             const c = text.charCodeAt(i);
             w += (c > 0x4e00 && c < 0x9fff) || (c > 0xff00 && c < 0xffef) ? 2 : 1;
         }
-        const MAX_W = 36; // 阈值（约 1.7 行，留换行余量）
+        const MAX_W = 110; // 阈值（约 4 行，覆盖常见 3 行列表内容如建造/背包详情）
         if (w <= MAX_W) return text;
         // 从末尾截断到阈值范围内，追加省略号
         let cut = 0;
