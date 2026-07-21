@@ -397,15 +397,16 @@ export class MainScene extends Component {
         // 防重入：如果已创建则跳过
         if (this._bottomBar && this._bottomBar.isValid) return;
 
+        const BAR_W = 750;            // 拉满画布宽度，不留两侧空隙
         const BAR_H = 70;
-        const BTN_W = 205;            // 3 按钮均分 700px，留适当边距：spacing=(700-615)/4≈21
+        const BTN_W = 205;            // 3 按钮均分 750px，留适当边距：spacing=(750-615)/4≈34
         const BTN_H = 56;             // 按钮高度略增，与栏高比例更协调
 
         // 容器
         this._bottomBar = new Node('BottomBar');
         this._bottomBar.layer = this.node.layer;
         const barTf = this._bottomBar.addComponent(UITransform);
-        barTf.setContentSize(700, BAR_H);
+        barTf.setContentSize(BAR_W, BAR_H);
         barTf.setAnchorPoint(0.5, 0.5);   // 还原默认锚点
 
         // 挂载到 _bottomBarLayer（显式分层：Content < BottomBar < Modal < Toast）。
@@ -420,11 +421,11 @@ export class MainScene extends Component {
         // 背景（暖色）
         const gfx = this._bottomBar.addComponent(Graphics);
         gfx.fillColor = C.barBg;
-        gfx.rect(-350, -BAR_H / 2, 700, BAR_H);
+        gfx.rect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H);
         gfx.fill();
         gfx.strokeColor = C.barBorder;
         gfx.lineWidth = 1.5;
-        gfx.rect(-350, -BAR_H / 2, 700, BAR_H);
+        gfx.rect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H);
         gfx.stroke();
 
         // 按钮定义（3 个：背包 / 出门(回家) / 菜单）
@@ -435,10 +436,10 @@ export class MainScene extends Component {
             { label: '菜单', action: () => this.onBottomAction('menu') },
         ];
 
-        const spacing = (700 - buttons.length * BTN_W) / (buttons.length + 1);
+        const spacing = (BAR_W - buttons.length * BTN_W) / (buttons.length + 1);
         for (let i = 0; i < buttons.length; i++) {
             const btn = buttons[i];
-            const bx = -350 + spacing + i * (BTN_W + spacing) + BTN_W / 2;
+            const bx = -BAR_W / 2 + spacing + i * (BTN_W + spacing) + BTN_W / 2;
             const by = 0;
 
             const btnNode = new Node(`Btn_${btn.label}`);
