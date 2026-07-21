@@ -343,21 +343,22 @@ export class GridComponent extends Component {
         for (const ch of oldChildren) { if (ch.isValid) ch.destroy(); }
         this._footerCells = [];
 
-        // 计算 footer 容器位置：紧贴 scrollView view 底部下方
-        let footerY = 0;  // 默认 y=0（view 底边附近）
-        if (this.scrollView && this.scrollView.view && this.scrollView.view.isValid) {
-            const viewTf = this.scrollView.view.getComponent(UITransform);
-            if (viewTf) {
-                // view 在其父节点（scrollView）中的位置；scrollView 的锚点通常在中下或中上
-                // 简化方案：footer 放在 view 的底部外侧
-                // view 高度的一半 + 间距 → footer 中心 y
+        // 计算 footer 容器位置：紧贴 scrollView view 底部下方。
+        // 关键：footer 挂在 GridComponent 自身节点下，需把 view 的坐标换算到自身节点局部坐标系。
+        // view 是 scrollView 的子节点、scrollView 又是自身节点的子节点，故累加两级 y 偏移。
+        // 注意：Node.position 在部分构建下可能返回 undefined（混淆/时序），一律用 getPosition() 拿稳定 Vec3。
+        let footerY = -300;  // 兜底：自身节点下方（避免坐标缺失时页脚盖住内容）
+        if (this.scrollView && this.scrollView.node && this.scrollView.view && this.scrollView.view.isValid) {
+            const viewNode = this.scrollView.view;
+            const viewTf = viewNode.getComponent(UITransform);
+            const vp = viewNode.getPosition();
+            const svp = this.scrollView.node.getPosition();
+            if (viewTf && vp && svp) {
                 const viewH = viewTf.height;
-                // view position relative to scrollView, but we need relative to GridComponent node
-                // 取 view 的世界/本地 Y 位置来定位
-                const viewPos = this.scrollView.view.position;
-                // footer 中心放在 view 底边下方 (viewPos.y - viewH/2 - footerH/2 - gap)
-                // 先用估算高度，精确值后面根据 contentSize 调整
-                footerY = viewPos.y - viewH / 2 - 10;
+                const anchorY = viewTf.anchorY; // 通常 0.5
+                // view 底边在自身节点坐标系的 y = scrollView.y + view.y - view高*anchorY
+                const viewBottom = svp.y + vp.y - viewH * anchorY;
+                footerY = viewBottom - 10; // 底边下方留 10px 间距
             }
         }
 
