@@ -24,24 +24,24 @@ export class SaveIndicator extends Component {
 
         let tf = this.node.getComponent(UITransform);
         if (!tf) tf = this.node.addComponent(UITransform);
-        tf.setContentSize(190, 36);
+        tf.setContentSize(140, 36);
         tf.setAnchorPoint(0.5, 0.5);
 
-        // 背景小药丸（淡暖白半透明 + 棕描边），低调不抢眼
+        // 背景小药丸（淡暖白半透明 + 棕描边），低调不抢眼；宽度贴合文字，避免两侧留白过多
         const g = this.node.addComponent(Graphics);
         g.fillColor = C.saveBg;
-        g.roundRect(-95, -18, 190, 36, 18);
+        g.roundRect(-70, -18, 140, 36, 18);
         g.fill();
         g.strokeColor = C.saveBorder;
         g.lineWidth = 1;
-        g.roundRect(-95, -18, 190, 36, 18);
+        g.roundRect(-70, -18, 140, 36, 18);
         g.stroke();
         this._gfx = g;
 
         const lblNode = new Node('SaveLabel');
         lblNode.parent = this.node;
         const lblTf = lblNode.addComponent(UITransform);
-        lblTf.setContentSize(180, 32);
+        lblTf.setContentSize(130, 32);
         lblTf.setAnchorPoint(0.5, 0.5);
         const lbl = lblNode.addComponent(Label);
         lbl.string = '保存于 --:--';
