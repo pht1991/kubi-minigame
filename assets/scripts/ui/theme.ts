@@ -90,9 +90,6 @@ export const C = {
     // ── 存档指示器 ──
     saveBg:      new Color(255, 248, 240, 150),
     saveBorder:  new Color(200, 168, 130, 180),
-    saveSaving:  new Color(180, 120, 40, 255),
-    saveSavingBg:new Color(255, 240, 210, 175),
-    saveFail:    new Color(160, 50, 40, 255),
 
     // ── 战斗（专用，可覆盖）──
     battleBg:       new Color(20, 15, 10, 230),

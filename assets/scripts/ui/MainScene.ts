@@ -137,14 +137,11 @@ export class MainScene extends Component {
         const node = new Node('SaveIndicator');
         node.layer = this.node.layer;
         this._toastLayer!.addChild(node);
-        // 右下角：x 靠右、y 在底部快捷栏上方
-        node.setPosition(285, -560, 0);
+        // 右下角：x 靠右留 20px 边距（屏幕半宽 375，节点半宽 95 → x=260），y 在底部快捷栏上方
+        node.setPosition(260, -560, 0);
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
 
-        // 接线：SAVE_START→保存中，SAVE_COMPLETE→已保存
-        this._eventBus.on(GameEvents.SAVE_START, () => {
-            SaveIndicator.instance?.showSaving();
-        });
+        // 接线：仅 SAVE_COMPLETE 静默刷新时间（不显示「保存中」状态，避免每次操作跳动）
         this._eventBus.on(GameEvents.SAVE_COMPLETE, (savedAt: number, ok: boolean = true) => {
             let t: string | undefined;
             if (savedAt && ok) {
@@ -152,18 +149,18 @@ export class MainScene extends Component {
                 const p = (n: number) => (n < 10 ? '0' + n : '' + n);
                 t = `${p(d.getHours())}:${p(d.getMinutes())}`;
             }
-            SaveIndicator.instance?.showSaved(t, ok);
+            SaveIndicator.instance?.showSaved(t);
         });
 
         // 初始文案：若本地已有存档则显示上次保存时间
         const last = this._saveMgr.localSavedAt;
+        let initT: string | undefined;
         if (last) {
             const d = new Date(last);
             const p = (n: number) => (n < 10 ? '0' + n : '' + n);
-            SaveIndicator.instance?.setInitial(`已保存 · ${p(d.getHours())}:${p(d.getMinutes())}`);
-        } else {
-            SaveIndicator.instance?.setInitial('已保存');
+            initT = `${p(d.getHours())}:${p(d.getMinutes())}`;
         }
+        SaveIndicator.instance?.setInitial(initT);
     }
 
     /** 操作弹窗面板 */
