@@ -343,22 +343,25 @@ export class GridComponent extends Component {
         for (const ch of oldChildren) { if (ch.isValid) ch.destroy(); }
         this._footerCells = [];
 
-        // 计算 footer 容器位置：紧贴 scrollView view 底部下方。
-        // 关键：footer 挂在 GridComponent 自身节点下，需把 view 的坐标换算到自身节点局部坐标系。
-        // view 是 scrollView 的子节点、scrollView 又是自身节点的子节点，故累加两级 y 偏移。
-        // 注意：Node.position 在部分构建下可能返回 undefined（混淆/时序），一律用 getPosition() 拿稳定 Vec3。
-        let footerY = -300;  // 兜底：自身节点下方（避免坐标缺失时页脚盖住内容）
-        if (this.scrollView && this.scrollView.node && this.scrollView.view && this.scrollView.view.isValid) {
-            const viewNode = this.scrollView.view;
-            const viewTf = viewNode.getComponent(UITransform);
-            const vp = viewNode.getPosition();
-            const svp = this.scrollView.node.getPosition();
-            if (viewTf && vp && svp) {
+        // 页脚参数：满宽(700)，单列列表样式，每行高 70
+        const footerW = 700;
+        const rowH = 70;
+        const gap = 8;
+        const totalFooterH = footerCells.length * rowH + (footerCells.length - 1) * gap + 16;
+
+        // 计算 footer 容器位置（中心 y）：紧贴 scrollView view 底部下方。
+        // 从场景布局推算：view 是 ScrollView 子节点、ScrollView 是 GridComponent 自身节点子节点，
+        // 且三者局部坐标均为 (0,0)、view 锚点 (0.5,0.5)。故 view 中心在 GridComponent 局部坐标 = (0,0)，
+        // view 底边 = -viewH*anchorY（常量，无需运行时读 Node 坐标，规避本构建 getPosition 不可用问题）。
+        const GAP = 10;
+        let footerY = -460; // 兜底：view 约 900 高时底部下方的中心估值
+        if (this.scrollView && this.scrollView.view && this.scrollView.view.isValid) {
+            const viewTf = this.scrollView.view.getComponent(UITransform);
+            if (viewTf) {
                 const viewH = viewTf.height;
                 const anchorY = viewTf.anchorY; // 通常 0.5
-                // view 底边在自身节点坐标系的 y = scrollView.y + view.y - view高*anchorY
-                const viewBottom = svp.y + vp.y - viewH * anchorY;
-                footerY = viewBottom - 10; // 底边下方留 10px 间距
+                const viewBottom = -(viewH * anchorY);
+                footerY = viewBottom - GAP - totalFooterH / 2;
             }
         }
 
@@ -366,13 +369,8 @@ export class GridComponent extends Component {
         let footerTf = this._footerNode.getComponent(UITransform);
         if (!footerTf) footerTf = this._footerNode.addComponent(UITransform);
 
-        // 页脚参数：满宽(700)，单列列表样式，每行高 70
-        const footerW = 700;
-        const rowH = 70;
-        const gap = 8;
-        const totalFooterH = footerCells.length * rowH + (footerCells.length - 1) * gap + 16;
         footerTf.setContentSize(footerW, totalFooterH);
-        this._footerNode.setPosition(0, footerY - totalFooterH / 2, 0);
+        this._footerNode.setPosition(0, footerY, 0);
 
         // 给页脚加背景
         let fgfx = this._footerNode.getComponent(Graphics);
