@@ -399,7 +399,7 @@ export class MainScene extends Component {
 
         const BAR_W = 750;            // 拉满画布宽度，不留两侧空隙
         const BAR_H = 70;
-        const BTN_W = 205;            // 3 按钮均分 750px，留适当边距：spacing=(750-615)/4≈34
+        const BTN_W = 230;            // 3 按钮均分 750px，留 ~15px 边距：spacing=(750-690)/4≈15
         const BTN_H = 56;             // 按钮高度略增，与栏高比例更协调
 
         // 容器
