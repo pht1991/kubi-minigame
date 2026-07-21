@@ -407,9 +407,15 @@ export class GridComponent extends Component {
             gfx.stroke();
         }
 
-        // 文字 Label
-        let lbl = btn.getComponent(Label);
-        if (!lbl) lbl = btn.addComponent(Label);
+        // 文字 Label（⚠️ 必须放子节点！同节点 Graphics+Label 冲突导致 Label 不显）
+        let lblNode = btn.getChildByName('lbl');
+        if (!lblNode) {
+            lblNode = new Node('lbl');
+            lblNode.addComponent(UITransform);
+            btn.addChild(lblNode);
+        }
+        let lbl = lblNode.getComponent(Label);
+        if (!lbl) lbl = lblNode.addComponent(Label);
         lbl.string = info.state === 'maxed' ? '已满级' : info.label;
         lbl.fontSize = 14;
         lbl.overflow = Label.Overflow.CLAMP;
