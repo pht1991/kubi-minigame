@@ -79,6 +79,8 @@ export class GridComponent extends Component {
     private _footerNode: Node | null = null;
     /** 页脚追踪的格子组件（用于清除） */
     private _footerCells: GridCell[] = [];
+    /** 标题栏升级按钮节点（挂在 titleLabel 同级右侧，公共可复用） */
+    private _upgradeBtnNode: Node | null = null;
 
     onLoad(): void {
         // 监听刷新：UI_REFRESH（通用）+ SKILL_CHANGE（科研/事件授技解锁配方）+ EVENT_TRIGGER（事件完成解锁配方）
@@ -191,6 +193,7 @@ export class GridComponent extends Component {
         this._eventBus.off(GameEvents.SKILL_CHANGE, this._onRefresh);
         this._eventBus.off(GameEvents.EVENT_TRIGGER, this._onRefresh);
         this.clearFooter();
+        if (this._upgradeBtnNode) { this._upgradeBtnNode.destroy(); this._upgradeBtnNode = null; }
     }
 
     /** UI 刷新回调 */
@@ -208,6 +211,8 @@ export class GridComponent extends Component {
             this.titleLabel.string = page.title;
             this.titleLabel.color = C.title;
         }
+        // 标题栏升级按钮（公共可复用：床铺/大箱子/水井等可升级建筑统一走此接口）
+        this.renderUpgradeBtn(page);
         // 面包屑（浅棕小字，完全不透明确保可读）
         if (this.breadcrumbLabel) {
             this.breadcrumbLabel.string = this._navigator.breadcrumbs.join(' > ');
@@ -325,6 +330,110 @@ export class GridComponent extends Component {
      * - 定位在 scrollView view 的底部边缘下方（y = viewBottom - footerHeight/2）
      * - 页脚使用 list 样式满宽渲染（每格一个可点击行/按钮）
      */
+
+    /**
+     * 渲染标题栏升级按钮（公共可复用）。
+     * 挂在 titleLabel 同级右侧，小药丸样式（暖杏色底+描边），点击走 page.onUpgradeClick。
+     * 无 upgradeInfo 时隐藏/销毁按钮节点。
+     */
+    private renderUpgradeBtn(page: GridPage): void {
+        if (!page.upgradeInfo) {
+            // 无升级需求 → 清理
+            if (this._upgradeBtnNode) {
+                this._upgradeBtnNode.destroy();
+                this._upgradeBtnNode = null;
+            }
+            return;
+        }
+
+        const info = page.upgradeInfo;
+
+        // 创建/复用按钮节点
+        if (!this._upgradeBtnNode || !this._upgradeBtnNode.isValid) {
+            this._upgradeBtnNode = new Node('UpgradeBtn');
+            this.node.addChild(this._upgradeBtnNode);
+        }
+
+        const btn = this._upgradeBtnNode;
+        btn.active = true;
+
+        // 尺寸与位置：紧贴 titleLabel 右侧
+        const BTN_W = 120;
+        const BTN_H = 34;
+        let btnTf = btn.getComponent(UITransform);
+        if (!btnTf) btnTf = btn.addComponent(UITransform);
+        btnTf.setContentSize(BTN_W, BTN_H);
+
+        // 定位：titleLabel 在场景中 y≈180(相对GridContainer)，按钮同高
+        // titleLabel 的 UITransform 位置用于对齐
+        const titleTf = this.titleLabel?.getComponent(UITransform);
+        if (titleTf && this.titleLabel) {
+            const titleW = titleTf.width;
+            // 标题居中 → 标题右缘 ≈ titleW/2；按钮左起 = titleW/2 + 8
+            btn.setPosition(titleW / 2 + 8 + BTN_W / 2, this.titleLabel.getPosition().y || 0, 0);
+        } else {
+            // 兜底：放右上角区域
+            btn.setPosition(250, 170, 0);
+        }
+
+        // 背景 Graphics（暖杏色药丸）
+        let gfx = btn.getComponent(Graphics);
+        if (!gfx) gfx = btn.addComponent(Graphics);
+        gfx.clear();
+        const R = 10; // 圆角半径
+        if (info.state === 'maxed') {
+            // 已满级：灰色标签
+            gfx.fillColor.set(220, 218, 212); // 浅灰
+            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
+            gfx.fill();
+            gfx.strokeColor.set(190, 188, 182);
+            gfx.lineWidth = 1;
+            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
+            gfx.stroke();
+        } else if (info.state === 'disabled') {
+            // 材料不足：浅杏色+灰边
+            gfx.fillColor.fromHEX('#EDE8D5');
+            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
+            gfx.fill();
+            gfx.strokeColor.fromHEX('#D0C9B0');
+            gfx.lineWidth = 1;
+            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
+            gfx.stroke();
+        } else {
+            // normal：暖杏色实心+金描边
+            gfx.fillColor.fromHEX('#EDE8D5');
+            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
+            gfx.fill();
+            gfx.strokeColor.fromHEX('#C9B87A');
+            gfx.lineWidth = 1;
+            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
+            gfx.stroke();
+        }
+
+        // 文字 Label
+        let lbl = btn.getComponent(Label);
+        if (!lbl) lbl = btn.addComponent(Label);
+        lbl.string = info.state === 'maxed' ? '已满级' : info.label;
+        lbl.fontSize = 14;
+        lbl.overflow = Label.Overflow.CLAMP;
+        if (info.state === 'maxed') {
+            lbl.color.fromHEX('#888780'); // 灰色文字
+        } else if (info.state === 'disabled') {
+            lbl.color.fromHEX('#A89F80'); // 暗杏色文字
+        } else {
+            lbl.color.fromHEX('#8B6914'); // 金棕色文字
+        }
+        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lbl.verticalAlign = Label.VerticalAlign.CENTER;
+
+        // 点击事件（仅 normal 状态响应）
+        // 先移除旧监听防重复绑定
+        btn.off(Node.EventType.TOUCH_END);
+        if (info.state === 'normal' && page.onUpgradeClick) {
+            btn.on(Node.EventType.TOUCH_END, () => page.onUpgradeClick!());
+        }
+    }
+
     private renderFooter(page: GridPage): void {
         // 先清除旧页脚
         this.clearFooter();

@@ -55,43 +55,68 @@ export class BigBoxPage extends BasePage {
             cells,
             rebuild: () => this.buildBigBoxCells(),
             onCellClick: (index, cell) => this.onBigBoxItemClick(cell.data),
-            // 升级格放 footer（固定在滚动区域下方，不随物品滚动）
-            footer: () => this.buildUpgradeFooter(),
-            onFooterClick: (index, cell) => this.onFooterCellClick(cell),
+            // 公共升级按钮（标题栏右侧，替代突兀的 footer 页脚）
+            ...this.buildUpgradeInfo(),
         };
     }
 
-    /** 构建页脚升级格数据（固定在滚动区域下方） */
-    private buildUpgradeFooter(): GridCellData[] {
+    /**
+     * 构建公共升级按钮信息（标题栏右侧，与 RestPage/其他可升级建筑统一接口）。
+     * 返回 { upgradeInfo, onUpgradeClick } 供 GridPage 展开使用。
+     * 点击升级按钮 → 弹 DialogPanel 显示详情+材料需求 → 确认后执行升级。
+     */
+    private buildUpgradeInfo(): Partial<Pick<GridPage, 'upgradeInfo' | 'onUpgradeClick'>> {
         const level = this.gm.getBuildingLevel('bigBoxUpdate');
         const updateGroup = BUILDING_UPDATE_DATA['bigBoxUpdate'];
         const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
         const nextLevelId = levelKeys[level];
-        if (nextLevelId) {
-            const upData = updateGroup[nextLevelId];
-            const nextItem = ITEM_DATA[nextLevelId];
-            const reqParts = Object.entries(upData.require || {})
-                .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
-                .join(' ');
-            return [{
-                id: `upgrade_${nextLevelId}`,
-                name: `[升级] ${nextItem?.name || nextLevelId}  容量 +4\n需求: ${reqParts}`,
-                state: this.gm.checkHaveResource(upData.require || {}) ? 'normal' : 'disabled',
-                type: 'list',
-                noTruncate: true,
-                data: { action: 'upgrade', targetId: nextLevelId },
-            }];
-        }
-        return [{ id: 'maxed', name: '大箱子已达最高等级', state: 'disabled', type: 'list' }];
-    }
 
-    /** 页脚点击分发：升级格 → 升级 */
-    private onFooterCellClick(cell: GridCellData): void {
-        if (cell.data && typeof cell.data === 'object' && (cell.data as any).action === 'upgrade') {
-            const r = ActionBuilding.instance.upgrade('bigBoxUpdate', (cell.data as any).targetId);
-            this.setMsg(r.message);
-            this.navigator.replace(this.buildBigBoxPage());
+        if (!nextLevelId) {
+            return {
+                upgradeInfo: { label: '', state: 'maxed' },
+            };
         }
+
+        const upData = updateGroup[nextLevelId];
+        const nextItem = ITEM_DATA[nextLevelId];
+        const canMake = this.gm.checkHaveResource(upData.require || {});
+        const reqParts = Object.entries(upData.require || {})
+            .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
+            .join('  ');
+
+        return {
+            upgradeInfo: {
+                label: `升级 +4容量`,
+                state: canMake ? 'normal' : 'disabled',
+            },
+            onUpgradeClick: () => {
+                // 点击升级按钮 → 弹详情确认面板（含材料需求）
+                const options: DialogOption[] = [];
+                options.push({ label: nextItem?.name || nextLevelId, data: null, disabled: true });
+                if (nextItem?.desc) options.push({ label: nextItem.desc, data: null, disabled: true });
+                options.push({ label: `容量 +4`, data: null, disabled: true });
+                options.push({ label: `需求: ${reqParts}`, data: null, disabled: true, noTruncate: true });
+                if (canMake) {
+                    options.push({ label: '[确认升级]', data: { action: 'confirm', targetId: nextLevelId } });
+                } else {
+                    options.push({ label: '材料不足', data: null, disabled: true });
+                }
+                options.push({ label: '取消', data: null });
+
+                this.dialogPanel?.show(
+                    '大箱子升级',
+                    options,
+                    (data) => {
+                        if (data?.action === 'confirm') {
+                            const r = ActionBuilding.instance.upgrade('bigBoxUpdate', data.targetId);
+                            this.setMsg(r.message);
+                            this.navigator.replace(this.buildBigBoxPage());
+                        }
+                    },
+                    () => {}
+                );
+            },
+        };
     }
 
     private bigBoxCount(): number {
