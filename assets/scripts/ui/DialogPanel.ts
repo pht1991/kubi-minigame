@@ -83,13 +83,17 @@ export class DialogPanel extends ModalPanel {
             rowNode.setParent(this._contentNode);
 
             const isDisabled = opt.disabled;
-            const bgColor = isDisabled ? new Color(232, 228, 222, 255) : new Color(253, 248, 240, 255);
-            const strokeColor = isDisabled ? new Color(200, 196, 190, 255) : new Color(212, 196, 176, 255);
+            const bgColor = isDisabled ? new Color(232, 228, 222, 255) : new Color(255, 252, 245, 255);
+            const strokeColor = isDisabled ? new Color(200, 196, 190, 255) : new Color(210, 190, 160, 255);
             const bg = rowNode.addComponent(Graphics);
-            this.mkRect(bg, -290, -optionHeight / 2, 580, optionHeight, 0, bgColor, strokeColor, 1);
+            this.mkRect(bg, -290, -optionHeight / 2, 580, optionHeight, 6, bgColor, strokeColor, 1);
 
-            const textColor = isDisabled ? new Color(90, 85, 80, 255) : new Color(50, 40, 30, 255);
-            this.mkInline(rowNode, -260, 0, 540, optionHeight, opt.label, 22, textColor);
+            const textColor = isDisabled ? new Color(140, 135, 130, 255) : new Color(50, 40, 30, 255);
+            // 标签文字左对齐，右侧箭头提示可点击
+            this.mkInline(rowNode, -250, 0, 480, optionHeight, opt.label, 22, textColor);
+            if (!isDisabled) {
+                this.mkInline(rowNode, 250, 0, 40, optionHeight, '\u2192', 22, new Color(180, 150, 110, 255));
+            }
 
             if (!isDisabled) {
                 rowNode.on(NodeEventType.TOUCH_END, (event: EventTouch) => {
