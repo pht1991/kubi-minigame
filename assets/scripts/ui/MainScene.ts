@@ -96,6 +96,9 @@ export class MainScene extends Component {
         }
     }
 
+    /** 安全区域底部偏移量（设计分辨率坐标，FIXED_WIDTH 下 = 像素偏移 × 750/screenWidth） */
+    private _safeBottom = 0;
+
     /**
      * 建立显式 UI 分层容器，替代原先靠 setSiblingIndex 时序竞争管理层级的脆弱方式。
      * 层级从底到顶（sibling index 递增）：
@@ -143,9 +146,9 @@ export class MainScene extends Component {
         const node = new Node('SaveIndicator');
         node.layer = this.node.layer;
         this._toastLayer!.addChild(node);
-        // 右下角：x 靠右留边距，y 在底部快捷栏上方（动态适配屏幕高度）
+        // 右下角：x 靠右留边距，y 在底部快捷栏上方（动态适配屏幕高度 + 安全区域）
         const vs = view.getVisibleSize();
-        node.setPosition(vs.width / 2 - 95, -vs.height / 2 + 85, 0);
+        node.setPosition(vs.width / 2 - 95, -vs.height / 2 + 85 + this._safeBottom, 0);
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
 
         // 接线：仅 SAVE_COMPLETE 静默刷新时间（不显示「保存中」状态，避免每次操作跳动）
@@ -223,6 +226,9 @@ export class MainScene extends Component {
         // 设置适配模式：FIXED_WIDTH 保持设计宽度 750 不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
         view.setDesignResolutionSize(750, 1334, ResolutionPolicy.FIXED_WIDTH);
+
+        // 获取微信安全区域（刘海屏顶部 / Home Indicator 底部），避免 UI 被遮挡
+        this._fetchSafeArea();
 
         // 尝试加载存档
         if (!this._saveMgr.load()) {
@@ -438,9 +444,36 @@ export class MainScene extends Component {
 
     private _fmtCloudTime(t: number): string {
         const d = new Date(t);
-        const p = (n: number) => (n < 10 ? '0' + n : '' + n);
+        const p = (n: number) => (n: number) => (n < 10 ? '0' + n : '' + n);
         return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
     }
+
+    /**
+     * 获取微信安全区域信息，计算底部安全偏移（设计分辨率坐标）。
+     * FIXED_WIDTH 下：设计宽度 750，缩放比 = 750 / screenWidth。
+     * 底部安全偏移 = (screenHeight - safeArea.bottom) × 缩放比。
+     * 非微信环境（编辑器/浏览器）_safeBottom 保持 0。
+     */
+    private _fetchSafeArea(): void {
+        try {
+            // @ts-ignore 微信小游戏全局对象
+            if (typeof wx !== 'undefined' && wx.getSystemInfoSync) {
+                // @ts-ignore
+                const sys = wx.getSystemInfoSync();
+                const sw = sys.screenWidth || 0;
+                if (sw > 0) {
+                    const scale = 750 / sw;
+                    const bottomInset = (sys.screenHeight - sys.safeArea.bottom) * scale;
+                    this._safeBottom = Math.max(0, Math.round(bottomInset));
+                }
+            }
+        } catch (_e) {
+            // 非微信环境静默忽略
+        }
+    }
+
+    /** 获取底部安全区域偏移（供外部如 Page 模块查询） */
+    public get safeBottom(): number { return this._safeBottom; }
 
     /** 创建底部固定快捷操作栏（休息 / 背包 / 状态） */
     private createBottomBar(): void {
@@ -465,9 +498,10 @@ export class MainScene extends Component {
 
         // 绝对坐标定位（不依赖 Widget，避免 ScrollView 边界缓存失效）
         // 用 view.getVisibleSize() 动态取实际高度（FIXED_WIDTH 下高度随设备变化）
+        // 加上 _safeBottom 避免被手机 Home Indicator 遮挡
         const BOTTOM_MARGIN = 3;
         const vs = view.getVisibleSize();
-        this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + BOTTOM_MARGIN, 0);
+        this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + BOTTOM_MARGIN + this._safeBottom, 0);
 
         // 背景（暖色）
         const gfx = this._bottomBar.addComponent(Graphics);
