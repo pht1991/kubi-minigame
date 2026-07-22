@@ -98,6 +98,8 @@ export class MainScene extends Component {
 
     /** 安全区域底部偏移量（设计分辨率坐标，FIXED_WIDTH 下 = 像素偏移 × 750/screenWidth） */
     private _safeBottom = 0;
+    /** 安全区域顶部偏移量（状态栏高度，设计分辨率坐标，用于下推状态栏避开刘海/胶囊） */
+    private _safeTop = 0;
 
     /**
      * 建立显式 UI 分层容器，替代原先靠 setSiblingIndex 时序竞争管理层级的脆弱方式。
@@ -148,7 +150,8 @@ export class MainScene extends Component {
         this._toastLayer!.addChild(node);
         // 右下角：x 靠右留边距，y 在底部快捷栏上方（动态适配屏幕高度 + 安全区域）
         const vs = view.getVisibleSize();
-        node.setPosition(vs.width / 2 - 95, -vs.height / 2 + 85 + this._safeBottom, 0);
+        const minBm = 8;
+        node.setPosition(vs.width / 2 - 95, -vs.height / 2 + 85 + Math.max(this._safeBottom, minBm), 0);
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
 
         // 接线：仅 SAVE_COMPLETE 静默刷新时间（不显示「保存中」状态，避免每次操作跳动）
@@ -254,6 +257,9 @@ export class MainScene extends Component {
 
         // 诊断并修复 UI Camera
         this.setupUICamera();
+
+        // 根据安全区域调整场景预置节点位置（状态栏下推避开刘海/胶囊）
+        this._applySafeAreaToScene();
 
         // 注意：initHomeGrid() 依赖 _buildPage，须在所有 Page 创建之后调用（见下方 pageCtx 构建段末尾）
 
@@ -449,10 +455,11 @@ export class MainScene extends Component {
     }
 
     /**
-     * 获取微信安全区域信息，计算底部安全偏移（设计分辨率坐标）。
+     * 获取微信安全区域信息，计算顶部/底部安全偏移（设计分辨率坐标）。
      * FIXED_WIDTH 下：设计宽度 750，缩放比 = 750 / screenWidth。
-     * 底部安全偏移 = (screenHeight - safeArea.bottom) × 缩放比。
-     * 非微信环境（编辑器/浏览器）_safeBottom 保持 0。
+     * - 顶部偏移 = statusBarHeight × 缩放比（下推状态栏避开刘海/胶囊）
+     * - 底部偏移 = (screenHeight - safeArea.bottom) × 缩放比（底栏避开 Home Indicator）
+     * 非微信环境（编辑器/浏览器）保持 0。
      */
     private _fetchSafeArea(): void {
         try {
@@ -463,6 +470,10 @@ export class MainScene extends Component {
                 const sw = sys.screenWidth || 0;
                 if (sw > 0) {
                     const scale = 750 / sw;
+                    // 顶部：状态栏高度（刘海/胶囊区域）
+                    const sbH = sys.statusBarHeight || 0;
+                    this._safeTop = Math.max(0, Math.round(sbH * scale));
+                    // 底部：Home Indicator 区域
                     const bottomInset = (sys.screenHeight - sys.safeArea.bottom) * scale;
                     this._safeBottom = Math.max(0, Math.round(bottomInset));
                 }
@@ -474,6 +485,21 @@ export class MainScene extends Component {
 
     /** 获取底部安全区域偏移（供外部如 Page 模块查询） */
     public get safeBottom(): number { return this._safeBottom; }
+    /** 获取顶部安全区域偏移（状态栏高度，设计分辨率坐标） */
+    public get safeTop(): number { return this._safeTop; }
+
+    /**
+     * 将安全区域偏移应用到场景预置节点。
+     * - 状态栏（statusBarNode）：Y 坐标减去 _safeTop，整体下推避开刘海/胶囊
+     *   （场景中 StatusBar 原始 y=580，基于 750×1334 设计；FIXED_WIDTH 下屏幕更高，
+     *   加上 _safeTop 后状态栏紧贴胶囊下方，消除顶部大间距）
+     */
+    private _applySafeAreaToScene(): void {
+        if (this._safeTop > 0 && this.statusBarNode) {
+            const p = this.statusBarNode.position;
+            this.statusBarNode.setPosition(p.x, p.y - this._safeTop, p.z);
+        }
+    }
 
     /** 创建底部固定快捷操作栏（休息 / 背包 / 状态） */
     private createBottomBar(): void {
@@ -499,9 +525,12 @@ export class MainScene extends Component {
         // 绝对坐标定位（不依赖 Widget，避免 ScrollView 边界缓存失效）
         // 用 view.getVisibleSize() 动态取实际高度（FIXED_WIDTH 下高度随设备变化）
         // 加上 _safeBottom 避免被手机 Home Indicator 遮挡
+        // MIN_BOTTOM_MARGIN 保证即使无安全区域也有最小视觉间距
         const BOTTOM_MARGIN = 3;
+        const MIN_BOTTOM_MARGIN = 8;   // 最小底部间距（设计坐标），安卓无 Home Indicator 时也留白
         const vs = view.getVisibleSize();
-        this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + BOTTOM_MARGIN + this._safeBottom, 0);
+        const totalBottomOffset = BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
+        this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + totalBottomOffset, 0);
 
         // 背景（暖色）
         const gfx = this._bottomBar.addComponent(Graphics);
