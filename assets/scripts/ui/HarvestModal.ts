@@ -14,8 +14,8 @@
  */
 
 import { Node, Label, UITransform, Graphics, NodeEventType, EventTouch } from 'cc';
-import { ModalPanel, Btn } from './ModalPanel';
-import { C } from './theme';
+import { ModalPanel } from './ModalPanel';
+import { C, Btn } from './theme';
 import { Toast } from './Toast';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';

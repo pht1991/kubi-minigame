@@ -8,8 +8,8 @@
  */
 
 import { Label } from 'cc';
-import { ModalPanel, Btn } from './ModalPanel';
-import { C } from './theme';
+import { ModalPanel } from './ModalPanel';
+import { C, Btn } from './theme';
 
 export class ResultModal extends ModalPanel {
     protected panelW = 600;
