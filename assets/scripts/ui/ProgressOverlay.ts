@@ -12,7 +12,7 @@
  * 由 MainScene 在独立 _progressLayer（Modal 之上、Toast 之下）创建单例。
  */
 
-import { _decorator, Component, Node, Label, UITransform, Graphics, tween, Color, NodeEventType } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, Graphics, tween, Color, NodeEventType, view } from 'cc';
 import { C, S } from './theme';
 
 const { ccclass } = _decorator;
@@ -32,19 +32,23 @@ export class ProgressOverlay extends Component {
     onLoad(): void {
         ProgressOverlay._instance = this;
 
+        const vs = view.getVisibleSize();
+        const sw = vs.width, sh = vs.height;
+        const hw = sw / 2, hh = sh / 2;
+
         let tf = this.node.getComponent(UITransform);
         if (!tf) tf = this.node.addComponent(UITransform);
-        tf.setContentSize(750, 1334);
+        tf.setContentSize(sw, sh);
         tf.setAnchorPoint(0.5, 0.5);
 
         // 全屏遮罩：拦截触摸，覆盖全屏（进度期间禁止任何底层交互）
         const mask = new Node('PMask');
         const mt = mask.addComponent(UITransform);
-        mt.setContentSize(750, 1334); mt.setAnchorPoint(0.5, 0.5);
+        mt.setContentSize(sw, sh); mt.setAnchorPoint(0.5, 0.5);
         mask.setPosition(0, 0, 0); mask.setParent(this.node);
         const mg = mask.addComponent(Graphics);
         mg.fillColor = new Color(0, 0, 0, 150);
-        mg.rect(-375, -667, 750, 1334); mg.fill();
+        mg.rect(-hw, -hh, sw, sh); mg.fill();
         const stop = (e: any) => { e.propagationStopped = true; };
         mask.on(NodeEventType.TOUCH_START, stop);
         mask.on(NodeEventType.TOUCH_END, stop);

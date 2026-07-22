@@ -4,7 +4,7 @@
  * 通过 ActionCombat 状态机驱动回合制战斗。
  */
 
-import { Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType } from 'cc';
+import { Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType, view } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
 import { ActionCombat, CombatState } from '../actions/ActionCombat';
 import { GameManager } from '../core/GameManager';
@@ -38,14 +38,18 @@ export class BattlePanel extends ModalPanel {
     protected buildSkeleton(): void {
         super.buildSkeleton();
 
+        const vs = view.getVisibleSize();
+        const sw = vs.width, sh = vs.height;
+        const hw = sw / 2, hh = sh / 2;
+
         // 不透明战斗背景（置于最底层，拦截所有点击）
         this._bgNode = new Node('BattleBg');
         const bgT = this._bgNode.addComponent(UITransform);
-        bgT.setContentSize(750, 1334);
+        bgT.setContentSize(sw, sh);
         this._bgNode.setParent(this.node);
         const bgGfx = this._bgNode.addComponent(Graphics);
         bgGfx.fillColor = C.battleBg;
-        bgGfx.rect(-375, -667, 750, 1334); bgGfx.fill();
+        bgGfx.rect(-hw, -hh, sw, sh); bgGfx.fill();
         this._bgNode.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
         this.node.insertChild(this._bgNode, 0); // 放到面板之下
 

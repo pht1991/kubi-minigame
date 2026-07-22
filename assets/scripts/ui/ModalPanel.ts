@@ -18,7 +18,7 @@
 
 import {
     _decorator, Component, Node, Label, UITransform, Color, Graphics,
-    Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment,
+    Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment, view,
 } from 'cc';
 import { C, S, Btn, BtnStyle } from './theme';
 
@@ -40,6 +40,10 @@ export abstract class ModalPanel extends Component {
     protected showClose = true;    // 是否显示右上角关闭按钮
     protected buildContentContainer = true; // 是否创建 _content 内容容器
 
+    /** 动态可见尺寸（FIXED_WIDTH 下高度随设备变化，不再写死 750×1334） */
+    protected _vsW = 750;
+    protected _vsH = 1334;
+
     // ════ 外壳节点 ════
     protected _mask: Node | null = null;
     protected _maskGfx: Graphics | null = null;
@@ -53,10 +57,14 @@ export abstract class ModalPanel extends Component {
     protected _content: Node | null = null;   // 子类内容构建区（anchor 0.5,1，位于标题下方）
 
     onLoad(): void {
+        // 取实际可见尺寸（FIXED_WIDTH 下高度随屏幕比例变化）
+        const vs = view.getVisibleSize();
+        this._vsW = vs.width;
+        this._vsH = vs.height;
         // 确保根节点有全屏 UITransfer（否则子节点 Graphics 在微信小游戏可能不渲染）
         let rt = this.node.getComponent(UITransform);
         if (!rt) { rt = this.node.addComponent(UITransform); }
-        rt.setContentSize(750, 1334);
+        rt.setContentSize(this._vsW, this._vsH);
         rt.setAnchorPoint(0.5, 0.5);
         this.buildSkeleton();
     }
@@ -69,7 +77,7 @@ export abstract class ModalPanel extends Component {
         if (this.showMask) {
             this._mask = new Node('M');
             const mt = this._mask.addComponent(UITransform);
-            mt.setContentSize(750, 1334);
+            mt.setContentSize(this._vsW, this._vsH);
             mt.setAnchorPoint(0.5, 0.5);
             this._mask.setPosition(0, 0, 0);
             this._mask.setParent(this.node);
@@ -166,7 +174,7 @@ export abstract class ModalPanel extends Component {
         const g = this._maskGfx;
         g.clear();
         g.fillColor = C.maskDim;
-        g.rect(-375, -667, 750, 1334);
+        g.rect(-this._vsW / 2, -this._vsH / 2, this._vsW, this._vsH);
         g.fill();
     }
 

@@ -219,8 +219,9 @@ export class MainScene extends Component {
     statusBarNode: Node | null = null;
 
     onLoad(): void {
-        // 设置适配模式：SHOW_ALL 保持 750×1334 宽高比，非竖屏窗口留黑边但全部可见
-        view.setDesignResolutionSize(750, 1334, ResolutionPolicy.SHOW_ALL);
+        // 设置适配模式：FIXED_WIDTH 保持设计宽度 750 不变，高度自适应填满屏幕
+        // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
+        view.setDesignResolutionSize(750, 1334, ResolutionPolicy.FIXED_WIDTH);
 
         // 尝试加载存档
         if (!this._saveMgr.load()) {
