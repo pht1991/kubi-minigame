@@ -52,6 +52,7 @@ export class CookPage extends BasePage {
             // 升级按钮走公共标题栏接口（炊具此前无升级入口，cookerUpdate 数据存在但未接 UI）
             ...this.makeUpgradeInfo('cookerUpdate', {
                 title: '炊具升级',
+                effectText: '烹饪耗时 ×0.8（每级提速约20%）',
                 onUpgraded: () => this.navigator.replace(this.buildCookHubPage()),
             }),
             onCellClick: (index, cell) => {

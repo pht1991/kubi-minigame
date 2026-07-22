@@ -83,7 +83,7 @@ export abstract class BasePage {
                 const options: DialogOption[] = [];
                 options.push({ label: nextName, data: null, disabled: true });
                 if (nextItem?.desc) options.push({ label: nextItem.desc, data: null, disabled: true });
-                if (opts.effectText) options.push({ label: opts.effectText, data: null, disabled: true });
+                if (opts.effectText) options.push({ label: `升级效果: ${opts.effectText}`, data: null, disabled: true, noTruncate: true });
                 options.push({ label: `需求: ${reqParts}`, data: null, disabled: true, noTruncate: true });
                 if (canMake) {
                     options.push({ label: '[确认升级]', data: { action: 'confirm', targetId: nextLevelId } });

@@ -65,7 +65,7 @@ export class BigBoxPage extends BasePage {
     private buildUpgradeInfo(): Partial<Pick<GridPage, 'upgradeInfo' | 'onUpgradeClick'>> {
         return this.makeUpgradeInfo('bigBoxUpdate', {
             title: '大箱子升级',
-            buttonLabel: '升级 +4容量',
+            buttonLabel: '升级',
             effectText: '容量 +4',
             onUpgraded: () => this.navigator.replace(this.buildBigBoxPage()),
         });

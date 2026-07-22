@@ -35,7 +35,9 @@ export class RestPage extends BasePage {
         }
 
         // ===== 已建床铺：等级 + 睡觉 + 升级 =====
-        const level = this.gm.getBuildingLevel('sleepPlace');
+        // 注意：升级系统写入的等级键是 "sleepPlaceUpdate_level"（与 BUILDING_UPDATE_DATA 键一致），
+        // 不能用 getBuildingLevel('sleepPlace')（该键从未写入，会恒为 0）。
+        const level = this.gm.getBuildingLevel('sleepPlaceUpdate');
         const updateGroup = BUILDING_UPDATE_DATA['sleepPlaceUpdate'];
         // 等级键顺序：bed_1(0), bed_2(1), bed_3(2), bed_4(3)
         const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
@@ -58,6 +60,9 @@ export class RestPage extends BasePage {
         ];
         const restIdx = Math.min(level, REST_TABLE.length - 1);
         const [restPs, restSan, restHours] = REST_TABLE[restIdx];
+        // 升级后（下一级）每觉恢复量，用于升级弹窗的效果描述
+        const nextRestIdx = Math.min(level + 1, REST_TABLE.length - 1);
+        const [nextRestPs, nextRestSan] = REST_TABLE[nextRestIdx];
         cells.push({
             id: 'sleep',
             name: `[睡觉]  恢复约 +${restPs}体力 +${restSan}精神  推进${restHours}小时`,
@@ -77,6 +82,7 @@ export class RestPage extends BasePage {
             // 升级按钮走公共标题栏接口（与大箱子/厨房/井/卫生间统一），替代旧内联升级格
             ...this.makeUpgradeInfo('sleepPlaceUpdate', {
                 title: '床铺升级',
+                effectText: `升级后每觉恢复 体力+${nextRestPs} / 精神+${nextRestSan}`,
                 onUpgraded: () => this.navigator.replace(this.openRestPage()),
             }),
             onCellClick: (idx, cell) => {

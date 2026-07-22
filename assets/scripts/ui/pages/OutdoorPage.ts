@@ -270,6 +270,12 @@ export class OutdoorPage extends BasePage {
 
         const upType = `${buildingId}Update`;
 
+        // 各建筑升级效果描述（仅作确认弹窗内的说明文案，不塞进按钮）
+        const EFFECT_BY_UP: Record<string, string> = {
+            wellUpdate: '每次取水 +2 清水（基础 8 + 等级×2）',
+            toiletUpdate: '解锁/改善淋浴：洗澡可恢复精神，保持卫生',
+        };
+
         return {
             title: d.name,
             breadcrumb: d.name,
@@ -278,6 +284,7 @@ export class OutdoorPage extends BasePage {
             // 升级按钮走公共标题栏接口（与所有可升级建筑统一），替代旧内联升级格
             ...this.makeUpgradeInfo(upType, {
                 title: `${d.name}升级`,
+                effectText: EFFECT_BY_UP[upType],
                 onUpgraded: () => this.navigator.replace(this.buildBuildingDetailPage(buildingId)),
             }),
             onCellClick: (index, cell) => {
