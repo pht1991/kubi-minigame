@@ -496,9 +496,10 @@ export class MainScene extends Component {
                     || (sysInfo && sysInfo.statusBarHeight)
                     || 0;
                 this._safeTop = Math.max(0, Math.round(sbH * scale));
-                // 兜底：两 API 都异常返回 0 时，按常见安卓状态栏高度（约 24px 物理像素）估算
+                // 兜底：两 API 都异常返回 0 时，按常见全面屏状态栏+胶囊区域（约 53px 物理像素）
+                // 估算，使状态栏顶部贴近红框/胶囊下沿（设计坐标）。真机实测两 API 均返回 0 时启用。
                 if (this._safeTop === 0) {
-                    this._safeTop = Math.round(24 * scale);
+                    this._safeTop = Math.round(53 * scale);
                 }
                 // 底部：优先 winInfo 的 safeArea，回退 sysInfo；都缺时退回屏幕底边算成 0
                 const sa = (winInfo && winInfo.safeArea) || (sysInfo && sysInfo.safeArea) || null;
