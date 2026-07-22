@@ -150,7 +150,7 @@ export class MainScene extends Component {
         this._toastLayer!.addChild(node);
         // 右下角：x 靠右留边距，y 在底部快捷栏上方（动态适配屏幕高度 + 安全区域）
         const vs = view.getVisibleSize();
-        const minBm = 8;
+        const minBm = 16;
         node.setPosition(vs.width / 2 - 95, -vs.height / 2 + 85 + Math.max(this._safeBottom, minBm), 0);
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
 
@@ -464,19 +464,27 @@ export class MainScene extends Component {
     private _fetchSafeArea(): void {
         try {
             // @ts-ignore 微信小游戏全局对象
-            if (typeof wx !== 'undefined' && wx.getSystemInfoSync) {
+            if (typeof wx === 'undefined') return;
+            // 优先用新 API getWindowInfo（返回 safeArea/statusBarHeight/screenHeight），
+            // 旧设备回退 getSystemInfoSync。两者都不可用时静默跳过。
+            // @ts-ignore
+            const getInfo = (wx.getWindowInfo && wx.getWindowInfo())
                 // @ts-ignore
-                const sys = wx.getSystemInfoSync();
-                const sw = sys.screenWidth || 0;
-                if (sw > 0) {
-                    const scale = 750 / sw;
-                    // 顶部：状态栏高度（刘海/胶囊区域）
-                    const sbH = sys.statusBarHeight || 0;
-                    this._safeTop = Math.max(0, Math.round(sbH * scale));
-                    // 底部：Home Indicator 区域
-                    const bottomInset = (sys.screenHeight - sys.safeArea.bottom) * scale;
-                    this._safeBottom = Math.max(0, Math.round(bottomInset));
-                }
+                || (wx.getSystemInfoSync && wx.getSystemInfoSync())
+                || null;
+            if (!getInfo) return;
+            const sw = getInfo.screenWidth || 0;
+            if (sw > 0) {
+                const scale = 750 / sw;
+                // 顶部：状态栏高度（刘海/胶囊区域）
+                const sbH = getInfo.statusBarHeight || 0;
+                this._safeTop = Math.max(0, Math.round(sbH * scale));
+                // 底部：Home Indicator / 手势条区域。safeArea 缺失时退回屏幕底边，算成 0
+                const safeBottom = (getInfo.safeArea && getInfo.safeArea.bottom)
+                    ? getInfo.safeArea.bottom
+                    : getInfo.screenHeight;
+                const bottomInset = (getInfo.screenHeight - safeBottom) * scale;
+                this._safeBottom = Math.max(0, Math.round(bottomInset));
             }
         } catch (_e) {
             // 非微信环境静默忽略
@@ -527,7 +535,7 @@ export class MainScene extends Component {
         // 加上 _safeBottom 避免被手机 Home Indicator 遮挡
         // MIN_BOTTOM_MARGIN 保证即使无安全区域也有最小视觉间距
         const BOTTOM_MARGIN = 3;
-        const MIN_BOTTOM_MARGIN = 8;   // 最小底部间距（设计坐标），安卓无 Home Indicator 时也留白
+        const MIN_BOTTOM_MARGIN = 16;  // 最小底部间距（设计坐标），安卓无 Home Indicator 时也留明显白边
         const vs = view.getVisibleSize();
         const totalBottomOffset = BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
         this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + totalBottomOffset, 0);
