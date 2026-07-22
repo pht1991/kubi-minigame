@@ -505,18 +505,13 @@ export class MainScene extends Component {
     private _applySafeAreaToScene(): void {
         if (!this.statusBarNode) return;
         const p = this.statusBarNode.position;
-        // 1) 安全区域偏移（状态栏高度，避开刘海/胶囊）
-        let offsetY = this._safeTop;
-        // 2) FIXED_WIDTH 补偿：设计高度 1334，真机通常更高（全面屏），
-        //    状态栏场景预设 y=580 基于 1334，屏幕变高后视觉上偏上。
-        //    按超出部分 1/3 比例额外下推，让状态栏更贴近胶囊。
         const vs = view.getVisibleSize();
-        const extraH = vs.height - 1334;
-        if (extraH > 0) {
-            offsetY += Math.round(extraH * 0.35);
-        }
+        // FIXED_WIDTH 下实际屏幕高度 > 设计 1334（设计半高 667），顶部 y 变为 +vs.height/2。
+        // 状态栏场景预设 y=580 基于旧高度，屏幕变高后会离顶部（胶囊）偏下，
+        // 需【上推】 (vs.height/2 - 667) 使其距顶部恢复设计的 87px，紧贴胶囊下方。
+        const offsetY = vs.height / 2 - 667;
         if (offsetY > 0) {
-            this.statusBarNode.setPosition(p.x, p.y - offsetY, p.z);
+            this.statusBarNode.setPosition(p.x, p.y + offsetY, p.z);
         }
     }
 
