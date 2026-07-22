@@ -3,7 +3,7 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Widget } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget } from 'cc';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
@@ -261,6 +261,10 @@ export class MainScene extends Component {
         // 根据安全区域调整场景预置节点位置（状态栏下推避开刘海/胶囊）
         this._applySafeAreaToScene();
 
+        // [DEBUG_TEMP] 临时：状态栏红框 + 主界面蓝底，便于真机查看位置（用完删）
+        this._addStatusBarDebugBg();
+        this._addMainAreaDebugBg();
+
         // 注意：initHomeGrid() 依赖 _buildPage，须在所有 Page 创建之后调用（见下方 pageCtx 构建段末尾）
 
         // 创建背包弹窗（先于 DialogPanel 创建，物品操作弹窗层级更高）
@@ -510,6 +514,41 @@ export class MainScene extends Component {
         // Canvas 锚点(0.5,0.5)居中 → 顶部 y = +vs.height/2 → 目标 y = vs.height/2 - TARGET_FROM_TOP
         const TARGET_FROM_TOP = 55; // 状态栏中心距顶部 55px（可微调）
         this.statusBarNode.setPosition(0, vs.height / 2 - TARGET_FROM_TOP, 0);
+    }
+
+    // [DEBUG_TEMP] 临时调试：状态栏红色半透明包围盒（含边框），真机查看位置时删除
+    private _addStatusBarDebugBg(): void {
+        if (!this.statusBarNode) return;
+        const n = new Node('DEBUG_SB_BG');
+        const tf = n.addComponent(UITransform);
+        const pTf = this.statusBarNode.getComponent(UITransform);
+        const w = pTf ? pTf.width : 750;
+        const h = pTf ? pTf.height : 80;
+        const boxH = h + 24;
+        tf.setContentSize(w, boxH);
+        n.setPosition(0, 0, -1);
+        n.setParent(this.statusBarNode);
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(255, 70, 70, 110);
+        g.rect(-w / 2, -boxH / 2, w, boxH);
+        g.fill();
+        g.strokeColor = new Color(255, 0, 0, 255);
+        g.lineWidth = 3;
+        g.strokeRect(-w / 2, -boxH / 2, w, boxH);
+    }
+
+    // [DEBUG_TEMP] 临时调试：主界面蓝色半透明全屏底，真机查看内容区边界时删除
+    private _addMainAreaDebugBg(): void {
+        const n = new Node('DEBUG_MAIN_BG');
+        const tf = n.addComponent(UITransform);
+        const vs = view.getVisibleSize();
+        tf.setContentSize(vs.width, vs.height);
+        n.setPosition(0, 0, -2);
+        n.setParent(this._contentLayer || this.node);
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(60, 120, 255, 80);
+        g.rect(-vs.width / 2, -vs.height / 2, vs.width, vs.height);
+        g.fill();
     }
 
     /** 创建底部固定快捷操作栏（休息 / 背包 / 状态） */
