@@ -54,6 +54,7 @@ export class RestPage extends BasePage {
             [25, 18, 1],  // Lv1 木床
             [35, 25, 1],  // Lv2 弹簧床
             [50, 35, 1],  // Lv3 大床
+            [70, 50, 1],  // Lv4 满级床（bed_4）
         ];
         const restIdx = Math.min(level, REST_TABLE.length - 1);
         const [restPs, restSan, restHours] = REST_TABLE[restIdx];
@@ -87,10 +88,10 @@ export class RestPage extends BasePage {
                     const rh = d.restHours || 1;
                     const oldPs = this.gm.playerState.ps;
                     const oldSan = this.gm.playerState.san;
-                    // 增量加法，上限100
+                    // 传差值：playerStateChange 内部累加并按 MAX_STATE 封顶
                     this.gm.playerStateChange({
-                        ps: Math.min(oldPs + rp, 100),
-                        san: Math.min(oldSan + rs, 100),
+                        ps: rp,
+                        san: rs,
                     });
                     this.timeSys.advance(rh);
                     const actualPs = Math.min(rp, 100 - oldPs);
