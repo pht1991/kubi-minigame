@@ -3,7 +3,7 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget, find } from 'cc';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
@@ -232,6 +232,17 @@ export class MainScene extends Component {
 
         // 获取微信安全区域（刘海屏顶部 / Home Indicator 底部），避免 UI 被遮挡
         this._fetchSafeArea();
+
+        // 运行时绑定状态栏节点：@property 在场景 Inspector 里未绑定（序列化为 null），
+        // 必须按名字找到并赋值，否则 _applySafeAreaToScene / 调试红框都不会执行。
+        if (!this.statusBarNode) {
+            this.statusBarNode = find('StatusBar') || this.node.getChildByName('StatusBar') || null;
+        }
+        // 若状态栏挂了 Widget，禁用它，避免每帧布局覆盖我们 setPosition 设置的 Y
+        if (this.statusBarNode) {
+            const w = this.statusBarNode.getComponent(Widget);
+            if (w) w.enabled = false;
+        }
 
         // 尝试加载存档
         if (!this._saveMgr.load()) {
