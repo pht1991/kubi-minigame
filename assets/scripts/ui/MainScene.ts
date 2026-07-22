@@ -143,8 +143,9 @@ export class MainScene extends Component {
         const node = new Node('SaveIndicator');
         node.layer = this.node.layer;
         this._toastLayer!.addChild(node);
-        // 右下角：x 靠右留 20px 边距（屏幕半宽 375，节点半宽 95 → x=260），y 在底部快捷栏上方
-        node.setPosition(260, -560, 0);
+        // 右下角：x 靠右留边距，y 在底部快捷栏上方（动态适配屏幕高度）
+        const vs = view.getVisibleSize();
+        node.setPosition(vs.width / 2 - 95, -vs.height / 2 + 85, 0);
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
 
         // 接线：仅 SAVE_COMPLETE 静默刷新时间（不显示「保存中」状态，避免每次操作跳动）
@@ -463,9 +464,10 @@ export class MainScene extends Component {
         this._bottomBarLayer!.addChild(this._bottomBar);
 
         // 绝对坐标定位（不依赖 Widget，避免 ScrollView 边界缓存失效）
-        // 设计分辨率 750×1334，锚点默认(0.5,0.5)，Canvas 中心为原点
+        // 用 view.getVisibleSize() 动态取实际高度（FIXED_WIDTH 下高度随设备变化）
         const BOTTOM_MARGIN = 3;
-        this._bottomBar.setPosition(0, -1334 / 2 + BAR_H / 2 + BOTTOM_MARGIN, 0);
+        const vs = view.getVisibleSize();
+        this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + BOTTOM_MARGIN, 0);
 
         // 背景（暖色）
         const gfx = this._bottomBar.addComponent(Graphics);
