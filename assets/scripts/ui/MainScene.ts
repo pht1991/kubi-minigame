@@ -520,33 +520,40 @@ export class MainScene extends Component {
     private _addStatusBarDebugBg(): void {
         if (!this.statusBarNode) return;
         const n = new Node('DEBUG_SB_BG');
+        n.layer = this.node.layer;   // 必须匹配 UI Camera 的 visibility，否则不渲染
         const tf = n.addComponent(UITransform);
+        tf.setAnchorPoint(0.5, 0.5);
         const pTf = this.statusBarNode.getComponent(UITransform);
-        const w = pTf ? pTf.width : 750;
-        const h = pTf ? pTf.height : 80;
+        const w = (pTf && pTf.width > 0) ? pTf.width : 750;
+        const h = (pTf && pTf.height > 0) ? pTf.height : 80;
         const boxH = h + 24;
         tf.setContentSize(w, boxH);
-        n.setPosition(0, 0, -1);
         n.setParent(this.statusBarNode);
+        n.setPosition(0, 0, 0);
         const g = n.addComponent(Graphics);
-        g.fillColor = new Color(255, 70, 70, 110);
+        g.fillColor = new Color(255, 60, 60, 160);
         g.rect(-w / 2, -boxH / 2, w, boxH);
         g.fill();
         g.strokeColor = new Color(255, 0, 0, 255);
-        g.lineWidth = 3;
-        g.strokeRect(-w / 2, -boxH / 2, w, boxH);
+        g.lineWidth = 4;
+        g.rect(-w / 2, -boxH / 2, w, boxH);
+        g.stroke();
     }
 
     // [DEBUG_TEMP] 临时调试：主界面蓝色半透明全屏底，真机查看内容区边界时删除
     private _addMainAreaDebugBg(): void {
         const n = new Node('DEBUG_MAIN_BG');
+        n.layer = this.node.layer;   // 必须匹配 UI Camera 的 visibility，否则不渲染
         const tf = n.addComponent(UITransform);
+        tf.setAnchorPoint(0.5, 0.5);
         const vs = view.getVisibleSize();
         tf.setContentSize(vs.width, vs.height);
-        n.setPosition(0, 0, -2);
-        n.setParent(this._contentLayer || this.node);
+        // 挂在 this.node（Canvas 下的根节点）最前，避免被场景预置 GridComponent 白底遮挡
+        n.setParent(this.node);
+        n.setPosition(0, 0, 0);
+        n.setSiblingIndex(0);
         const g = n.addComponent(Graphics);
-        g.fillColor = new Color(60, 120, 255, 80);
+        g.fillColor = new Color(60, 120, 255, 90);
         g.rect(-vs.width / 2, -vs.height / 2, vs.width, vs.height);
         g.fill();
     }
