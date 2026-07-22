@@ -3,7 +3,7 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget, find } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget, HorizontalAlign, VerticalAlign, OverflowType } from 'cc';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
@@ -32,6 +32,7 @@ import { SaveIndicator } from './SaveIndicator';
 import { ProgressOverlay } from './ProgressOverlay';
 import { ResultModal } from './ResultModal';
 import { HarvestModal } from './HarvestModal';
+import { StatusBar } from './StatusBar';
 import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
 import { C } from './theme';
@@ -221,9 +222,7 @@ export class MainScene extends Component {
     private _modalLayer: Node | null = null;
     private _progressLayer: Node | null = null;
     private _toastLayer: Node | null = null;
-
-    @property(Node)
-    statusBarNode: Node | null = null;
+    private _statusBar: Node | null = null;
 
     onLoad(): void {
         // 设置适配模式：FIXED_WIDTH 保持设计宽度 750 不变，高度自适应填满屏幕
@@ -232,17 +231,6 @@ export class MainScene extends Component {
 
         // 获取微信安全区域（刘海屏顶部 / Home Indicator 底部），避免 UI 被遮挡
         this._fetchSafeArea();
-
-        // 运行时绑定状态栏节点：@property 在场景 Inspector 里未绑定（序列化为 null），
-        // 必须按名字找到并赋值，否则 _applySafeAreaToScene / 调试红框都不会执行。
-        if (!this.statusBarNode) {
-            this.statusBarNode = find('StatusBar') || this.node.getChildByName('StatusBar') || null;
-        }
-        // 若状态栏挂了 Widget，禁用它，避免每帧布局覆盖我们 setPosition 设置的 Y
-        if (this.statusBarNode) {
-            const w = this.statusBarNode.getComponent(Widget);
-            if (w) w.enabled = false;
-        }
 
         // 尝试加载存档
         if (!this._saveMgr.load()) {
@@ -269,7 +257,10 @@ export class MainScene extends Component {
         // 诊断并修复 UI Camera
         this.setupUICamera();
 
-        // 根据安全区域调整场景预置节点位置（状态栏下推避开刘海/胶囊）
+        // 代码创建顶部状态栏（纯代码，替代场景预置节点，消除黑盒）
+        this.createStatusBar();
+
+        // 根据安全区域调整状态栏位置（避开刘海/胶囊，并预留广告位）
         this._applySafeAreaToScene();
 
         // 注意：initHomeGrid() 依赖 _buildPage，须在所有 Page 创建之后调用（见下方 pageCtx 构建段末尾）
@@ -514,22 +505,98 @@ export class MainScene extends Component {
     public get safeTop(): number { return this._safeTop; }
 
     /**
-     * 将安全区域偏移应用到场景预置节点。
-     * - 状态栏（statusBarNode）：父级是 Canvas，position 为本地坐标（Canvas 锚点居中）。
-     *   改为【绝对定位】：状态栏顶部紧贴安全区域（system status bar）下沿 + 8px 间距，
-     *   即红框下沿位置。中心点 y = 屏幕半高 - safeTop - 间距 - 节点半高。
+     * 将安全区域偏移应用到代码创建的状态栏节点。
+     * - 状态栏父级是 Canvas（锚点 0.5,0.5 居中），position 为本地坐标。
+     * - 绝对定位：状态栏顶部紧贴安全区域（system status bar）下沿 + 间距，
+     *   并可叠加 AD_TOP_OFFSET 预留给未来的 Banner 广告位。
+     *   中心点 y = 屏幕半高 - safeTop - 间距 - 广告预留 - 节点半高。
      */
     private _applySafeAreaToScene(): void {
-        if (!this.statusBarNode) return;
+        if (!this._statusBar) return;
         const vs = view.getVisibleSize();
-        const tf = this.statusBarNode.getComponent(UITransform);
-        const nodeH = tf ? tf.height : 90; // 状态栏节点自身高度（日期+属性两行约 90px）
-        const TOP_PADDING = 8; // 与安全区域的间距
+        const tf = this._statusBar.getComponent(UITransform);
+        const nodeH = tf ? tf.height : 120; // 状态栏节点自身高度
+        const TOP_PADDING = 8;   // 与安全区域的间距
+        const AD_TOP_OFFSET = 0; // 预留：接入 Banner 广告时设为 banner 高度（设计坐标），状态栏整体下推避开
         // Canvas 锚点(0.5,0.5)居中 → 屏幕顶 = +vs.height/2
-        // 状态栏顶部距屏幕顶 = _safeTop + TOP_PADDING
-        // 状态栏中心 y = 屏幕顶 - (_safeTop + TOP_PADDING) - nodeH/2
-        const targetY = vs.height / 2 - this._safeTop - TOP_PADDING - nodeH / 2;
-        this.statusBarNode.setPosition(0, targetY, 0);
+        const targetY = vs.height / 2 - this._safeTop - TOP_PADDING - AD_TOP_OFFSET - nodeH / 2;
+        this._statusBar.setPosition(0, targetY, 0);
+    }
+
+    /**
+     * 代码创建顶部状态栏，替代场景预置的 StatusBar 节点。
+     * 纯代码：节点树 + Graphics 背景 + 7 个 Label 全部运行时生成，
+     * 不再依赖编辑器序列化（消除黑盒），与 BottomBar/弹窗等其它 UI 来源统一。
+     */
+    private createStatusBar(): void {
+        if (this._statusBar && this._statusBar.isValid) return;
+
+        const SB_W = 750;
+        const SB_H = 120;
+        const bar = new Node('StatusBar');
+        bar.layer = this.node.layer;
+        const tf = bar.addComponent(UITransform);
+        tf.setAnchorPoint(0.5, 0.5);
+        tf.setContentSize(SB_W, SB_H);
+        // 挂 Canvas 根（与 BottomBar 同级），由 _applySafeAreaToScene 绝对定位
+        bar.setParent(this.node);
+
+        // 背景（替代原场景 Bg Sprite）：Graphics 矩形，暖色底
+        const bg = bar.addComponent(Graphics);
+        bg.fillColor = new Color(245, 240, 230, 255);
+        bg.rect(-SB_W / 2, -SB_H / 2, SB_W, SB_H);
+        bg.fill();
+
+        // 时间标题行
+        const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, 36, 200, 48, 24);
+
+        // 6 个属性横排（间距 120），每格 "标题\n数值" 两行
+        const attrs: Array<[string, number]> = [
+            ['HP_Label', -300],
+            ['Full_Label', -180],
+            ['Moist_Label', -60],
+            ['PS_Label', 60],
+            ['San_Label', 180],
+            ['Temp_Label', 300],
+        ];
+        const labels: Label[] = [];
+        for (const [name, x] of attrs) {
+            labels.push(this._mkStatusLabel(bar, name, x, -10, 120, 48, 20));
+        }
+
+        // 挂 StatusBar 组件并赋值 Label 字段（StatusBar.onLoad 也会按名字兜底绑定）
+        const comp = bar.addComponent(StatusBar);
+        comp.timeLabel = timeLabel;
+        comp.hpLabel = labels[0];
+        comp.fullLabel = labels[1];
+        comp.moistLabel = labels[2];
+        comp.psLabel = labels[3];
+        comp.sanLabel = labels[4];
+        comp.tempLabel = labels[5];
+
+        this._statusBar = bar;
+    }
+
+    /** 创建一个状态栏属性 Label 子节点并返回其 Label 组件 */
+    private _mkStatusLabel(
+        parent: Node, name: string,
+        x: number, y: number, w: number, h: number, fontSize: number
+    ): Label {
+        const n = new Node(name);
+        n.layer = parent.layer;
+        const t = n.addComponent(UITransform);
+        t.setAnchorPoint(0.5, 0.5);
+        t.setContentSize(w, h);
+        n.setPosition(x, y, 0);
+        n.setParent(parent);
+        const lab = n.addComponent(Label);
+        lab.fontSize = fontSize;
+        lab.lineHeight = fontSize + 4;
+        lab.horizontalAlign = HorizontalAlign.CENTER;
+        lab.verticalAlign = VerticalAlign.CENTER;
+        lab.overflow = OverflowType.NONE;
+        lab.color = new Color(60, 45, 30, 255);
+        return lab;
     }
 
     /** 创建底部固定快捷操作栏（休息 / 背包 / 状态） */

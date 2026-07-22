@@ -1,6 +1,10 @@
 /**
  * StatusBar.ts - 顶部状态栏
- * 两行布局：标题行(HP 满腹 水分...) + 数值行(100 100 100...)，纯数字无进度条
+ * 两行布局：标题行(时间) + 6 个属性(生命/满腹/水分/体力/精神/体温)各 "标题\n数值"
+ *
+ * 纯代码友好：Label 字段由外部（MainScene.createStatusBar）创建并赋值，
+ * onLoad 兜底按子节点名查找，不再依赖编辑器 @property 绑定。
+ * 因此 StatusBar 节点既可由场景预置、也可由代码 new Node 创建，逻辑通用。
  */
 
 import { _decorator, Component, Label, Node, Color } from 'cc';
@@ -10,42 +14,45 @@ import { TimeSystem } from '../systems/TimeSystem';
 import { MAX_STATE, TEMP_DATA } from '../data/data';
 import { C } from './theme';
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 @ccclass('StatusBar')
 export class StatusBar extends Component {
-    @property(Label)
     timeLabel: Label | null = null;
-
-    /** 状态标签 — 两行格式：标题\n数值 */
-    @property(Label)
     hpLabel: Label | null = null;
-    @property(Label)
     fullLabel: Label | null = null;
-    @property(Label)
     moistLabel: Label | null = null;
-    @property(Label)
     psLabel: Label | null = null;
-    @property(Label)
     sanLabel: Label | null = null;
-    @property(Label)
     tempLabel: Label | null = null;
+
+    // 固定引用，避免 onLoad/onDestroy 中 bind 每次生成新函数导致 off 失效
+    private _onRefresh = () => this.refresh();
 
     private get _gm(): GameManager { return GameManager.instance; }
     private get _eventBus(): EventBus { return EventBus.instance; }
     private get _timeSys(): TimeSystem { return TimeSystem.instance; }
 
     onLoad(): void {
-        this._eventBus.on(GameEvents.STATE_CHANGE, this.refresh.bind(this));
-        this._eventBus.on(GameEvents.TIME_PASS, this.refresh.bind(this));
-        this._eventBus.on(GameEvents.UI_REFRESH, this.refresh.bind(this));
+        // 兜底：若外部（MainScene 代码创建）未通过字段赋值，则按子节点名查找
+        this._autoBind('TimeLabel', 'timeLabel');
+        this._autoBind('HP_Label', 'hpLabel');
+        this._autoBind('Full_Label', 'fullLabel');
+        this._autoBind('Moist_Label', 'moistLabel');
+        this._autoBind('PS_Label', 'psLabel');
+        this._autoBind('San_Label', 'sanLabel');
+        this._autoBind('Temp_Label', 'tempLabel');
+
+        this._eventBus.on(GameEvents.STATE_CHANGE, this._onRefresh);
+        this._eventBus.on(GameEvents.TIME_PASS, this._onRefresh);
+        this._eventBus.on(GameEvents.UI_REFRESH, this._onRefresh);
         this.refresh();
     }
 
     onDestroy(): void {
-        this._eventBus.off(GameEvents.STATE_CHANGE, this.refresh.bind(this));
-        this._eventBus.off(GameEvents.TIME_PASS, this.refresh.bind(this));
-        this._eventBus.off(GameEvents.UI_REFRESH, this.refresh.bind(this));
+        this._eventBus.off(GameEvents.STATE_CHANGE, this._onRefresh);
+        this._eventBus.off(GameEvents.TIME_PASS, this._onRefresh);
+        this._eventBus.off(GameEvents.UI_REFRESH, this._onRefresh);
     }
 
     /** 刷新状态栏（两行布局：标题行 + 数值行） */
@@ -98,5 +105,15 @@ export class StatusBar extends Component {
         if (!label) return;
         label.string = text;
         if (color) label.color = color;
+    }
+
+    /** 兜底绑定：字段为空时按子节点名查找 Label 组件 */
+    private _autoBind(
+        nodeName: string,
+        field: 'timeLabel' | 'hpLabel' | 'fullLabel' | 'moistLabel' | 'psLabel' | 'sanLabel' | 'tempLabel'
+    ): void {
+        if (this[field]) return;
+        const n = this.node.getChildByName(nodeName);
+        if (n) (this as any)[field] = n.getComponent(Label);
     }
 }
