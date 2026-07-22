@@ -105,11 +105,11 @@ export class MainScene extends Component {
     /**
      * 建立显式 UI 分层容器，替代原先靠 setSiblingIndex 时序竞争管理层级的脆弱方式。
      * 层级从底到顶（sibling index 递增）：
-     *   _contentLayer  (index 0, 占位语义层；实际导航内容由场景预置的 GridComponent/StatusBar 承载)
-     *   [GridComponent / StatusBar]  —— 场景预置的导航主内容 + 顶部状态栏
-     *   _bottomBarLayer —— 固定底部快捷栏
-     *   _modalLayer    —— 所有模态弹窗（Bag/Dialog/Battle/Trade），show 时仍可在层内 setSiblingIndex 抢置顶
-     *   _toastLayer    —— 全局浮层（Toast / SaveIndicator），永远最顶
+     *   _contentLayer    (index 0, 占位语义层；实际导航内容由场景预置的 GridComponent 承载)
+     *   _statusBarLayer  —— 代码创建的顶部状态栏（浮于网格内容之上，但被 Modal 遮罩盖住）
+     *   _bottomBarLayer  —— 固定底部快捷栏
+     *   _modalLayer      —— 所有模态弹窗（Bag/Dialog/Battle/Trade），show 时仍可在层内 setSiblingIndex 抢置顶
+     *   _toastLayer      —— 全局浮层（Toast / SaveIndicator），永远最顶
      * 各层相对层级由本方法固定的 addChild 顺序保证，不再依赖任何运行时的 setSiblingIndex。
      */
     private createUILayers(): void {
@@ -121,7 +121,11 @@ export class MainScene extends Component {
         // Content 层：空占位语义节点，置于最底（在场景预置内容节点之前）
         this._contentLayer = mk('UILayer_Content');
         this.node.insertChild(this._contentLayer, 0);
-        // BottomBar 层（Content 之上）
+        // StatusBar 层（Content 之上、BottomBar 之下：
+        //  状态栏浮于网格内容之上，但被 Modal 遮罩盖住；不靠 setSiblingIndex）
+        this._statusBarLayer = mk('UILayer_StatusBar');
+        this.node.addChild(this._statusBarLayer);
+        // BottomBar 层（StatusBar 之上）
         this._bottomBarLayer = mk('UILayer_BottomBar');
         this.node.addChild(this._bottomBarLayer);
         // Modal 层（BottomBar 之上，盖住底栏）
@@ -218,6 +222,7 @@ export class MainScene extends Component {
 
     /** 显式分层容器：Content(导航主内容) < BottomBar(固定底栏) < Modal(弹窗) < Progress(进度条) < Toast(全局浮层) */
     private _contentLayer: Node | null = null;
+    private _statusBarLayer: Node | null = null;
     private _bottomBarLayer: Node | null = null;
     private _modalLayer: Node | null = null;
     private _progressLayer: Node | null = null;
@@ -538,8 +543,8 @@ export class MainScene extends Component {
         const tf = bar.addComponent(UITransform);
         tf.setAnchorPoint(0.5, 0.5);
         tf.setContentSize(SB_W, SB_H);
-        // 挂 Canvas 根（与 BottomBar 同级），由 _applySafeAreaToScene 绝对定位
-        bar.setParent(this.node);
+        // 挂专属 StatusBar 层（Content 之上、BottomBar 之下），由 _applySafeAreaToScene 绝对定位
+        bar.setParent(this._statusBarLayer!);
 
         // 背景（替代原场景 Bg Sprite）：Graphics 矩形，暖色底
         const bg = bar.addComponent(Graphics);
