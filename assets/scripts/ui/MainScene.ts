@@ -514,17 +514,20 @@ export class MainScene extends Component {
     /**
      * 将安全区域偏移应用到场景预置节点。
      * - 状态栏（statusBarNode）：父级是 Canvas，position 为本地坐标（Canvas 锚点居中）。
-     *   场景预设 y=580 基于 750×1334 设计，FIXED_WIDTH 下不同屏幕高度会导致
-     *   状态栏距顶部距离不一致。改为【绝对定位】：直接按目标距顶像素计算 y 坐标。
+     *   改为【绝对定位】：状态栏顶部紧贴安全区域（system status bar）下沿 + 8px 间距，
+     *   即红框下沿位置。中心点 y = 屏幕半高 - safeTop - 间距 - 节点半高。
      */
     private _applySafeAreaToScene(): void {
         if (!this.statusBarNode) return;
         const vs = view.getVisibleSize();
-        // 绝对定位：状态栏中心距屏幕顶部的目标像素。
-        // 胶囊按钮通常在顶部右侧，状态栏紧贴其下方即可。
-        // Canvas 锚点(0.5,0.5)居中 → 顶部 y = +vs.height/2 → 目标 y = vs.height/2 - TARGET_FROM_TOP
-        const TARGET_FROM_TOP = 55; // 状态栏中心距顶部 55px（可微调）
-        this.statusBarNode.setPosition(0, vs.height / 2 - TARGET_FROM_TOP, 0);
+        const tf = this.statusBarNode.getComponent(UITransform);
+        const nodeH = tf ? tf.height : 90; // 状态栏节点自身高度（日期+属性两行约 90px）
+        const TOP_PADDING = 8; // 与安全区域的间距
+        // Canvas 锚点(0.5,0.5)居中 → 屏幕顶 = +vs.height/2
+        // 状态栏顶部距屏幕顶 = _safeTop + TOP_PADDING
+        // 状态栏中心 y = 屏幕顶 - (_safeTop + TOP_PADDING) - nodeH/2
+        const targetY = vs.height / 2 - this._safeTop - TOP_PADDING - nodeH / 2;
+        this.statusBarNode.setPosition(0, targetY, 0);
     }
 
     // [DEBUG_TEMP] 临时调试：状态栏红色半透明包围盒（含边框），真机查看位置时删除
@@ -537,11 +540,13 @@ export class MainScene extends Component {
         const tf = n.addComponent(UITransform);
         tf.setAnchorPoint(0.5, 0.5);
         const w = 750;
-        const boxH = 110;
+        // 用 statusBarNode 实际高度（_applySafeAreaToScene 已先执行），确保红框精确包围状态栏
+        const sbTf = this.statusBarNode?.getComponent(UITransform);
+        const boxH = sbTf ? sbTf.height : 90;
         tf.setContentSize(w, boxH);
         // 与蓝底同级挂在 Canvas 根，走已验证可用的渲染路径
         n.setParent(this.node);
-        // 优先用状态栏实测 Y（_applySafeAreaToScene 已先执行），否则退回公式值
+        // 用状态栏实测 Y（_applySafeAreaToScene 已先执行）
         const statusY = this.statusBarNode
             ? this.statusBarNode.position.y
             : view.getVisibleSize().height / 2 - 55;
