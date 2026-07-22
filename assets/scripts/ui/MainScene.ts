@@ -528,25 +528,30 @@ export class MainScene extends Component {
     }
 
     // [DEBUG_TEMP] 临时调试：状态栏红色半透明包围盒（含边框），真机查看位置时删除
+    // 注意：必须挂在 Canvas 根（this.node）而非 statusBarNode 子树——否则会被状态栏
+    // 自身背景/Mask 遮挡或裁剪（实测挂子树下完全不显示，蓝底挂根节点则正常）。
+    // 用状态栏的【实测 Y】绝对定位，保证红框精确覆盖真实状态栏位置。
     private _addStatusBarDebugBg(): void {
-        if (!this.statusBarNode) return;
         const n = new Node('DEBUG_SB_BG');
         n.layer = this.node.layer;   // 必须匹配 UI Camera 的 visibility，否则不渲染
         const tf = n.addComponent(UITransform);
         tf.setAnchorPoint(0.5, 0.5);
-        const pTf = this.statusBarNode.getComponent(UITransform);
-        const w = (pTf && pTf.width > 0) ? pTf.width : 750;
-        const h = (pTf && pTf.height > 0) ? pTf.height : 80;
-        const boxH = h + 24;
+        const w = 750;
+        const boxH = 110;
         tf.setContentSize(w, boxH);
-        n.setParent(this.statusBarNode);
-        n.setPosition(0, 0, 0);
+        // 与蓝底同级挂在 Canvas 根，走已验证可用的渲染路径
+        n.setParent(this.node);
+        // 优先用状态栏实测 Y（_applySafeAreaToScene 已先执行），否则退回公式值
+        const statusY = this.statusBarNode
+            ? this.statusBarNode.position.y
+            : view.getVisibleSize().height / 2 - 55;
+        n.setPosition(0, statusY, 0);
         const g = n.addComponent(Graphics);
-        g.fillColor = new Color(255, 60, 60, 160);
+        g.fillColor = new Color(255, 60, 60, 170);
         g.rect(-w / 2, -boxH / 2, w, boxH);
         g.fill();
         g.strokeColor = new Color(255, 0, 0, 255);
-        g.lineWidth = 4;
+        g.lineWidth = 5;
         g.rect(-w / 2, -boxH / 2, w, boxH);
         g.stroke();
     }
