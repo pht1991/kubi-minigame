@@ -503,9 +503,20 @@ export class MainScene extends Component {
      *   加上 _safeTop 后状态栏紧贴胶囊下方，消除顶部大间距）
      */
     private _applySafeAreaToScene(): void {
-        if (this._safeTop > 0 && this.statusBarNode) {
-            const p = this.statusBarNode.position;
-            this.statusBarNode.setPosition(p.x, p.y - this._safeTop, p.z);
+        if (!this.statusBarNode) return;
+        const p = this.statusBarNode.position;
+        // 1) 安全区域偏移（状态栏高度，避开刘海/胶囊）
+        let offsetY = this._safeTop;
+        // 2) FIXED_WIDTH 补偿：设计高度 1334，真机通常更高（全面屏），
+        //    状态栏场景预设 y=580 基于 1334，屏幕变高后视觉上偏上。
+        //    按超出部分 1/3 比例额外下推，让状态栏更贴近胶囊。
+        const vs = view.getVisibleSize();
+        const extraH = vs.height - 1334;
+        if (extraH > 0) {
+            offsetY += Math.round(extraH * 0.35);
+        }
+        if (offsetY > 0) {
+            this.statusBarNode.setPosition(p.x, p.y - offsetY, p.z);
         }
     }
 
@@ -515,9 +526,9 @@ export class MainScene extends Component {
         if (this._bottomBar && this._bottomBar.isValid) return;
 
         const BAR_W = 750;            // 拉满画布宽度，不留两侧空隙
-        const BAR_H = 70;
+        const BAR_H = 92;             // 底栏高度（原 70 在真机显窄）
         const BTN_W = 230;            // 3 按钮均分 750px，留 ~15px 边距：spacing=(750-690)/4≈15
-        const BTN_H = 56;             // 按钮高度略增，与栏高比例更协调
+        const BTN_H = 72;             // 按钮高度（原 56 在真机显矮）
 
         // 容器
         this._bottomBar = new Node('BottomBar');
