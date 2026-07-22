@@ -12,7 +12,6 @@
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionTrade } from '../../actions/ActionTrade';
-import { ActionExecutor } from '../../actions/ActionExecutor';
 import { ActionBuilding } from '../../actions/ActionBuilding';
 import { ActionBrew } from '../../actions/ActionBrew';
 import { ActionMap } from '../../actions/ActionMap';
@@ -21,6 +20,7 @@ import {
     TRADE_DATA, PLACE_DATA, ITEM_DATA, BUILDING_DATA,
     MST_DATA, EVENT_DATA,
 } from '../../data/data';
+import { TimeSystem } from '../../systems/TimeSystem';
 
 /** 每次出门最多出现的商人数（避免扎堆） */
 const MAX_TRADERS_PER_OUTING = 4;
@@ -163,7 +163,9 @@ export class OutdoorPage extends BasePage {
 
     /** 前往地点（消耗时间 + 进入详情页） */
     private travelToPlace(placeKey: string, timeNeed: number): void {
-        ActionExecutor.instance.execute({}, {}, timeNeed);
+        // 赶路/进地图属于场景切换而非「耗时换产出」操作：仅同步推进游戏时间，不弹进度条；
+        // 时间推进完成后再打开详情页（原经 ActionExecutor 会异步弹条且详情页提前打开）。
+        TimeSystem.instance.useTime(() => {}, timeNeed);
         if (!this.gm.placeSaveData[placeKey]) this.gm.placeSaveData[placeKey] = {};
         this.gm.placeSaveData[placeKey].visited = true;
         this.openPlaceDetail(placeKey);
