@@ -500,9 +500,16 @@ export class MainScene extends Component {
                     : getInfo.screenHeight;
                 const bottomInset = (getInfo.screenHeight - safeBottom) * scale;
                 this._safeBottom = Math.max(0, Math.round(bottomInset));
+                // [DEBUG] 真机确认安全区域实际值——定位后删除此 log
+                console.log('[SAFE_AREA] raw=', JSON.stringify({
+                    screenWidth: sw, screenHeight: getInfo.screenHeight,
+                    statusBarHeight: sbH, safeArea: getInfo.safeArea,
+                    scale: scale.toFixed(3)
+                }), '→ safeTop=', this._safeTop, 'safeBottom=', this._safeBottom);
             }
         } catch (_e) {
             // 非微信环境静默忽略
+            console.log('[SAFE_AREA] fetch error:', _e);
         }
     }
 
@@ -528,6 +535,9 @@ export class MainScene extends Component {
         // 状态栏中心 y = 屏幕顶 - (_safeTop + TOP_PADDING) - nodeH/2
         const targetY = vs.height / 2 - this._safeTop - TOP_PADDING - nodeH / 2;
         this.statusBarNode.setPosition(0, targetY, 0);
+        // [DEBUG] 真机确认定位参数——定位后删除此 log
+        console.log('[STATUS_BAR_POS] vs=', JSON.stringify({w: vs.width, h: vs.height}),
+            'safeTop=', this._safeTop, 'nodeH=', nodeH, '→ targetY=', targetY.toFixed(1));
     }
 
     // [DEBUG_TEMP] 临时调试：状态栏红色半透明包围盒（含边框），真机查看位置时删除
