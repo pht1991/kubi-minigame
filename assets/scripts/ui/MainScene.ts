@@ -272,10 +272,6 @@ export class MainScene extends Component {
         // 根据安全区域调整场景预置节点位置（状态栏下推避开刘海/胶囊）
         this._applySafeAreaToScene();
 
-        // [DEBUG_TEMP] 临时：状态栏红框 + 主界面蓝底，便于真机查看位置（用完删）
-        this._addStatusBarDebugBg();
-        this._addMainAreaDebugBg();
-
         // 注意：initHomeGrid() 依赖 _buildPage，须在所有 Page 创建之后调用（见下方 pageCtx 构建段末尾）
 
         // 创建背包弹窗（先于 DialogPanel 创建，物品操作弹窗层级更高）
@@ -506,15 +502,9 @@ export class MainScene extends Component {
                 const safeBottom = (sa && sa.bottom) ? sa.bottom : getInfo.screenHeight;
                 const bottomInset = (getInfo.screenHeight - safeBottom) * scale;
                 this._safeBottom = Math.max(0, Math.round(bottomInset));
-                // [DEBUG] 真机确认安全区域实际值——定位后删除此 log
-                console.log('[SAFE_AREA] winInfo.sbH=', (winInfo && winInfo.statusBarHeight),
-                    'sysInfo.sbH=', (sysInfo && sysInfo.statusBarHeight),
-                    'scale=', scale.toFixed(3),
-                    '→ safeTop=', this._safeTop, 'safeBottom=', this._safeBottom);
             }
         } catch (_e) {
             // 非微信环境静默忽略
-            console.log('[SAFE_AREA] fetch error:', _e);
         }
     }
 
@@ -540,58 +530,6 @@ export class MainScene extends Component {
         // 状态栏中心 y = 屏幕顶 - (_safeTop + TOP_PADDING) - nodeH/2
         const targetY = vs.height / 2 - this._safeTop - TOP_PADDING - nodeH / 2;
         this.statusBarNode.setPosition(0, targetY, 0);
-        // [DEBUG] 真机确认定位参数——定位后删除此 log
-        console.log('[STATUS_BAR_POS] vs=', JSON.stringify({w: vs.width, h: vs.height}),
-            'safeTop=', this._safeTop, 'nodeH=', nodeH, '→ targetY=', targetY.toFixed(1));
-    }
-
-    // [DEBUG_TEMP] 临时调试：状态栏红色半透明包围盒（含边框），真机查看位置时删除
-    // 注意：必须挂在 Canvas 根（this.node）而非 statusBarNode 子树——否则会被状态栏
-    // 自身背景/Mask 遮挡或裁剪（实测挂子树下完全不显示，蓝底挂根节点则正常）。
-    // 用状态栏的【实测 Y】绝对定位，保证红框精确覆盖真实状态栏位置。
-    private _addStatusBarDebugBg(): void {
-        const n = new Node('DEBUG_SB_BG');
-        n.layer = this.node.layer;   // 必须匹配 UI Camera 的 visibility，否则不渲染
-        const tf = n.addComponent(UITransform);
-        tf.setAnchorPoint(0.5, 0.5);
-        const w = 750;
-        // 用 statusBarNode 实际高度（_applySafeAreaToScene 已先执行），确保红框精确包围状态栏
-        const sbTf = this.statusBarNode?.getComponent(UITransform);
-        const boxH = sbTf ? sbTf.height : 90;
-        tf.setContentSize(w, boxH);
-        // 与蓝底同级挂在 Canvas 根，走已验证可用的渲染路径
-        n.setParent(this.node);
-        // 用状态栏实测 Y（_applySafeAreaToScene 已先执行）
-        const statusY = this.statusBarNode
-            ? this.statusBarNode.position.y
-            : view.getVisibleSize().height / 2 - 55;
-        n.setPosition(0, statusY, 0);
-        const g = n.addComponent(Graphics);
-        g.fillColor = new Color(255, 60, 60, 170);
-        g.rect(-w / 2, -boxH / 2, w, boxH);
-        g.fill();
-        g.strokeColor = new Color(255, 0, 0, 255);
-        g.lineWidth = 5;
-        g.rect(-w / 2, -boxH / 2, w, boxH);
-        g.stroke();
-    }
-
-    // [DEBUG_TEMP] 临时调试：主界面蓝色半透明全屏底，真机查看内容区边界时删除
-    private _addMainAreaDebugBg(): void {
-        const n = new Node('DEBUG_MAIN_BG');
-        n.layer = this.node.layer;   // 必须匹配 UI Camera 的 visibility，否则不渲染
-        const tf = n.addComponent(UITransform);
-        tf.setAnchorPoint(0.5, 0.5);
-        const vs = view.getVisibleSize();
-        tf.setContentSize(vs.width, vs.height);
-        // 挂在 this.node（Canvas 下的根节点）最前，避免被场景预置 GridComponent 白底遮挡
-        n.setParent(this.node);
-        n.setPosition(0, 0, 0);
-        n.setSiblingIndex(0);
-        const g = n.addComponent(Graphics);
-        g.fillColor = new Color(60, 120, 255, 90);
-        g.rect(-vs.width / 2, -vs.height / 2, vs.width, vs.height);
-        g.fill();
     }
 
     /** 创建底部固定快捷操作栏（休息 / 背包 / 状态） */
