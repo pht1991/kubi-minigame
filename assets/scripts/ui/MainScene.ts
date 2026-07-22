@@ -509,9 +509,9 @@ export class MainScene extends Component {
         // FIXED_WIDTH 下实际屏幕高度 > 设计 1334（设计半高 667），顶部 y 变为 +vs.height/2。
         // 状态栏场景预设 y=580 基于旧高度，屏幕变高后会离顶部（胶囊）偏下，
         // 需【上推】 (vs.height/2 - 667) 使其距顶部恢复设计的 87px，紧贴胶囊下方。
-        // 先恢复设计距顶 87px（vs.height/2 - 667），再额外上推一半（约 44px），
-        // 使距顶约 43px，与胶囊间距缩减一半（用户要求再靠近）
-        const offsetY = vs.height / 2 - 667 + 44;
+        // 先恢复设计距顶 87px（vs.height/2 - 667），再额外上推（约 88px），
+        // 使状态栏更贴近甚至越过顶部，用户调参验证用
+        const offsetY = vs.height / 2 - 667 + 88;
         if (offsetY > 0) {
             this.statusBarNode.setPosition(p.x, p.y + offsetY, p.z);
         }
