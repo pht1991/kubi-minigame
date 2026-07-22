@@ -91,9 +91,11 @@ export class HarvestModal extends ModalPanel {
         const name = ITEM_DATA[id]?.name || id;
         const qty = this._loot[id];
         this.mkInline(n, -w / 2 + 18, -h / 2, w * 0.62, h, name, 24, C.body);
-        const qtyLbl = this.mkInline(n, w / 2 - 18, -h / 2, w * 0.3, h, `×${qty}`, 24, C.sub, false);
+        // mkInline 锚点为 (0,0.5)：x 是左边缘，需让盒右缘贴住行右界 (w/2-18) 以免被遮罩裁掉
+        const rightEdge = w / 2 - 18;
+        const qtyLbl = this.mkInline(n, rightEdge - w * 0.3, -h / 2, w * 0.3, h, `×${qty}`, 24, C.sub, false);
         qtyLbl.horizontalAlign = Label.HorizontalAlign.RIGHT;
-        const tagLbl = this.mkInline(n, w / 2 - 18, -h * 0.74, w * 0.34, 26, '点击拾取', 18, C.accent2, false);
+        const tagLbl = this.mkInline(n, rightEdge - w * 0.34, -h * 0.74, w * 0.34, 26, '点击拾取', 18, C.accent2, false);
         tagLbl.horizontalAlign = Label.HorizontalAlign.RIGHT;
 
         n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; this.take(id); });
