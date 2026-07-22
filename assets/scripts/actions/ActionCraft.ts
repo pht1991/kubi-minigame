@@ -56,6 +56,10 @@ export class ActionCraft {
         // 执行：产出 get × amount × count
         const canGet: Record<string, number> = {};
         canGet[recipe.get] = (recipe.amount || 1) * count;
-        return this._exec.execute(canGet, scaledRequire, recipe.timeNeed * count);
+        const outName = ITEM_DATA[recipeId]?.name || recipeId;
+        return this._exec.execute(canGet, scaledRequire, recipe.timeNeed * count, {
+            title: `制造 ${outName}`,
+            successMessage: `制造了 ${outName} ×${(recipe.amount || 1) * count}`,
+        });
     }
 }

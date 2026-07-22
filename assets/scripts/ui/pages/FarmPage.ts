@@ -55,6 +55,7 @@ export class FarmPage extends BasePage {
             breadcrumb: '农田',
             columns: 4,
             cells,
+            rebuild: () => this.buildFarmPage().cells,
             onCellClick: (index, cell) => {
                 if (cell.id.startsWith('harvest_')) {
                     const slotIdx = parseInt(cell.id.replace('harvest_', ''));
@@ -63,9 +64,12 @@ export class FarmPage extends BasePage {
                     this.navigator.replace(this.buildFarmPage());
                 } else if (cell.id.startsWith('plant_')) {
                     const cropId = cell.id.replace('plant_', '');
+                    // plantCrop 走 ActionExecutor（含进度条）：成功后由 OPERATION_DONE 弹反馈，列表由 rebuild 刷新
                     const r = ActionBuilding.instance.plantCrop(cropId);
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.buildFarmPage());
+                    if (!r.success) {
+                        this.setMsg(r.message);
+                        this.navigator.replace(this.buildFarmPage());
+                    }
                 }
             },
         };

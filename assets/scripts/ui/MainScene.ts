@@ -29,6 +29,8 @@ import { TradePanel } from './TradePanel';
 import { QuantityPanel } from './QuantityPanel';
 import { Toast } from './Toast';
 import { SaveIndicator } from './SaveIndicator';
+import { ProgressOverlay } from './ProgressOverlay';
+import { ResultModal } from './ResultModal';
 import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
 import { C } from './theme';
@@ -118,6 +120,9 @@ export class MainScene extends Component {
         // Modal 层（BottomBar 之上，盖住底栏）
         this._modalLayer = mk('UILayer_Modal');
         this.node.addChild(this._modalLayer);
+        // Progress 层（Modal 之上、Toast 之下：进度条遮罩盖住弹窗，但自身不挡 Toast 浮层）
+        this._progressLayer = mk('UILayer_Progress');
+        this.node.addChild(this._progressLayer);
         // Toast 层（永远最顶）
         this._toastLayer = mk('UILayer_Toast');
         this.node.addChild(this._toastLayer);
@@ -175,6 +180,9 @@ export class MainScene extends Component {
     /** 交易面板（独立模态，替代原网格式交易页） */
     private _tradePanel: TradePanel | null = null;
 
+    /** 操作结果确认弹窗（长文案/需确认结果，由 OPERATION_DONE 触发） */
+    private _resultModal: ResultModal | null = null;
+
     /** 烹饪系统页面模块（从 MainScene 抽离，见 pages/CookPage.ts） */
     private _cookPage: CookPage | null = null;
     private _craftPage: CraftPage | null = null;
@@ -197,10 +205,11 @@ export class MainScene extends Component {
     /** 底部快捷操作栏 */
     private _bottomBar: Node | null = null;
 
-    /** 显式分层容器：Content(导航主内容) < BottomBar(固定底栏) < Modal(弹窗) < Toast(全局浮层) */
+    /** 显式分层容器：Content(导航主内容) < BottomBar(固定底栏) < Modal(弹窗) < Progress(进度条) < Toast(全局浮层) */
     private _contentLayer: Node | null = null;
     private _bottomBarLayer: Node | null = null;
     private _modalLayer: Node | null = null;
+    private _progressLayer: Node | null = null;
     private _toastLayer: Node | null = null;
 
     @property(Node)
@@ -268,6 +277,29 @@ export class MainScene extends Component {
         const qtyPanel = qtyNode.addComponent(QuantityPanel);
         this._modalLayer!.addChild(qtyNode);
         this._tradePanel.setQtyPanel(qtyPanel);
+
+        // 创建操作结果确认弹窗（挂 modalLayer，由 OPERATION_DONE 统一触发）
+        const resultNode = new Node('ResultModal');
+        resultNode.layer = this.node.layer;
+        this._resultModal = resultNode.addComponent(ResultModal);
+        this._modalLayer!.addChild(resultNode);
+
+        // 创建公共进度条（挂独立 _progressLayer，盖住弹窗但不挡 Toast 浮层）
+        const progressNode = new Node('ProgressOverlay');
+        progressNode.layer = this.node.layer;
+        progressNode.setPosition(0, 0, 0);
+        this._progressLayer!.addChild(progressNode);
+        progressNode.addComponent(ProgressOverlay);
+
+        // 订阅耗时动作完成事件：长/需确认 → ResultModal；其余 → Toast(SHRINK)
+        this._eventBus.on(GameEvents.OPERATION_DONE, (payload: { title: string; message: string; modal: boolean }) => {
+            if (payload.modal) {
+                this._resultModal?.showResult(payload.title || '操作完成', payload.message);
+            } else {
+                Toast.instance?.show(payload.message);
+            }
+            this._saveMgr.save(); // 行为反馈时立即存档，确保数据及时落盘
+        });
 
         // 构建页面模块共享上下文（PageContext），并创建各业务域 Page 模块
         // —— 把原本散落在 MainScene 的页面构建逻辑按业务域外抽，MainScene 仅做装配与路由

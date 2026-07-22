@@ -138,8 +138,9 @@ export class CraftPage extends BasePage {
             max,
             (qty) => {
                 const r = ActionCraft.instance.make(recipeId, recipeData, qty);
-                this.setMsg(r.message);
-                this.eventBus.emit(GameEvents.UI_REFRESH); // GridComponent 监听后走 rebuild 刷新列表 disabled
+                if (!r.success) this.setMsg(r.message);
+                // 成功：进度条播放中，完成后由 OPERATION_DONE 弹反馈；列表由 rebuild(UI_REFRESH) 刷新
+                this.eventBus.emit(GameEvents.UI_REFRESH); // 失败/即时动作立即刷新；成功也会在进度结束后再刷一次
             },
             {
                 confirmLabel: '制造',

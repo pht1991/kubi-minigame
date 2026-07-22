@@ -2,16 +2,31 @@
  * ActionExecutor.ts - 通用动作执行器
  * 从原 main.js ActionComponent.act 提取的通用范式：
  *   消耗时间 → 在回调中产出（状态类/物品类）→ 消耗材料 → 设置冷却
- * 所有"消耗时间换取产出"的动作（制造/烹饪/采集/贸易/技能）都走这里。
+ * 所有"消耗时间换取产出"的动作（制造/烹饪/采集/贸易/技能/建造/种植/陷阱…）都走这里。
+ *
+ * 【本次改造：公共进度条】
+ *   - 校验（材料/工具/状态）同步返回失败；
+ *   - timeNeed > 0 时，弹 ProgressOverlay 播放真实时长动画，动画结束才推进游戏时间 + 应用产出；
+ *   - 完成后统一 emit GameEvents.OPERATION_DONE({ title, message, modal })，由 MainScene 决定
+ *     Toast(SHRINK) 还是 ResultModal（长/需确认）。解决原「点击即完成、无体验感」问题。
+ *   - timeNeed <= 0 时同步执行（即时动作），同样 emit OPERATION_DONE。
  */
 
 import { GameManager } from '../core/GameManager';
 import { TimeSystem } from '../systems/TimeSystem';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { PlayerState } from '../data/types';
+import { ProgressOverlay } from '../ui/ProgressOverlay';
 
 /** 玩家状态键（用于区分"状态类产出"与"物品类产出"） */
 const STATE_KEYS = new Set(['temp', 'hp', 'full', 'moist', 'ps', 'san']);
+
+/** 真实时长映射（游戏小时 → 真实毫秒） */
+const REAL_MS_PER_GAME_HOUR = 600;   // 1 游戏小时 ≈ 0.6 秒
+const MIN_DUR = 350;                  // 最短动画时长(ms)，保证可见
+const MAX_DUR = 3500;                 // 最长动画时长(ms)，避免拖沓
+const LOW_STA = 20;                   // 体力低于此值视为「体力不足」，延长耗时
+const STA_PENALTY = 1.4;              // 体力不足耗时倍率
 
 export interface ActionOptions {
     /** 冷却 actionId（对应 coolDownSaveData 的键） */
@@ -24,6 +39,12 @@ export interface ActionOptions {
     refreshUI?: boolean;
     /** 完成回调 */
     onDone?: () => void;
+    /** 进度条标题（如「烹饪」「采集中」）；缺省用「操作中」 */
+    title?: string;
+    /** 完成后反馈文案（经 OPERATION_DONE 弹 Toast / ResultModal）；缺省「完成」 */
+    successMessage?: string;
+    /** 是否以「确认弹窗(ResultModal)」形式反馈（长文案/需确认时 true） */
+    resultModal?: boolean;
 }
 
 export interface ActionResult {
@@ -46,6 +67,23 @@ export class ActionExecutor {
         this._gm = GameManager.instance;
         this._ts = TimeSystem.instance;
         this._eventBus = EventBus.instance;
+    }
+
+    /**
+     * 计算进度条真实时长
+     * - 基础 = 游戏小时数 × 每小真实毫秒（厨房等级等已在 timeNeed 中折算，此处不再处理）
+     * - 体力不足(当前 ps < LOW_STA) → × STA_PENALTY
+     * - 封顶 [MIN_DUR, MAX_DUR]
+     */
+    private computeDuration(timeNeed: number): number {
+        let dur = timeNeed * REAL_MS_PER_GAME_HOUR;
+        if (this._gm.playerState.ps < LOW_STA) dur *= STA_PENALTY;
+        return Math.max(MIN_DUR, Math.min(MAX_DUR, dur));
+    }
+
+    /** 触发完成反馈（统一出口） */
+    private emitDone(message: string, modal: boolean, title: string): void {
+        this._eventBus.emit(GameEvents.OPERATION_DONE, { title, message, modal });
     }
 
     /**
@@ -105,8 +143,12 @@ export class ActionExecutor {
         }
 
         const outputBox = options.outputBox || 'bag';
+        const title = options.title || '操作中';
+        const successMessage = options.successMessage || '完成';
+        const modal = !!options.resultModal;
 
-        this._ts.useTime(() => {
+        // 真正应用产出/消耗的逻辑（同步执行，供两种路径复用）
+        const apply = () => {
             if (Object.keys(stateCanGet).length > 0) {
                 this._gm.playerStateChange(stateCanGet as Partial<PlayerState>);
             }
@@ -133,8 +175,32 @@ export class ActionExecutor {
             if (options.refreshUI !== false) {
                 this._eventBus.emit(GameEvents.UI_REFRESH);
             }
-        }, timeNeed);
+        };
 
-        return { success: true, message: '完成' };
+        // 即时动作（timeNeed<=0）：直接应用并反馈
+        if (timeNeed <= 0) {
+            apply();
+            this.emitDone(successMessage, modal, title);
+            return { success: true, message: successMessage };
+        }
+
+        // 耗时动作：先播放进度条，动画结束再推进时间 + 应用 + 反馈
+        const ov = ProgressOverlay.instance;
+        if (!ov) {
+            // 极端兜底：进度条组件未就绪，直接同步执行
+            this._ts.useTime(() => apply(), timeNeed);
+            this.emitDone(successMessage, modal, title);
+            return { success: true, message: successMessage };
+        }
+
+        const dur = this.computeDuration(timeNeed);
+        ov.play(title, dur, () => {
+            this._ts.advance(timeNeed);   // 进度结束才推进游戏时间（含衰减/换日）
+            apply();
+            this.emitDone(successMessage, modal, title);
+        });
+
+        // 立即返回成功（真正结果在进度结束后经 OPERATION_DONE 反馈）
+        return { success: true, message: '' };
     }
 }

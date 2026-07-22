@@ -97,7 +97,8 @@ export abstract class BasePage {
                     (data) => {
                         if (data?.action === 'confirm') {
                             const r = ActionBuilding.instance.upgrade(upType, data.targetId);
-                            this.setMsg(r.message);
+                            // upgrade 走 ActionExecutor（含进度条）：成功后由 OPERATION_DONE 弹反馈；失败才提示
+                            if (!r.success) this.setMsg(r.message);
                             opts.onUpgraded();
                         }
                     },

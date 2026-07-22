@@ -52,7 +52,8 @@ export class Toast extends Component {
         lbl.color = C.title; // 深棕，浅底上清晰可读
         lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
         lbl.verticalAlign = Label.VerticalAlign.CENTER;
-        lbl.overflow = Label.Overflow.CLAMP;
+        // 改为 SHRINK：文字过长时自动缩小字号而非截断（修复原 CLAMP 把长文案裁掉的问题）
+        lbl.overflow = Label.Overflow.SHRINK;
         this._label = lbl;
 
         // 初始透明

@@ -62,6 +62,7 @@ export class BuildPage extends BasePage {
             columns: 4,
             cells,
             home: true,
+            rebuild: () => this.buildHomePage().cells,
             onCellClick: (index, cell) => this.ctx.onHomeCellClick(cell.id),
         };
     }
@@ -114,8 +115,8 @@ export class BuildPage extends BasePage {
     /** 执行建造动作（复用 ActionBuilding 完整逻辑） */
     public doBuild(buildingId: string): void {
         const r = ActionBuilding.instance.build(buildingId);
-        this.setMsg(r.message);
-        // 刷新首页（设施动态区会更新）
+        if (!r.success) this.setMsg(r.message);
+        // 成功：进度条播放中，结束后由 OPERATION_DONE 弹反馈；刷新首页（设施动态区会更新）
         this.navigator.setRoot(this.buildHomePage());
         this.eventBus.emit(GameEvents.UI_REFRESH);
     }

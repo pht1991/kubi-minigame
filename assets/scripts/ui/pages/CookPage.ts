@@ -21,8 +21,8 @@ export class CookPage extends BasePage {
         this.navigator.push(this.buildCookHubPage());
     }
 
-    /** 烹饪主页：根据背包材料列出可制作的料理 + 可制作数量 */
-    private buildCookHubPage(): GridPage {
+    /** 烹饪主页：根据背包材料列出可制作的料理 + 可制作数量（提取为 cells 以便 rebuild 复用） */
+    private buildCookHubCells(): GridCellData[] {
         const bag = this.gm.boxSaveData['bag'] || {};
 
         // 按料理名聚合所有配方变体
@@ -61,12 +61,17 @@ export class CookPage extends BasePage {
             cells.push({ id: 'empty', name: '背包没有可烹饪的食材组合', state: 'disabled', type: 'list' });
         }
         cells.push({ id: 'book', name: '菜谱书', state: 'normal' });
+        return cells;
+    }
 
+    /** 烹饪主页：构建完整 GridPage（cells 用 buildCookHubCells，rebuild 复用以保证完成刷新） */
+    private buildCookHubPage(): GridPage {
         return {
             title: '烹饪',
             breadcrumb: '烹饪',
             columns: 1,
-            cells,
+            cells: this.buildCookHubCells(),
+            rebuild: () => this.buildCookHubCells(),
             // 升级按钮走公共标题栏接口
             ...this.makeUpgradeInfo('cookerUpdate', {
                 title: '炊具升级',
@@ -77,11 +82,14 @@ export class CookPage extends BasePage {
                 if (cell.id === 'book') {
                     this.openRecipeBook();
                 } else if (cell.data) {
-                    // 直接取自背包制作一份，放回背包；随后刷新列表（支持二次加工菜）
+                    // 直接取自背包制作一份，放回背包。
+                    // 成功后进度条播放中，列表由 rebuild(UI_REFRESH) 在完成后刷新，反馈经 OPERATION_DONE 弹 Toast。
                     const recipe = (cell.data as any).recipe as CookRecipe;
                     const r = ActionCook.instance.cook(recipe, 1, 'bag');
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.buildCookHubPage());
+                    if (!r.success) {
+                        this.setMsg(r.message);
+                        this.navigator.replace(this.buildCookHubPage());
+                    }
                 }
             },
         };

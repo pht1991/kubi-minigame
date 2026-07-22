@@ -49,7 +49,13 @@ export class ActionMap {
         const canGet = res.things || {};
         const timeNeed = res.timeNeed || 1;
 
-        const r = this._exec.execute({ ...canGet }, { ...require }, timeNeed, {
+        // 按背包种类容量裁剪：背包未满尽量全收，满了只取能放下的（其余丢弃）
+        const clamped = this._gm.clampToBag(canGet);
+
+        const r = this._exec.execute({ ...clamped.taken }, { ...require }, timeNeed, {
+            title: '采集中',
+            successMessage: this.buildGetMessage(clamped, '采集'),
+            resultModal: clamped.full,
             onDone: () => {
                 // 确保资源条目存在（兼容旧存档/缺失字段），懒初始化后递减
                 const pd = this._gm.placeSaveData[placeId];
@@ -61,7 +67,7 @@ export class ActionMap {
                 this._eventBus.emit('place_change', placeId);
             },
         });
-        return r.success ? { success: true, message: `获得了${this.formatGetNames(canGet)}` } : r;
+        return r.success ? { success: true, message: '' } : r;
     }
 
     /** 拾荒：随机获得地点散落物品 */
@@ -82,10 +88,16 @@ export class ActionMap {
             canGet[k] = (canGet[k] || 0) + 1 + Math.floor(Math.random() * 3);
         }
 
-        const r = this._exec.execute(canGet, { ...pickReq }, PICK_TIME, {
+        // 按背包种类容量裁剪：背包已满则只取能放下的，其余丢弃
+        const clamped = this._gm.clampToBag(canGet);
+
+        const r = this._exec.execute({ ...clamped.taken }, { ...pickReq }, PICK_TIME, {
+            title: '拾荒中',
+            successMessage: this.buildGetMessage(clamped, '拾荒'),
+            resultModal: clamped.full,
             onDone: () => this._eventBus.emit('place_change', placeId),
         });
-        return r.success ? { success: true, message: `获得了${this.formatGetNames(canGet)}` } : r;
+        return r.success ? { success: true, message: '' } : r;
     }
 
     /** 狩猎：从地点随机抽一只怪进入战斗 */
@@ -102,6 +114,27 @@ export class ActionMap {
         return Object.entries(items)
             .map(([id, cnt]) => `${ITEM_DATA[id]?.name || id}${cnt > 1 ? cnt : ''}`)
             .join(' ');
+    }
+
+    /**
+     * 构造采集/拾荒的获得反馈文案（经 OPERATION_DONE 弹 Toast / ResultModal）
+     * - 全部放入：verb + 「获得了 X Y」
+     * - 仅取部分（背包满）：追加「背包已满，未能带走：A B」
+     */
+    private buildGetMessage(clamped: { taken: Record<string, number>; dropped: Record<string, number>; full: boolean }, verb: string): string {
+        const nameOf = (id: string) => ITEM_DATA[id]?.name || id;
+        const takenStr = Object.entries(clamped.taken)
+            .map(([id, cnt]) => `${nameOf(id)}${cnt > 1 ? cnt : ''}`)
+            .join(' ');
+        let msg = `${verb}获得了 ${takenStr}`;
+        if (clamped.full) {
+            const droppedStr = Object.entries(clamped.dropped)
+                .map(([id, cnt]) => `${nameOf(id)}${cnt > 1 ? cnt : ''}`)
+                .join(' ');
+            const cap = this._gm.boxSize['bag'] || 12;
+            msg += `\n背包已满（${cap}格），未能带走：${droppedStr}`;
+        }
+        return msg;
     }
 
     /** 探测狩猎（不自动战斗）：随机抽怪，返回怪物 ID 供 BattlePanel 使用 */

@@ -59,6 +59,7 @@ export class TrapPage extends BasePage {
             breadcrumb: '陷阱',
             columns: 4,
             cells,
+            rebuild: () => this.buildTrapPage().cells,
             onCellClick: (index, cell) => {
                 if (cell.id.startsWith('check_')) {
                     const slotIdx = parseInt(cell.id.replace('check_', ''));
@@ -72,9 +73,12 @@ export class TrapPage extends BasePage {
                     this.navigator.replace(this.buildTrapPage());
                 } else if (cell.id.startsWith('place_')) {
                     const trapId = cell.id.replace('place_', '');
+                    // placeTrap 走 ActionExecutor（含进度条）：成功反馈经 OPERATION_DONE，列表由 rebuild 刷新
                     const r = ActionBuilding.instance.placeTrap(trapId);
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.buildTrapPage());
+                    if (!r.success) {
+                        this.setMsg(r.message);
+                        this.navigator.replace(this.buildTrapPage());
+                    }
                 }
             },
         };

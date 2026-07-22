@@ -90,4 +90,6 @@ export const GameEvents = {
     LOAD_COMPLETE: 'load_complete',
     // UI 刷新
     UI_REFRESH: 'ui_refresh',
+    // 耗时动作完成（进度条结束后的统一反馈；携带 {title, message, modal}）
+    OPERATION_DONE: 'operation_done',
 } as const;

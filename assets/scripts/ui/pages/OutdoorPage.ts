@@ -290,7 +290,7 @@ export class OutdoorPage extends BasePage {
             onCellClick: (index, cell) => {
                 if (cell.id === 'build') {
                     const r = ActionBuilding.instance.build(buildingId);
-                    this.setMsg(r.message);
+                    if (!r.success) this.setMsg(r.message);
                     this.navigator.replace(this.buildBuildingDetailPage(buildingId));
                 } else if (cell.id === 'farm_manage') {
                     this.ctx.farmPage?.openFarmPanel();
@@ -588,12 +588,17 @@ export class OutdoorPage extends BasePage {
                         return;
                     }
                     const r = ActionMap.instance.gather(placeId, data.resName);
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.buildPlaceDetailPage(placeId));
+                    if (!r.success) {
+                        this.setMsg(r.message);
+                        this.navigator.replace(this.buildPlaceDetailPage(placeId));
+                    }
+                    // 成功：进度条播放中，结束后由 OPERATION_DONE 弹反馈/确认；列表由 rebuild 刷新
                 } else if (cell.id === 'scavenge') {
                     const r = ActionMap.instance.scavenge(placeId);
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.buildPlaceDetailPage(placeId));
+                    if (!r.success) {
+                        this.setMsg(r.message);
+                        this.navigator.replace(this.buildPlaceDetailPage(placeId));
+                    }
                 } else if (cell.id === 'hunt') {
                     const hunted = ActionMap.instance.probeHunt(placeId);
                     if (hunted.mstId) {

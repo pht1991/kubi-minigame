@@ -56,18 +56,25 @@ export class ActionCook {
         const cookerLevel = this._gm.getBuildingLevel('cookerUpdate');
         const timeNeed = COOK_TIME_NEED * count * Math.pow(COOK_SPEED_MUL, cookerLevel);
 
-        // 产出：料理 name × 份数到背包，并推进时间
+        // 产出：料理 name × 份数到背包；在进度条结束后（onDone）再扣食材，保证原子性
         const canGet: Record<string, number> = {};
         canGet[recipe.name] = count;
-        const r = this._exec.execute(canGet, {}, timeNeed, { outputBox: 'bag', refreshUI: false });
+        const dishName = ITEM_DATA[recipe.name]?.name || recipe.name;
+        const r = this._exec.execute(canGet, {}, timeNeed, {
+            outputBox: 'bag',
+            refreshUI: false,
+            title: `烹饪 ${dishName}`,
+            successMessage: `烹饪了 ${dishName} ×${count}`,
+            onDone: () => {
+                // 从来源箱扣除食材
+                const neg: Record<string, number> = {};
+                for (const k in require) neg[k] = -require[k];
+                this._gm.changeItem(neg, from);
+                this._eventBus.emit(GameEvents.ITEM_CHANGE, from);
+                this._eventBus.emit(GameEvents.UI_REFRESH);
+            },
+        });
         if (!r.success) return r;
-
-        // 从来源箱扣除食材
-        const neg: Record<string, number> = {};
-        for (const k in require) neg[k] = -require[k];
-        this._gm.changeItem(neg, from);
-        this._eventBus.emit(GameEvents.ITEM_CHANGE, from);
-        this._eventBus.emit(GameEvents.UI_REFRESH);
-        return { success: true, message: `烹饪了 ${ITEM_DATA[recipe.name]?.name || recipe.name} ×${count}` };
+        return { success: true, message: '' };
     }
 }

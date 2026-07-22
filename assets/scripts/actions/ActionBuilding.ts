@@ -49,13 +49,15 @@ export class ActionBuilding {
 
         const timeNeed = data.timeNeed || 4;
         const r = this._exec.execute({}, data.require || {}, timeNeed, {
+            title: `建造 ${data.name}`,
+            successMessage: `建造了 ${data.name}`,
             onDone: () => {
                 if (!this._gm.buildingSaveData[buildingId]) this._gm.buildingSaveData[buildingId] = {};
                 this._gm.buildingSaveData[buildingId].own = true;
                 this._eventBus.emit(GameEvents.BUILDING_CHANGE, this._gm.buildingSaveData);
             },
         });
-        return r.success ? { success: true, message: `建造了 ${data.name}` } : r;
+        return r.success ? { success: true, message: '' } : r;
     }
 
     /** 升级建筑（BUILDING_UPDATE_DATA[type][id]） */
@@ -75,6 +77,8 @@ export class ActionBuilding {
 
         const timeNeed = data.timeNeed || 4;
         const r = this._exec.execute({}, data.require, timeNeed, {
+            title: `升级 ${id}`,
+            successMessage: `升级了 ${id}`,
             onDone: () => {
                 const key = `${type}_level`;
                 this._gm.buildingSaveData[key] = (this._gm.buildingSaveData[key] || 0) + 1;
@@ -85,7 +89,7 @@ export class ActionBuilding {
                 this._eventBus.emit(GameEvents.BUILDING_CHANGE, this._gm.buildingSaveData);
             },
         });
-        return r.success ? { success: true, message: `升级了 ${id}` } : r;
+        return r.success ? { success: true, message: '' } : r;
     }
 
     // ===== 农田系统 =====
@@ -101,6 +105,8 @@ export class ActionBuilding {
         if (!this._gm.checkHaveResource(crop.require)) return { success: false, message: '材料不足' };
 
         const r = this._exec.execute({}, crop.require, crop.timeNeed, {
+            title: `种植 ${crop.desc}`,
+            successMessage: `种植了 ${crop.desc}`,
             onDone: () => {
                 const ts = TimeSystem.instance;
                 farmData.list.push({
@@ -112,7 +118,7 @@ export class ActionBuilding {
                 this._eventBus.emit(GameEvents.BUILDING_CHANGE, this._gm.buildingSaveData);
             },
         });
-        return r.success ? { success: true, message: `种植了 ${crop.desc}` } : r;
+        return r.success ? { success: true, message: '' } : r;
     }
 
     /** 收获作物 */
@@ -197,6 +203,8 @@ export class ActionBuilding {
         if (!this._gm.checkHaveResource(trap.require)) return { success: false, message: '诱饵不足' };
 
         const r = this._exec.execute({}, trap.require, 1, {
+            title: `放置 ${trap.desc}`,
+            successMessage: `放置了 ${trap.desc} 陷阱`,
             onDone: () => {
                 const ts = TimeSystem.instance;
                 trapData.list.push({
@@ -208,7 +216,7 @@ export class ActionBuilding {
                 this._eventBus.emit(GameEvents.BUILDING_CHANGE, this._gm.buildingSaveData);
             },
         });
-        return r.success ? { success: true, message: `放置了 ${trap.desc} 陷阱` } : r;
+        return r.success ? { success: true, message: '' } : r;
     }
 
     /** 检查陷阱 */

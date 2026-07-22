@@ -222,6 +222,44 @@ export class GameManager {
         return true;
     }
 
+    /**
+     * 背包剩余空格子数（按物品「种类」计容，非堆叠数）。
+     * boxSize['bag'] 为种类上限（BAG_BASE_SIZE=12），堆叠不占新格。
+     */
+    bagFreeGrids(): number {
+        const bag = this.boxSaveData['bag'] || {};
+        const cap = this.boxSize['bag'] || BAG_BASE_SIZE;
+        return Math.max(0, cap - Object.keys(bag).length);
+    }
+
+    /**
+     * 按背包种类容量裁剪产出：
+     *   - 背包中已存在的种类 → 直接堆叠，不占新格；
+     *   - 新种类 → 占用一个空格子，直到格子用尽；
+     *   - 格子用尽后剩余的新种类 → 丢弃（即「仅取部分」）。
+     * 与原版「取全部/取部分」语义一致：背包未满尽量全收，满了只取能放下的。
+     * @returns taken 实际放入背包的种类→数量；dropped 因背包满丢弃的种类→数量；full 是否发生丢弃
+     */
+    clampToBag(items: Record<string, number>): { taken: Record<string, number>; dropped: Record<string, number>; full: boolean } {
+        const bag = this.boxSaveData['bag'] || {};
+        const taken: Record<string, number> = {};
+        const dropped: Record<string, number> = {};
+        let free = this.bagFreeGrids();
+        for (const id in items) {
+            const cnt = items[id];
+            if (bag[id] !== undefined) {
+                // 已有该种类，直接堆叠，不占新格
+                taken[id] = cnt;
+            } else if (free > 0) {
+                taken[id] = cnt;
+                free -= 1;
+            } else {
+                dropped[id] = cnt;
+            }
+        }
+        return { taken, dropped, full: Object.keys(dropped).length > 0 };
+    }
+
     /** 消耗资源（背包物品类） */
     useItemThatPlayerHave(require: Record<string, number>, boxType: string = 'bag'): void {
         const neg: Record<string, number> = {};
