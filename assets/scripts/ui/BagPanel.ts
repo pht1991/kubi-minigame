@@ -27,7 +27,7 @@ export class BagPanel extends ModalPanel {
     private readonly MARGIN_X = 12;
     private readonly GAP_X = 8;
     private readonly GAP_Y = 10;
-    private readonly CELL_H = 96;
+    private readonly CELL_H = 108;
     private readonly TOP_PADDING = 20;
     private readonly BOTTOM_PADDING = 24;
 
@@ -107,16 +107,18 @@ export class BagPanel extends ModalPanel {
             );
 
             const hasDur = !!cell.durability;
+            // 有耐久时名字区上移并加高，给底部耐久条留出独立空间
+            const nameY = hasDur ? 22 : 10;
+            const nameH = hasDur ? 50 : 64;
             this.mkInline(
-                cellNode, -cellW / 2 + 6, hasDur ? 18 : 8, cellW - 12, hasDur ? 44 : 60,
+                cellNode, -cellW / 2 + 6, nameY, cellW - 12, nameH,
                 cell.name, S.font.cellName, isDisabled ? C.cellTextDisabled : C.cellText,
             );
 
             if (typeof cell.count === 'number') {
-                // 注意：mkInline 是 anchor(0,0.5) 左对齐，x 为左边界；此处用 mkText 右对齐(anchorX:1)，
-                // 让 x=cellW/2-6 成为右边界，把数量贴在格子右上角，避免向左对齐时整段甩出格子右缘。
+                // 数量标签贴在格子右下角（anchorX=1 右对齐）
                 this.mkText(
-                    cellNode, cellW / 2 - 6, -this.CELL_H / 2 + 14, 50, 24,
+                    cellNode, cellW / 2 - 6, -this.CELL_H / 2 + 12, 50, 24,
                     `×${cell.count}`, S.font.cellCount, C.cellCount,
                     { align: 'right', anchorX: 1, anchorY: 0.5 },
                 );
@@ -126,8 +128,8 @@ export class BagPanel extends ModalPanel {
                 const cur = Math.max(0, cell.durability.cur);
                 const ratio = Math.min(1, cur / cell.durability.max);
                 const barW = cellW - 16;
-                const barH = 6;
-                const barY = -this.CELL_H / 2 + 9;
+                const barH = 7;
+                const barY = -this.CELL_H / 2 + 8;
 
                 const trackNode = new Node('DurTrack');
                 const trackT = trackNode.addComponent(UITransform);
@@ -151,7 +153,8 @@ export class BagPanel extends ModalPanel {
                 fillG.fillColor = fillColor;
                 fillG.roundRect(-fillW / 2, -barH / 2, fillW, barH, 3); fillG.fill();
 
-                this.mkInline(cellNode, -barW / 2 + 2, barY + 12, barW - 4, 14, `${cur}/${cell.durability.max}`, S.font.durText, C.durText);
+                // 耐久文字放在进度条上方，不与名字区重叠
+                this.mkInline(cellNode, -barW / 2 + 2, barY + 13, barW - 4, 14, `${cur}/${cell.durability.max}`, S.font.durText, C.durText);
             }
 
             if (!isDisabled && cell.id !== 'empty' && cell.id !== 'msg') {

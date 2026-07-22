@@ -58,10 +58,10 @@ export const C = {
     optionTextDisabled:   new Color(150, 145, 140, 255),
 
     // ── 格子（导航页 / 背包）──
-    cellBg:          new Color(253, 248, 240, 255),
-    cellBgDisabled:  new Color(232, 228, 222, 255),
-    cellStroke:      new Color(212, 196, 176, 255),
-    cellStrokeDisabled: new Color(200, 196, 190, 255),
+    cellBg:          new Color(245, 238, 225, 255),
+    cellBgDisabled:  new Color(225, 220, 212, 255),
+    cellStroke:      new Color(200, 180, 155, 255),
+    cellStrokeDisabled: new Color(190, 185, 175, 255),
     cellSelectedBg:   new Color(230, 245, 255, 255),
     cellSelectedStroke:new Color(120, 180, 230, 255),
     cellCooldownBg:   new Color(245, 235, 220, 255),
