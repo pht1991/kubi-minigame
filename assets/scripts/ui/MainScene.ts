@@ -291,6 +291,7 @@ export class MainScene extends Component {
         const harvestNode = new Node('HarvestModal');
         harvestNode.layer = this.node.layer;
         this._harvestModal = harvestNode.addComponent(HarvestModal);
+        this._harvestModal.onOpenBag = () => this._bagPage?.openBagPanel();
         this._modalLayer!.addChild(harvestNode);
 
         // 创建公共进度条（挂独立 _progressLayer，盖住弹窗但不挡 Toast 浮层）

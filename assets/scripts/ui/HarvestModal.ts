@@ -36,6 +36,9 @@ export class HarvestModal extends ModalPanel {
     /** 玩家已选择拾取的物品ID 集合 */
     private _taken: Set<string> = new Set();
 
+    /** 点击「背包」按钮时回调（由 MainScene 注入，打开背包界面） */
+    public onOpenBag?: () => void;
+
     protected render(): void {
         this.clearContent();
         const cap = this._gm().boxSize['bag'] || 12;
@@ -58,11 +61,15 @@ export class HarvestModal extends ModalPanel {
         if (ct) ct.setContentSize(listW, contentH);
         ids.forEach((id, i) => this.buildRow(scroll.content, id, -(i * (ROW_H + ROW_GAP)), listW, ROW_H));
 
-        // 底部按钮：全部拾取 / 完成
-        const btnW = listW / 2 - 16;
-        const btnY = -(viewH + 56 + 70);
-        this.mkBtn(this._content!, -btnW / 2 - 8, btnY, btnW, 60, '全部拾取', Btn.primary, () => this.takeAll());
-        this.mkBtn(this._content!, btnW / 2 + 8, btnY, btnW, 60, '完成', Btn.confirm, () => this.finish());
+        // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)
+        const btnW = (listW - 2 * 12) / 3;
+        const btnY = -(viewH + 56 + 30);
+        const xL = -(listW / 2) + btnW / 2;
+        const xM = 0;
+        const xR = (listW / 2) - btnW / 2;
+        this.mkBtn(this._content!, xL, btnY, btnW, 60, '背包', Btn.neutral, () => this.onOpenBag?.());
+        this.mkBtn(this._content!, xM, btnY, btnW, 60, '全部拾取', Btn.primary, () => this.takeAll());
+        this.mkBtn(this._content!, xR, btnY, btnW, 60, '完成', Btn.confirm, () => this.finish());
     }
 
     /** 构建单行（材料 + 数量 + 拾取状态），点击切换拾取 */
@@ -111,7 +118,8 @@ export class HarvestModal extends ModalPanel {
             }
         }
         this._eventBus().emit(GameEvents.UI_REFRESH);
-        this.render();
+        // 延迟到下一帧重建，避免在 touch 事件处理中销毁 ScrollView 节点导致行闪烁/消失
+        this.scheduleOnce(() => this.render(), 0);
     }
 
     /** 全部拾取：按玩家逐个点击的同一逻辑自动执行；满则跳过剩余并提示 */
@@ -127,7 +135,8 @@ export class HarvestModal extends ModalPanel {
             Toast.instance?.show(`背包已满，以下未拾取：${skipped.join('、')}`);
         }
         this._eventBus().emit(GameEvents.UI_REFRESH);
-        this.render();
+        // 延迟到下一帧重建，避免在 touch 事件处理中销毁 ScrollView 节点导致行闪烁/消失
+        this.scheduleOnce(() => this.render(), 0);
     }
 
     /** 完成：关闭弹窗；遗留未拾取项提示 */
