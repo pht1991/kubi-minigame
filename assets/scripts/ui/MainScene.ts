@@ -498,22 +498,18 @@ export class MainScene extends Component {
 
     /**
      * 将安全区域偏移应用到场景预置节点。
-     * - 状态栏（statusBarNode）：FIXED_WIDTH 下屏幕更高，状态栏预设 y=580 离顶部（胶囊）
-     *   偏下，需【上推】使其紧贴胶囊。p.y 即场景原始 580，offsetY 会叠加上去。
+     * - 状态栏（statusBarNode）：父级是 Canvas，position 为本地坐标（Canvas 锚点居中）。
+     *   场景预设 y=580 基于 750×1334 设计，FIXED_WIDTH 下不同屏幕高度会导致
+     *   状态栏距顶部距离不一致。改为【绝对定位】：直接按目标距顶像素计算 y 坐标。
      */
     private _applySafeAreaToScene(): void {
         if (!this.statusBarNode) return;
-        const p = this.statusBarNode.position;
         const vs = view.getVisibleSize();
-        // FIXED_WIDTH 下实际屏幕高度 > 设计 1334（设计半高 667），顶部 y 变为 +vs.height/2。
-        // 状态栏场景预设 y=580 基于旧高度，屏幕变高后会离顶部（胶囊）偏下，
-        // 需【上推】 (vs.height/2 - 667) 使其距顶部恢复设计的 87px，紧贴胶囊下方。
-        // 先恢复设计距顶 87px（vs.height/2 - 667），再额外上推（约 176px = 88×2 调参），
-        // 使状态栏进一步贴近/越过顶部，用户调参验证用
-        const offsetY = vs.height / 2 - 667 + 176;
-        if (offsetY > 0) {
-            this.statusBarNode.setPosition(p.x, p.y + offsetY, p.z);
-        }
+        // 绝对定位：状态栏中心距屏幕顶部的目标像素。
+        // 胶囊按钮通常在顶部右侧，状态栏紧贴其下方即可。
+        // Canvas 锚点(0.5,0.5)居中 → 顶部 y = +vs.height/2 → 目标 y = vs.height/2 - TARGET_FROM_TOP
+        const TARGET_FROM_TOP = 55; // 状态栏中心距顶部 55px（可微调）
+        this.statusBarNode.setPosition(0, vs.height / 2 - TARGET_FROM_TOP, 0);
     }
 
     /** 创建底部固定快捷操作栏（休息 / 背包 / 状态） */
