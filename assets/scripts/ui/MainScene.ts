@@ -3,7 +3,7 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget, HorizontalAlign, VerticalAlign, OverflowType } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget } from 'cc';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
@@ -592,9 +592,9 @@ export class MainScene extends Component {
         const lab = n.addComponent(Label);
         lab.fontSize = fontSize;
         lab.lineHeight = fontSize + 4;
-        lab.horizontalAlign = HorizontalAlign.CENTER;
-        lab.verticalAlign = VerticalAlign.CENTER;
-        lab.overflow = OverflowType.NONE;
+        lab.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lab.verticalAlign = Label.VerticalAlign.CENTER;
+        // overflow 默认即为 Label.Overflow.NONE，无需显式设置
         lab.color = new Color(60, 45, 30, 255);
         return lab;
     }
