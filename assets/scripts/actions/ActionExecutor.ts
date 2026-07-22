@@ -45,6 +45,10 @@ export interface ActionOptions {
     successMessage?: string;
     /** 是否以「确认弹窗(ResultModal)」形式反馈（长文案/需确认时 true） */
     resultModal?: boolean;
+    /** 跳过自动产出：不把 canGet 放入背包（如采集/拾荒改由 HarvestModal 让玩家自行取舍） */
+    skipOutput?: boolean;
+    /** 静默：完成后不 emit OPERATION_DONE（由调用方自行处理 UI，如收获弹窗） */
+    silent?: boolean;
 }
 
 export interface ActionResult {
@@ -152,7 +156,7 @@ export class ActionExecutor {
             if (Object.keys(stateCanGet).length > 0) {
                 this._gm.playerStateChange(stateCanGet as Partial<PlayerState>);
             }
-            if (Object.keys(itemCanGet).length > 0) {
+            if (!options.skipOutput && Object.keys(itemCanGet).length > 0) {
                 this._gm.changeItem(itemCanGet, outputBox);
             }
             if (Object.keys(matRequire).length > 0) {
@@ -180,7 +184,7 @@ export class ActionExecutor {
         // 即时动作（timeNeed<=0）：直接应用并反馈
         if (timeNeed <= 0) {
             apply();
-            this.emitDone(successMessage, modal, title);
+            if (!options.silent) this.emitDone(successMessage, modal, title);
             return { success: true, message: successMessage };
         }
 
@@ -189,7 +193,7 @@ export class ActionExecutor {
         if (!ov) {
             // 极端兜底：进度条组件未就绪，直接同步执行
             this._ts.useTime(() => apply(), timeNeed);
-            this.emitDone(successMessage, modal, title);
+            if (!options.silent) this.emitDone(successMessage, modal, title);
             return { success: true, message: successMessage };
         }
 
@@ -197,7 +201,7 @@ export class ActionExecutor {
         ov.play(title, dur, () => {
             this._ts.advance(timeNeed);   // 进度结束才推进游戏时间（含衰减/换日）
             apply();
-            this.emitDone(successMessage, modal, title);
+            if (!options.silent) this.emitDone(successMessage, modal, title);
         });
 
         // 立即返回成功（真正结果在进度结束后经 OPERATION_DONE 反馈）

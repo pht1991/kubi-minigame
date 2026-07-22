@@ -92,4 +92,6 @@ export const GameEvents = {
     UI_REFRESH: 'ui_refresh',
     // 耗时动作完成（进度条结束后的统一反馈；携带 {title, message, modal}）
     OPERATION_DONE: 'operation_done',
+    // 采集/拾荒产出就绪（进度条结束后触发，携带 {title, loot}，由 HarvestModal 让玩家自行取舍）
+    HARVEST_READY: 'harvest_ready',
 } as const;

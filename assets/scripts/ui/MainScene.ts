@@ -31,6 +31,7 @@ import { Toast } from './Toast';
 import { SaveIndicator } from './SaveIndicator';
 import { ProgressOverlay } from './ProgressOverlay';
 import { ResultModal } from './ResultModal';
+import { HarvestModal } from './HarvestModal';
 import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
 import { C } from './theme';
@@ -182,6 +183,8 @@ export class MainScene extends Component {
 
     /** 操作结果确认弹窗（长文案/需确认结果，由 OPERATION_DONE 触发） */
     private _resultModal: ResultModal | null = null;
+    /** 采集/拾荒「收获」选择弹窗（由 HARVEST_READY 触发，玩家自行取舍） */
+    private _harvestModal: HarvestModal | null = null;
 
     /** 烹饪系统页面模块（从 MainScene 抽离，见 pages/CookPage.ts） */
     private _cookPage: CookPage | null = null;
@@ -284,6 +287,12 @@ export class MainScene extends Component {
         this._resultModal = resultNode.addComponent(ResultModal);
         this._modalLayer!.addChild(resultNode);
 
+        // 创建采集/拾荒「收获」选择弹窗（挂 modalLayer，由 HARVEST_READY 触发）
+        const harvestNode = new Node('HarvestModal');
+        harvestNode.layer = this.node.layer;
+        this._harvestModal = harvestNode.addComponent(HarvestModal);
+        this._modalLayer!.addChild(harvestNode);
+
         // 创建公共进度条（挂独立 _progressLayer，盖住弹窗但不挡 Toast 浮层）
         const progressNode = new Node('ProgressOverlay');
         progressNode.layer = this.node.layer;
@@ -299,6 +308,12 @@ export class MainScene extends Component {
                 Toast.instance?.show(payload.message);
             }
             this._saveMgr.save(); // 行为反馈时立即存档，确保数据及时落盘
+        });
+
+        // 订阅采集/拾荒收获就绪：弹出「收获」选择弹窗，由玩家自行取舍
+        this._eventBus.on(GameEvents.HARVEST_READY, (payload: { title: string; loot: Record<string, number> }) => {
+            this._harvestModal?.showHarvest(payload.title || '收获', payload.loot);
+            this._saveMgr.save();
         });
 
         // 构建页面模块共享上下文（PageContext），并创建各业务域 Page 模块
