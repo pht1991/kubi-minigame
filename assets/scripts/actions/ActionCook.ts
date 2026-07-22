@@ -34,21 +34,22 @@ export class ActionCook {
     }
 
     /**
-     * 烹饪一份配方（食材取自炊具箱 cooker）
+     * 烹饪一份配方（食材取自指定箱子，默认背包 bag）
      * @param recipe  配方对象 {name, require:[...]}
      * @param count   份数（默认 1）
+     * @param from    取料/扣料来源箱（'bag' 默认 | 'cooker'）
      */
-    cook(recipe: CookRecipe, count: number = 1): ActionResult {
+    cook(recipe: CookRecipe, count: number = 1, from: 'bag' | 'cooker' = 'bag'): ActionResult {
         if (!recipe || !recipe.require || recipe.require.length === 0) {
             return { success: false, message: '配方无效' };
         }
-        // require 数组 → 材料字典（每个 ×1 ×份数），取自炊具箱
+        // require 数组 → 材料字典（每个 ×1 ×份数）
         const require: Record<string, number> = {};
         for (const item of recipe.require) {
             require[item] = (require[item] || 0) + count;
         }
-        if (!this._gm.checkHaveResource(require, 'cooker')) {
-            return { success: false, message: '炊具中食材不足' };
+        if (!this._gm.checkHaveResource(require, from)) {
+            return { success: false, message: from === 'cooker' ? '炊具中食材不足' : '背包食材不足' };
         }
 
         // 耗时：基础耗时 × 份数 × 烹饪速度系数（升级 cooker 后更快）
@@ -61,11 +62,11 @@ export class ActionCook {
         const r = this._exec.execute(canGet, {}, timeNeed, { outputBox: 'bag', refreshUI: false });
         if (!r.success) return r;
 
-        // 从炊具箱扣除食材
+        // 从来源箱扣除食材
         const neg: Record<string, number> = {};
         for (const k in require) neg[k] = -require[k];
-        this._gm.changeItem(neg, 'cooker');
-        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'cooker');
+        this._gm.changeItem(neg, from);
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, from);
         this._eventBus.emit(GameEvents.UI_REFRESH);
         return { success: true, message: `烹饪了 ${ITEM_DATA[recipe.name]?.name || recipe.name} ×${count}` };
     }
