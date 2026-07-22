@@ -480,32 +480,36 @@ export class MainScene extends Component {
         try {
             // @ts-ignore 微信小游戏全局对象
             if (typeof wx === 'undefined') return;
-            // 优先用新 API getWindowInfo（返回 safeArea/statusBarHeight/screenHeight），
-            // 旧设备回退 getSystemInfoSync。两者都不可用时静默跳过。
+            // 同时取两个 API：新 API getWindowInfo 在部分真机/微信版本下
+            // 缺失 statusBarHeight / safeArea.top（实测返回 0），必须回退 getSystemInfoSync。
             // @ts-ignore
-            const getInfo = (wx.getWindowInfo && wx.getWindowInfo())
-                // @ts-ignore
-                || (wx.getSystemInfoSync && wx.getSystemInfoSync())
-                || null;
+            const winInfo = (wx.getWindowInfo && wx.getWindowInfo()) || null;
+            // @ts-ignore
+            const sysInfo = (wx.getSystemInfoSync && wx.getSystemInfoSync()) || null;
+            const getInfo = winInfo || sysInfo;
             if (!getInfo) return;
             const sw = getInfo.screenWidth || 0;
             if (sw > 0) {
                 const scale = 750 / sw;
-                // 顶部：状态栏高度（刘海/胶囊区域）
-                const sbH = getInfo.statusBarHeight || 0;
+                // statusBarHeight：优先 winInfo，回退 sysInfo，取非零值（修复 getWindowInfo 返回 0 的坑）
+                const sbH = (winInfo && winInfo.statusBarHeight)
+                    || (sysInfo && sysInfo.statusBarHeight)
+                    || 0;
                 this._safeTop = Math.max(0, Math.round(sbH * scale));
-                // 底部：Home Indicator / 手势条区域。safeArea 缺失时退回屏幕底边，算成 0
-                const safeBottom = (getInfo.safeArea && getInfo.safeArea.bottom)
-                    ? getInfo.safeArea.bottom
-                    : getInfo.screenHeight;
+                // 兜底：两 API 都异常返回 0 时，按常见安卓状态栏高度（约 24px 物理像素）估算
+                if (this._safeTop === 0) {
+                    this._safeTop = Math.round(24 * scale);
+                }
+                // 底部：优先 winInfo 的 safeArea，回退 sysInfo；都缺时退回屏幕底边算成 0
+                const sa = (winInfo && winInfo.safeArea) || (sysInfo && sysInfo.safeArea) || null;
+                const safeBottom = (sa && sa.bottom) ? sa.bottom : getInfo.screenHeight;
                 const bottomInset = (getInfo.screenHeight - safeBottom) * scale;
                 this._safeBottom = Math.max(0, Math.round(bottomInset));
                 // [DEBUG] 真机确认安全区域实际值——定位后删除此 log
-                console.log('[SAFE_AREA] raw=', JSON.stringify({
-                    screenWidth: sw, screenHeight: getInfo.screenHeight,
-                    statusBarHeight: sbH, safeArea: getInfo.safeArea,
-                    scale: scale.toFixed(3)
-                }), '→ safeTop=', this._safeTop, 'safeBottom=', this._safeBottom);
+                console.log('[SAFE_AREA] winInfo.sbH=', (winInfo && winInfo.statusBarHeight),
+                    'sysInfo.sbH=', (sysInfo && sysInfo.statusBarHeight),
+                    'scale=', scale.toFixed(3),
+                    '→ safeTop=', this._safeTop, 'safeBottom=', this._safeBottom);
             }
         } catch (_e) {
             // 非微信环境静默忽略
