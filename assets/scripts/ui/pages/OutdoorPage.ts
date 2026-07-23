@@ -87,6 +87,7 @@ export class OutdoorPage extends BasePage {
     public openGoOutList(): void {
         // 进入地图列表即视为「出门在外」，底栏按钮变「回家」
         this.isOutdoors = true;
+        this.gm.isAwayFromBase = true;
         this.ctx.refreshGoButton();
 
         // 本次出门随机摇出在场商人（回家后缓存清空，再出门重摇）
@@ -267,6 +268,37 @@ export class OutdoorPage extends BasePage {
                     state: frozen ? 'disabled' : 'normal',
                 });
             }
+            if (buildingId === 'toilet') {
+                const level = this.gm.getBuildingLevel('toiletUpdate');
+                const winter = this.timeSys.isWinter();
+                const canShit = this.timeSys.day > (this.gm.coolDownSaveData['shit'] || 0);
+                cells.push({
+                    id: 'toilet_shit',
+                    name: canShit ? '排便 (精神+2 粪便×4)' : '排便 (冷却中)',
+                    state: canShit ? 'normal' : 'disabled',
+                });
+                if (level > 0) {
+                    const reqStr = winter ? '清水×4 木×2' : '清水×4';
+                    cells.push({
+                        id: 'toilet_shower',
+                        name: `洗澡 (精神+30 体温${winter ? '+20' : '-10'}) 需${reqStr}`,
+                        state: 'normal',
+                    });
+                } else {
+                    cells.push({ id: 'toilet_shower_lock', name: '洗澡 (需升级卫生间解锁)', state: 'disabled' });
+                }
+                if (level > 1) {
+                    const tank = this.gm.boxSaveData['marshGasTank'] || {};
+                    const pit = this.gm.boxSaveData['shit'] || {};
+                    const tankAmt = tank['shit'] || 0;
+                    const pitAmt = pit['shit'] || 0;
+                    cells.push({
+                        id: 'toilet_biogas',
+                        name: `沼气池 (粪坑×${pitAmt} 池内×${tankAmt})`,
+                        state: pitAmt > 0 ? 'normal' : 'disabled',
+                    });
+                }
+            }
         }
 
         const upType = `${buildingId}Update`;
@@ -301,6 +333,18 @@ export class OutdoorPage extends BasePage {
                     this.ctx.brewPage?.openBrewPanel();
                 } else if (cell.id === 'well_collect') {
                     const r = ActionBuilding.instance.collectWell();
+                    this.setMsg(r.message);
+                    this.navigator.replace(this.buildBuildingDetailPage(buildingId));
+                } else if (cell.id === 'toilet_shit') {
+                    const r = ActionBuilding.instance.doShit();
+                    if (!r.success) this.setMsg(r.message);
+                    this.navigator.replace(this.buildBuildingDetailPage(buildingId));
+                } else if (cell.id === 'toilet_shower') {
+                    const r = ActionBuilding.instance.doShower();
+                    if (!r.success) this.setMsg(r.message);
+                    this.navigator.replace(this.buildBuildingDetailPage(buildingId));
+                } else if (cell.id === 'toilet_biogas') {
+                    const r = ActionBuilding.instance.feedBiogas();
                     this.setMsg(r.message);
                     this.navigator.replace(this.buildBuildingDetailPage(buildingId));
                 }
@@ -390,6 +434,7 @@ export class OutdoorPage extends BasePage {
     /** 公开入口：打开地图 */
     public openMapGrid(): void {
         this.isOutdoors = true;
+        this.gm.isAwayFromBase = true;
         this.ctx.refreshGoButton();
 
         if (this.rolledTraders.length === 0) this.rolledTraders = this.rollVisibleTraders();
@@ -488,6 +533,7 @@ export class OutdoorPage extends BasePage {
     /** 地点详情：采集 / 拾荒 / 狩猎 / 事件 */
     public openPlaceDetail(placeId: string): void {
         this.isOutdoors = true;
+        this.gm.isAwayFromBase = true;
         this.ctx.refreshGoButton();
 
         this.setMsg(''); // 进入地点时清空旧反馈，防止跨系统串显

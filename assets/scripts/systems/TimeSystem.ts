@@ -15,6 +15,9 @@ import {
     SEASON_CIRCLE,
     MAX_STATE,
     ROBBER_DAY,
+    STOLE,
+    TRAP_DATA,
+    ITEM_DATA,
 } from '../data/data';
 
 /** 冬季每小时体温额外流失（制造"难熬"的低温压力） */
@@ -117,9 +120,87 @@ export class TimeSystem {
             this._gm.eventSaveData['robberQuestGet'].experienced = true;
             this._eventBus.emit(GameEvents.EVENT_TRIGGER, 'robberQuestGet');
         }
+
+        // 盗贼偷家：离开基地期间按周期结算一次洗劫
+        this.checkRobberRaid();
+
         if (td.season !== oldSeason) {
             this._eventBus.emit(GameEvents.SEASON_CHANGE, td.season);
         }
+    }
+
+    /**
+     * 盗贼偷家：第 ROBBER_DAY 天起，离开基地期间每隔一段天数可能遭盗贼洗劫。
+     * - 在基地（isAwayFromBase=false）时只刷新倒计时，不偷窃（对齐原版 currentScene==='home'）；
+     * - 已布置防盗陷阱(antiRogue)且未触发过时，陷阱击退盗贼并掉落人肉；
+     * - 否则按 STOLE*0.9^securityBox 的速率，对大箱子/炊具箱/沼气池中 food/cooked/met 类物品
+     *   按 sqrt(数量)*(0.5~1.5) 抽取被盗数量，累计进 robberSaveData.stoled/stoledAll，并广播 ROBBER_RAID。
+     */
+    private checkRobberRaid(): void {
+        const gm = this._gm;
+        const rsd = gm.robberSaveData;
+        const day = gm.timeData.day;
+        const lockLv = gm.getScienceLevel('lockUpdate');   // 0 或 1
+        const secBox = gm.getScienceLevel('securityBox');  // 0 或 1
+        const stoledPersont = STOLE * Math.pow(0.9, secBox);
+        const deadLine = ROBBER_DAY + lockLv + Math.random() * 3 - Math.random() * 3;
+
+        if (day - (rsd.lastDate ?? 50) > deadLine) {
+            rsd.lastDate = day;
+            // 仅当玩家离开基地时才真正偷窃
+            if (!gm.isAwayFromBase) return;
+
+            // 防盗陷阱拦截
+            const trapList: any[] = gm.buildingSaveData['trap']?.list || [];
+            for (const trap of trapList) {
+                if (trap.trapId === 'antiRogue' && !trap.succeed) {
+                    trap.succeed = true;
+                    const get = TRAP_DATA.antiRogue.itemGet; // { humanMeat: 2 }
+                    gm.changeItem(get, 'bag');
+                    if (gm.buildingSaveData['trap']) gm.buildingSaveData['trap'].hint = true;
+                    this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+                    this._eventBus.emit(GameEvents.ROBBER_RAID, { defended: true, items: { ...get } });
+                    return;
+                }
+            }
+
+            // 真正偷窃
+            const stolen = this.stealFromBase(stoledPersont);
+            if (Object.keys(stolen).length > 0) {
+                rsd.stoled = rsd.stoled || {};
+                rsd.stoledAll = rsd.stoledAll || {};
+                for (const k in stolen) {
+                    rsd.stoled[k] = (rsd.stoled[k] || 0) + stolen[k];
+                    rsd.stoledAll[k] = (rsd.stoledAll[k] || 0) + stolen[k];
+                }
+                this._eventBus.emit(GameEvents.ROBBER_RAID, { defended: false, items: stolen });
+            }
+        }
+    }
+
+    /** 从基地储物箱中盗取 food/cooked/met 类物品，返回 {物品: 数量} */
+    private stealFromBase(rate: number): Record<string, number> {
+        const gm = this._gm;
+        const total: Record<string, number> = {};
+        const boxes = ['bigBox', 'cooker'];
+        if (gm.boxSaveData['marshGasTank']) boxes.push('marshGasTank');
+        for (const box of boxes) {
+            const things = gm.boxSaveData[box];
+            if (!things) continue;
+            for (const attr of Object.keys(things)) {
+                const item = ITEM_DATA[attr];
+                if (!item) continue;
+                if (item.type !== 'food' && item.type !== 'cooked' && item.type !== 'met') continue;
+                const amount = things[attr];
+                if (!amount || amount <= 0) continue;
+                const stole = Math.round(rate * Math.sqrt(amount) * (0.5 + Math.random()));
+                if (stole > 0) {
+                    gm.changeItem({ [attr]: -stole }, box);
+                    total[attr] = (total[attr] || 0) + stole;
+                }
+            }
+        }
+        return total;
     }
 
     /**

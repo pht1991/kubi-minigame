@@ -84,6 +84,8 @@ export const GameEvents = {
     BATTLE_END: 'battle_end',
     // 事件系统
     EVENT_TRIGGER: 'event_trigger',
+    // 盗贼偷家结算反馈（携带 { defended: boolean, items: Record<string,number> }）
+    ROBBER_RAID: 'robber_raid',
     // 存档
     SAVE_START: 'save_start',
     SAVE_COMPLETE: 'save_complete',

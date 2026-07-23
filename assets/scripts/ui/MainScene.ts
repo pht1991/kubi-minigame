@@ -406,6 +406,19 @@ export class MainScene extends Component {
 
         // 换季提示
         this._eventBus.on(GameEvents.SEASON_CHANGE, this.onSeasonChange.bind(this));
+
+        // 盗贼偷家结算反馈（离开基地期间被洗劫 / 被防盗陷阱击退）
+        this._eventBus.on(GameEvents.ROBBER_RAID, (payload: { defended: boolean; items: Record<string, number> }) => {
+            const names = Object.keys(payload.items)
+                .map(k => `${ITEM_DATA[k]?.name || k}×${payload.items[k]}`)
+                .join(' ');
+            if (payload.defended) {
+                Toast.instance?.show(`防盗陷阱击退了盗贼！获得 ${names}`);
+            } else {
+                Toast.instance?.show(`盗贼趁你不在偷走了：${names}`);
+            }
+            this._saveMgr.save();
+        });
     }
 
     /** 换季公告（冬季预警停产，春季恢复） */
@@ -821,6 +834,7 @@ export class MainScene extends Component {
         if (cur && (cur as any).home) {
             this._outdoorPage.isOutdoors = false;
             this._outdoorPage.rolledTraders = []; // 回家清空在场商人，下次出门重新随机
+            this._gm.isAwayFromBase = false;     // 回到基地：盗贼不再偷家
         }
         this.refreshGoButton();
     }

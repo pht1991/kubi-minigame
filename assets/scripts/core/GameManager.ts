@@ -71,6 +71,8 @@ export class GameManager {
     // ===== 场景/UI 状态 =====
     /** 当前场景 */
     currentScene: string;
+    /** 是否离开基地（出门探索中）——盗贼偷家仅在离开基地时触发，对齐原版 currentScene!='home' */
+    isAwayFromBase: boolean = false;
     /** 是否在战斗中 */
     isDueling: boolean;
     /** 当前怪物状态 */
@@ -105,6 +107,8 @@ export class GameManager {
         this.boxSaveData = { bag: JSON.parse(JSON.stringify(BOX_INIT.bag.things)) };
         this.boxSaveData.cooker = {}; // 炊具箱：烹饪专用容器
         this.boxSaveData.bigBox = JSON.parse(JSON.stringify(BOX_INIT.bigBox.things)); // 大箱子：家居仓储
+        this.boxSaveData.shit = {}; // 卫生间粪坑：排便产出暂存
+        this.boxSaveData.marshGasTank = {}; // 沼气池：粪便储存
         this.boxSize = { bag: BAG_BASE_SIZE, bigBox: BIG_BOX_BASE_SIZE }; // 容量上限（背包不强制，大箱子强制）
         this.buildingSaveData = JSON.parse(JSON.stringify(BUILDING_INIT));
         this.durableSaveData = JSON.parse(JSON.stringify(DURABLE_INIT));
@@ -120,6 +124,7 @@ export class GameManager {
         this.maouLevel = 0;
         this.settings = { autoSave: true, volume: 1 };
         this.currentScene = 'home';
+        this.isAwayFromBase = false;
         this.isDueling = false;
         this.mstState = null;
     }
@@ -416,6 +421,8 @@ export class GameManager {
         this.boxSaveData = data.boxSaveData;
         // 旧存档可能无 bigBox 箱，防御性补建
         if (!this.boxSaveData.bigBox) this.boxSaveData.bigBox = {};
+        if (!this.boxSaveData.shit) this.boxSaveData.shit = {};
+        if (!this.boxSaveData.marshGasTank) this.boxSaveData.marshGasTank = {};
         this.boxSize = data.boxSize || { bag: BAG_BASE_SIZE, bigBox: BIG_BOX_BASE_SIZE };
         this.buildingSaveData = data.buildingSaveData;
         this.durableSaveData = data.durableSaveData;

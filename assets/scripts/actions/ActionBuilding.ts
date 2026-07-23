@@ -284,4 +284,73 @@ export class ActionBuilding {
             };
         });
     }
+
+    // ===== 卫生间系统 =====
+
+    /**
+     * 排便：恢复少量精神，并获得粪便（存入卫生间粪坑 box='shit'）。
+     * 约 2 天（48 小时）一次，对齐原版 coolDown=48。
+     */
+    doShit(): ActionResult {
+        const toilet = this._gm.buildingSaveData['toilet'];
+        if (!toilet?.own) return { success: false, message: '需要先建造卫生间' };
+        const ts = TimeSystem.instance;
+        if (ts.day <= (this._gm.coolDownSaveData['shit'] || 0)) {
+            return { success: false, message: '刚上过厕所，缓一缓再来' };
+        }
+        const r = this._exec.execute({ san: 2, shit: 4 }, {}, 1, {
+            title: '排便',
+            successMessage: '解决完毕 精神+2 粪便×4',
+            outputBox: 'shit',
+            coolDownId: 'shit',
+            coolDownHours: ts.day + 2,
+        });
+        return r.success ? { success: true, message: '' } : { success: false, message: r.message };
+    }
+
+    /**
+     * 洗澡：大幅恢复精神，并调节体温（冬季+20/其余-10）。
+     * 需先升级卫生间解锁淋浴（toiletUpdate 等级 > 0）；
+     * 消耗清水×4，冬季额外消耗木×2（取暖）。
+     */
+    doShower(): ActionResult {
+        const toilet = this._gm.buildingSaveData['toilet'];
+        if (!toilet?.own) return { success: false, message: '需要先建造卫生间' };
+        const level = this._gm.getBuildingLevel('toiletUpdate');
+        if (level <= 0) return { success: false, message: '需先升级卫生间以解锁淋浴' };
+        const ts = TimeSystem.instance;
+        const winter = ts.isWinter();
+        const require = winter ? { water: 4, wood: 2 } : { water: 4 };
+        if (!this._gm.checkHaveResource(require)) {
+            const need = Object.entries(require)
+                .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`)
+                .join(' ');
+            return { success: false, message: `材料不足：${need}` };
+        }
+        const temp = winter ? 20 : -10;
+        const r = this._exec.execute({ san: 30, temp }, require, 1, {
+            title: '洗澡',
+            successMessage: winter ? '洗了个热水澡 精神+30 体温+20' : '冲了个凉水澡 精神+30',
+        });
+        return r.success ? { success: true, message: '' } : { success: false, message: r.message };
+    }
+
+    /**
+     * 投入沼气池：将粪坑（box='shit'）中的粪便全部转入沼气池（box='marshGasTank'）。
+     * 需卫生间升级到二级（沼气池）。仅做储存转移，对齐原版沼气池展示逻辑。
+     */
+    feedBiogas(): ActionResult {
+        const toilet = this._gm.buildingSaveData['toilet'];
+        if (!toilet?.own) return { success: false, message: '需要先建造卫生间' };
+        const level = this._gm.getBuildingLevel('toiletUpdate');
+        if (level <= 1) return { success: false, message: '需先升级沼气池' };
+        const pit = this._gm.boxSaveData['shit'] || {};
+        const amt = pit['shit'] || 0;
+        if (amt <= 0) return { success: false, message: '粪便坑是空的' };
+        this._gm.changeItem({ shit: -amt }, 'shit');
+        this._gm.changeItem({ shit: amt }, 'marshGasTank');
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'marshGasTank');
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'shit');
+        return { success: true, message: `将粪便×${amt}投入了沼气池` };
+    }
 }
