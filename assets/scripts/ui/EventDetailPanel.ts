@@ -12,7 +12,7 @@
  * 交谈 / 触发 / 关闭均通过回调上抛给调用方处理，避免面板误用未注入的依赖。
  */
 
-import { _decorator, Color, Label, Node, UITransform, Graphics } from 'cc';
+import { _decorator, Color, Label, Node, UITransform, Graphics, view } from 'cc';
 import { ModalPanel } from './ModalPanel';
 import { C, S, BtnStyle } from './theme';
 import { ITEM_DATA } from '../data/data';
@@ -59,11 +59,23 @@ export class EventDetailPanel extends ModalPanel {
 
     protected panelW = 620;
     protected panelH = 560;       // 默认高度，render 时自适应
+    /** 气泡区最小 / 最大高度（动态计算时钳制） */
+    private static readonly BUBBLE_MIN_H = 80;
+    private static readonly BUBBLE_MAX_H = 280;
+    /** 面板最大可用高度（不超过屏幕可用空间的 85%） */
+    private _maxPanelH = 900;     // onLoad 后由可见尺寸更新
     protected showMask = true;
     protected maskClose = false;   // 不允许点遮罩关闭（必须点按钮）
     protected showClose = true;
 
     private _p: EventDetailParams | null = null;
+
+    /** onLoad 时根据屏幕可用空间限制面板最大高度 */
+    onLoad(): void {
+        const vs = view.getVisibleSize();
+        // 面板不超过屏幕高度的 85%，留出标题栏+底栏+边距
+        this._maxPanelH = Math.floor(vs.height * 0.82);
+    }
 
     /** 显示事件详情面板 */
     public showDetail(params: EventDetailParams): void {
@@ -85,24 +97,41 @@ export class EventDetailPanel extends ModalPanel {
 
         let y = 0; // 从 _content 顶部(anchor 0.5,1)向下递增
 
-        // ── 1. 对话气泡区 ──
+        // ── 1. 对话气泡区（动态高度） ──
         const talkTexts = p.dialogs;
+        let bubbleH = EventDetailPanel.BUBBLE_MIN_H;
         if (talkTexts.length > 0) {
+            const fullText = talkTexts.map(t => `"${t}"`).join('\n');
+            const fontSize = S.font.body;
+            const lineHeight = 32;
+            const textPadX = 40;   // 气泡内左右 padding
+            const textPadY = 32;   // 气泡内上下 padding
+            const availTextW = cw - textPadX;
+
+            // 估算行数：每行约容纳 availTextW / fontSize 个汉字（汉字≈等宽）
+            const charPerLine = Math.max(1, Math.floor(availTextW / (fontSize * 0.6)));
+            const totalChars = fullText.replace(/\n/g, '').length;
+            const newlines = (fullText.match(/\n/g) || []).length;
+            const estLines = Math.ceil(totalChars / charPerLine) + newlines;
+            const needTextH = estLines * lineHeight;
+            // 气泡高度 = 文本高度 + padding，钳制在 min~max
+            bubbleH = Math.min(EventDetailPanel.BUBBLE_MAX_H,
+                Math.max(EventDetailPanel.BUBBLE_MIN_H, needTextH + textPadY));
+
             const bubbleNode = new Node('Bubble');
             const bt = bubbleNode.addComponent(UITransform);
-            bt.setContentSize(cw, 160); bt.setAnchorPoint(0.5, 1);
+            bt.setContentSize(cw, bubbleH); bt.setAnchorPoint(0.5, 1);
             bubbleNode.setPosition(0, y, 0); bubbleNode.setParent(this._content);
             const bgGfx = bubbleNode.addComponent(Graphics);
-            this.mkRect(bgGfx, -cw / 2, -160, cw, 160, 12, DIALOG_BG, DIALOG_BORDER, 1.5);
+            this.mkRect(bgGfx, -cw / 2, -bubbleH, cw, bubbleH, 12, DIALOG_BG, DIALOG_BORDER, 1.5);
 
-            const fullText = talkTexts.map(t => `"${t}"`).join('\n');
-            const talkLbl = this.mkText(bubbleNode, -cw / 2 + 20, -16, cw - 40, 140,
+            const talkLbl = this.mkText(bubbleNode, -cw / 2 + 20, -16, cw - 40, bubbleH - textPadY,
                 fullText, S.font.body, DIALOG_TEXT, { align: 'left', bold: false });
             talkLbl.enableWrapText = true;
             talkLbl.overflow = Label.Overflow.CLAMP;
-            talkLbl.lineHeight = 32;
+            talkLbl.lineHeight = lineHeight;
 
-            y -= 176; // 160 + 16 gap
+            y -= (bubbleH + 16); // 气泡高度 + 间距
         }
 
         // ── 2. 需求行 ──
@@ -154,10 +183,11 @@ export class EventDetailPanel extends ModalPanel {
                 });
         }
 
-        // 自适应面板高度
+        // 自适应面板高度（钳制不超过屏幕 82%）
         const totalContentH = Math.abs(y) + btnH + 28;
         const minPanelH = 380;
-        const targetH = Math.max(minPanelH, totalContentH + 120);
+        const rawH = Math.max(minPanelH, totalContentH + 120);
+        const targetH = Math.min(this._maxPanelH, rawH);
         if (Math.abs(targetH - this.panelH) > 4) {
             this.resizePanel(targetH);
         }
