@@ -13,6 +13,11 @@ import { ITEM_DATA, CROP_DATA } from '../../data/data';
 export class FarmPage extends BasePage {
     /** 公开入口：打开农田管理面板 */
     public openFarmPanel(): void {
+        // 未建造不可进入
+        if (!this.gm.buildingSaveData['farm']?.own) {
+            this.setMsg('需要先建造【农田】');
+            return;
+        }
         this.setMsg('');
         this.navigator.push(this.buildFarmPage());
     }

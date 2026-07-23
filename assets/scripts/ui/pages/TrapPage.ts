@@ -13,6 +13,11 @@ import { ITEM_DATA, TRAP_DATA, SCIENCE_DATA } from '../../data/data';
 export class TrapPage extends BasePage {
     /** 公开入口：打开陷阱管理面板 */
     public openTrapPanel(): void {
+        // 未建造不可进入
+        if (!this.gm.buildingSaveData['trap']?.own) {
+            this.setMsg('需要先建造【陷阱】');
+            return;
+        }
         this.setMsg('');
         this.navigator.push(this.buildTrapPage());
     }

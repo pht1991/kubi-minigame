@@ -23,15 +23,15 @@ import {
 import { QuantityPanel } from '../QuantityPanel';
 
 export class CraftPage extends BasePage {
-    /** 制造工作台列表页 cells */
+    /** 制造工作台列表页 cells（仅展示已建造的工作台） */
     private buildCraftCells(): GridCellData[] {
         const cells: GridCellData[] = [];
         const workbenches = ['makeTable', 'alchemyTable', 'magicTable', 'scienceTable'];
         for (const wb of workbenches) {
-            const built = this.gm.buildingSaveData[wb];
+            const built = !!this.gm.buildingSaveData[wb]?.own;
             cells.push({
                 id: wb,
-                name: BUILDING_DATA[wb]?.name || wb,
+                name: `${BUILDING_DATA[wb]?.name || wb}${built ? '' : ' [未建造]'}`,
                 state: built ? 'normal' : 'disabled',
                 data: wb,
             });
@@ -41,8 +41,8 @@ export class CraftPage extends BasePage {
 
     /** 公开入口：打开制造（指定工作台且已建设则直达配方弹窗） */
     public openCraftGrid(workbench?: string): void {
-        // 如果指定了工作台且已建设 → 跳过列表页，直接打开配方弹窗
-        if (workbench && this.gm.buildingSaveData[workbench]) {
+        // 如果指定了工作台且已建造 → 跳过列表页，直接打开配方弹窗
+        if (workbench && this.gm.buildingSaveData[workbench]?.own) {
             this.openRecipeGrid(workbench);
             return;
         }
@@ -54,7 +54,11 @@ export class CraftPage extends BasePage {
             columns: 4,
             cells: this.buildCraftCells(),
             rebuild: () => this.buildCraftCells(),
-            onCellClick: (index, cell) => this.openRecipeGrid(cell.id),
+            onCellClick: (index, cell) => {
+                // 未建造的工作台不可进入
+                if (cell.state === 'disabled') { this.setMsg('该工作台尚未建造'); return; }
+                this.openRecipeGrid(cell.id);
+            },
         });
     }
 
@@ -72,6 +76,11 @@ export class CraftPage extends BasePage {
 
     /** 配方列表页：替代原 DialogPanel 弹窗，对齐建造页面 list 范式（单列满宽、每格展示名称+需求） */
     private openRecipeGrid(workbench: string): void {
+        // 防御性校验：未建造的工作台不可进入配方页
+        if (!this.gm.buildingSaveData[workbench]?.own) {
+            this.setMsg(`需要先建造 ${BUILDING_DATA[workbench]?.name || workbench}`);
+            return;
+        }
         this.navigator.push(this.buildRecipePage(workbench));
     }
 

@@ -18,6 +18,11 @@ import { ActionCook, CookRecipe } from '../../actions/ActionCook';
 export class CookPage extends BasePage {
     /** 打开烹饪主页（重置第一步选择） */
     openCookPanel(): void {
+        // 未建造炊具箱不可进入
+        if (!this.gm.buildingSaveData['cooker']?.own) {
+            this.setMsg('需要先建造【炊具箱】');
+            return;
+        }
         this.navigator.push(this.buildCookHubPage());
     }
 
