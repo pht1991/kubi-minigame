@@ -1,5 +1,6 @@
 import { Node, UITransform, Graphics, NodeEventType, EventTouch, Vec3 } from 'cc';
 import { C } from './ModalPanel';
+import { UIShape } from './widgets';
 
 /**
  * QSlider.ts - 通用横向数量选择滑块（公共组件）
@@ -34,30 +35,27 @@ export class QSlider {
         this.node.setPosition(0, y, 0);
         this.node.setParent(parent);
 
-        const track = new Node('Trk');
-        const tt = track.addComponent(UITransform);
-        tt.setContentSize(this.W, this.H); tt.setAnchorPoint(0.5, 0.5);
-        track.setPosition(0, 0, 0); track.setParent(this.node);
-        const tg = track.addComponent(Graphics);
-        tg.fillColor = C.track;
-        tg.roundRect(-this.W / 2, -this.H / 2, this.W, this.H, this.H / 2); tg.fill();
+        const track = new UIShape('Trk').rect(this.W, this.H, C.track, this.H / 2);
+        track.pos(0, 0).mount(this.node);
 
-        const fn = new Node('Fl'); fn.addComponent(UITransform).setContentSize(this.W, this.H);
-        fn.setAnchorPoint(0.5, 0.5); fn.setPosition(0, 0, 0); fn.setParent(track);
+        const fn = new Node('Fl');
+        const ftu = fn.addComponent(UITransform);
+        ftu.setContentSize(this.W, this.H); ftu.setAnchorPoint(0.5, 0.5);
+        fn.setPosition(0, 0, 0); fn.setParent(track.node);
         this.fillGfx = fn.addComponent(Graphics);
 
         this.handleNode = new Node('Hdl');
         const ht = this.handleNode.addComponent(UITransform);
         ht.setContentSize(40, 40); ht.setAnchorPoint(0.5, 0.5);
-        this.handleNode.setParent(track);
+        this.handleNode.setParent(track.node);
         const hg = this.handleNode.addComponent(Graphics);
         hg.fillColor = C.handle; hg.circle(0, 0, 20); hg.fill();
         hg.lineWidth = 2; hg.strokeColor = C.white; hg.circle(0, 0, 20); hg.stroke();
 
-        track.on(NodeEventType.TOUCH_START, (e) => this._onT(e), this);
-        track.on(NodeEventType.TOUCH_MOVE, (e) => this._onT(e), this);
-        track.on(NodeEventType.TOUCH_END, () => this._onChange(this._value), this);
-        track.on(NodeEventType.TOUCH_CANCEL, () => this._onChange(this._value), this);
+        track.node.on(NodeEventType.TOUCH_START, (e) => this._onT(e), this);
+        track.node.on(NodeEventType.TOUCH_MOVE, (e) => this._onT(e), this);
+        track.node.on(NodeEventType.TOUCH_END, () => this._onChange(this._value), this);
+        track.node.on(NodeEventType.TOUCH_CANCEL, () => this._onChange(this._value), this);
     }
 
     setRange(min: number, max: number, val: number): void {

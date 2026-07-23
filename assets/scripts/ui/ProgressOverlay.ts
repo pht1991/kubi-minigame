@@ -12,8 +12,9 @@
  * 由 MainScene 在独立 _progressLayer（Modal 之上、Toast 之下）创建单例。
  */
 
-import { _decorator, Component, Node, Label, UITransform, Graphics, tween, Color, NodeEventType, view } from 'cc';
+import { _decorator, Component, Node, UITransform, Graphics, tween, Color, NodeEventType, view } from 'cc';
 import { C, S } from './theme';
+import { UIShape, UILabel } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -22,8 +23,8 @@ export class ProgressOverlay extends Component {
     private static _instance: ProgressOverlay | null = null;
     static get instance(): ProgressOverlay | null { return ProgressOverlay._instance; }
 
-    private _titleLbl: Label | null = null;
-    private _pctLbl: Label | null = null;
+    private _titleLbl: UILabel | null = null;
+    private _pctLbl: UILabel | null = null;
     private _barGfx: Graphics | null = null;
     private _barW = 460;
     private _barH = 28;
@@ -59,34 +60,20 @@ export class ProgressOverlay extends Component {
         const pt = panel.addComponent(UITransform);
         pt.setContentSize(panelW, panelH); pt.setAnchorPoint(0.5, 0.5);
         panel.setPosition(0, 0, 0); panel.setParent(this.node);
-        const pg = panel.addComponent(Graphics);
-        pg.fillColor = C.panelBg;
-        pg.roundRect(-panelW / 2, -panelH / 2, panelW, panelH, S.panelRadius); pg.fill();
-        pg.lineWidth = S.panelBorderW; pg.strokeColor = C.panelBorder;
-        pg.roundRect(-panelW / 2, -panelH / 2, panelW, panelH, S.panelRadius); pg.stroke();
+        const panelBg = new UIShape('PPanelBg').rect(panelW, panelH, C.panelBg, S.panelRadius, C.panelBorder, S.panelBorderW);
+        panelBg.mount(panel);
 
         // 标题
-        const tnode = new Node('PTitle');
-        const tnt = tnode.addComponent(UITransform);
-        tnt.setContentSize(480, 40); tnt.setAnchorPoint(0.5, 0.5);
-        tnode.setPosition(0, 55, 0); tnode.setParent(panel);
-        const tl = tnode.addComponent(Label);
-        tl.string = ''; tl.fontSize = 26; tl.isBold = true; tl.color = C.title;
-        tl.horizontalAlign = Label.HorizontalAlign.CENTER; tl.verticalAlign = Label.VerticalAlign.CENTER;
-        tl.overflow = Label.Overflow.CLAMP;
-        this._titleLbl = tl;
+        const titleLbl = new UILabel('', { size: 26, bold: true, color: C.title, align: 'center', width: 480 });
+        titleLbl.pos(0, 55).mount(panel);
+        this._titleLbl = titleLbl;
 
         // 进度条轨道（背景）
         const barY = -5;
-        const bg = new Node('PBarBg');
-        const bgt = bg.addComponent(UITransform);
-        bgt.setContentSize(this._barW, this._barH); bgt.setAnchorPoint(0.5, 0.5);
-        bg.setPosition(0, barY, 0); bg.setParent(panel);
-        const bgg = bg.addComponent(Graphics);
-        bgg.fillColor = C.track;
-        bgg.roundRect(-this._barW / 2, -this._barH / 2, this._barW, this._barH, this._barH / 2); bgg.fill();
+        const barBg = new UIShape('PBarBg').rect(this._barW, this._barH, C.track, this._barH / 2);
+        barBg.pos(0, barY).mount(panel);
 
-        // 进度条填充（动态绘制）
+        // 进度条填充（动态绘制，保留原生 Graphics 做增量重绘）
         const fill = new Node('PBarFill');
         const ft = fill.addComponent(UITransform);
         ft.setContentSize(this._barW, this._barH); ft.setAnchorPoint(0.5, 0.5);
@@ -95,14 +82,9 @@ export class ProgressOverlay extends Component {
         this._barGfx = fg;
 
         // 百分比文字
-        const pl = new Node('PPct');
-        const plt = pl.addComponent(UITransform);
-        plt.setContentSize(160, 30); plt.setAnchorPoint(0.5, 0.5);
-        pl.setPosition(0, barY - 30, 0); pl.setParent(panel);
-        const pll = pl.addComponent(Label);
-        pll.string = '0%'; pll.fontSize = 18; pll.color = C.sub;
-        pll.horizontalAlign = Label.HorizontalAlign.CENTER; pll.verticalAlign = Label.VerticalAlign.CENTER;
-        this._pctLbl = pll;
+        const pctLbl = new UILabel('0%', { size: 18, color: C.sub, align: 'center', width: 160 });
+        pctLbl.pos(0, barY - 30).mount(panel);
+        this._pctLbl = pctLbl;
 
         this.node.active = false;
     }
@@ -123,9 +105,9 @@ export class ProgressOverlay extends Component {
     play(title: string, durationMs: number, onComplete: () => void): void {
         if (this._playing) return; // 防重入：进行中忽略新请求
         this._playing = true;
-        if (this._titleLbl) this._titleLbl.string = title || '操作中…';
+        if (this._titleLbl) this._titleLbl.setText(title || '操作中…');
         this._drawBar(0);
-        if (this._pctLbl) this._pctLbl.string = '0%';
+        if (this._pctLbl) this._pctLbl.setText('0%');
         this.node.active = true;
         // 置于 _progressLayer 最顶（层内顺序由 MainScene 固定，这里仅保证本层内置顶）
         this.node.setSiblingIndex(this.node.parent!.children.length - 1);
@@ -136,7 +118,7 @@ export class ProgressOverlay extends Component {
                 easing: 'linear',
                 onUpdate: () => {
                     this._drawBar(prog.v);
-                    if (this._pctLbl) this._pctLbl.string = Math.round(prog.v * 100) + '%';
+                    if (this._pctLbl) this._pctLbl.setText(Math.round(prog.v * 100) + '%');
                 },
             })
             .call(() => {
