@@ -19,6 +19,7 @@
 import { _decorator } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
 import { Btn } from './theme';
+import { UIVStack, UIHStack, UILabel, UIButton } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -54,22 +55,6 @@ export class QuantityPanel extends ModalPanel {
         this._qty = this._max;            // 默认全选
         this._onConfirm = onConfirm;
         this._opts = opts || null;
-
-        // ── 动态计算面板高度（确保确认按钮不被裁切）──
-        const o = this._opts;
-        const initQty = this._qty;
-        const hasInfo = !!(o?.infoLines?.length);
-        const prevCount = o?.getPreview ? o.getPreview(initQty).length : 0;
-        // 基础模式：确定按钮在 y=-310，底部留白约 70 → 需要 380+
-        // 每行信息额外 +26px，每行预览额外 +26px
-        const minH = Math.max(420,
-            380
-            + (hasInfo ? (o!.infoLines!.length * 26) : 0)
-            + (prevCount * 26)
-            + 75   // 底部安全余量
-        );
-        if (this.panelH !== minH) this.resizePanel(minH);
-
         super.show(title);
     }
 
@@ -77,45 +62,46 @@ export class QuantityPanel extends ModalPanel {
         this.clearContent();
         const c = this._content!;
         const o = this._opts;
+        const cw = this.panelW - 80;
+
+        // 声明式垂直栈：信息行 → N/M + −/+ → 全部 → 预览 → 确认，布局自动排
+        const stack = new UIVStack().gap(18).align('center').fixedWidth(cw).padding(12, 0, 0, 0);
 
         // ── 信息行（交易场景：持有/单价等）──
         if (o?.infoLines) {
-            let iy = 12;
             for (const line of o.infoLines) {
-                this.mkText(c, 0, -iy, this.panelW - 80, 28, line, 18, C.sub, { align: 'center', anchorY: 1 });
-                iy += 26;
+                stack.add(new UILabel(line, { size: 18, width: cw, color: C.sub, align: 'center' }));
             }
         }
 
-        // ── 数量显示 N / M（居中大字）──
-        const numY = o?.infoLines ? 110 : 100;
-        this.mkCenter(c, 0, -numY, 320, 70, `${this._qty} / ${this._max}`, 44, C.title, true);
-
-        // ── − / + 步进按钮（预设样式）──
-        const btnY = o?.infoLines ? 145 : 135;
-        this.mkBtn(c, -115, -btnY, 60, 60, '\u2212', Btn.neutral, () => this.setQty(this._qty - 1));
-        this.mkBtn(c, 115, -btnY, 60, 60, '+', Btn.primary, () => this.setQty(this._qty + 1));
+        // ── − / N/M / + 一行（HStack 水平排布）──
+        stack.add(new UIHStack().gap(24)
+            .add(new UIButton('\u2212', Btn.neutral, () => this.setQty(this._qty - 1), 60, 60))
+            .add(new UILabel(`${this._qty} / ${this._max}`, { size: 44, width: 240, height: 70, color: C.title, align: 'center', bold: true }))
+            .add(new UIButton('+', Btn.primary, () => this.setQty(this._qty + 1), 60, 60)));
 
         // ── 全部 ──
-        const allY = o?.infoLines ? 230 : 220;
-        this.mkBtn(c, 0, -allY, 180, 50, '全部', Btn.neutral, () => this.setQty(this._max));
+        stack.add(new UIButton('全部', Btn.neutral, () => this.setQty(this._max), 180, 50));
 
-        // ── 预览文本（交易场景：花费/获得）── 提升到外层作用域，供确认按钮定位
+        // ── 预览文本（交易场景：花费/获得）──
         const previewLines = o?.getPreview ? o.getPreview(this._qty) : [];
-        const prevY = allY + 60;
         previewLines.forEach((line, i) => {
-            this.mkText(c, 0, -(prevY + i * 26), this.panelW - 80, 26, line,
-                i === previewLines.length - 1 ? 20 : 19,
-                i === previewLines.length - 1 ? C.accent2 : C.body,
-                { align: 'center', anchorY: 1 });
+            const last = i === previewLines.length - 1;
+            stack.add(new UILabel(line, { size: last ? 20 : 19, width: cw, color: last ? C.accent2 : C.body, align: 'center' }));
         });
 
         // ── 确认按钮（取消由 × / 蒙层承担）──
-        const cfmY = previewLines.length ? (prevY + previewLines.length * 26 + 24) : 310;
-        this.mkBtn(c, 0, -cfmY, 220, 56, o?.confirmLabel || '\u786e\u5b9a', Btn.confirm, () => {
+        stack.add(new UIButton(o?.confirmLabel || '\u786e\u5b9a', Btn.confirm, () => {
             this.hide();
             this._onConfirm(this._qty);
-        });
+        }, 220, 56));
+
+        stack.mount(c);
+        stack.pos(0, -stack.h / 2, 0);
+
+        // 面板高度直接由内容栈推导（140 = 标题区 90 + 底部留白 50），不再手工估算
+        const targetH = Math.max(420, stack.h + 150);
+        if (Math.abs(targetH - this.panelH) > 4) this.resizePanel(targetH);
     }
 
     private setQty(v: number): void {

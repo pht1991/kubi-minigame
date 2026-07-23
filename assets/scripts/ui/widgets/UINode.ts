@@ -85,4 +85,7 @@ export class UINode {
             cb();
         });
     }
+
+    /** 公开版点击绑定：任意 UINode（如 UIShape 行）可直接变可点击，自带 stopPropagation */
+    onTap(cb: () => void): this { this._bindTap(cb); return this; }
 }

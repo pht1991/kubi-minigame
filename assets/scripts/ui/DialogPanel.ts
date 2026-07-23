@@ -1,6 +1,7 @@
-import { _decorator, Node, Label, UITransform, Graphics, EventTouch, NodeEventType } from 'cc';
+import { _decorator, Node, UITransform } from 'cc';
 import { ModalPanel } from './ModalPanel';
 import { DialogOptionStyle as OS, S } from './theme';
+import { UIVStack, UILabel, UIShape } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -72,36 +73,35 @@ export class DialogPanel extends ModalPanel {
         const contentT = this._contentNode.getComponent(UITransform);
         if (contentT) contentT.setContentSize(600, Math.max(totalHeight, actualScrollH));
 
+        // 选项行：widgets 声明式（UIShape 行底 + UILabel），VStack 自动排布
+        const list = new UIVStack().gap(spacing).align('center').fixedWidth(580);
         for (let i = 0; i < this._options.length; i++) {
             const opt = this._options[i];
-            const rowNode = new Node(`Option_${i}`);
-            const rowT = rowNode.addComponent(UITransform);
-            rowT.setContentSize(580, optionHeight);
-            // 锚点(0.5,0.5)：背景 Graphics 按节点原点居中绘制，命中区也必须居中，
-            // 否则(0.5,1)时命中区会比可见背景上移半格 → 点下半行/文字下方空白无效。
-            rowT.setAnchorPoint(0.5, 0.5);
-            rowNode.setPosition(0, -topPadding - i * (optionHeight + spacing), 0);
-            rowNode.setParent(this._contentNode);
-
             const isDisabled = opt.disabled;
             // 选项行用统一预设（暖杏按钮底 + 金棕描边），与上方信息区明确区分
-            const bgColor = isDisabled ? OS.bgDisabled : OS.bg;
-            const strokeColor = isDisabled ? OS.strokeDisabled : OS.stroke;
-            const bg = rowNode.addComponent(Graphics);
-            this.mkRect(bg, -290, -optionHeight / 2, 580, optionHeight, OS.radius, bgColor, strokeColor, 1);
-
-            const textColor = isDisabled ? OS.textDisabled : OS.text;
-            this.mkInline(rowNode, -240, 0, 520, optionHeight, opt.label, S.font.option, textColor);
-
+            const row = new UIShape(`Option_${i}`).rect(
+                580, optionHeight,
+                isDisabled ? OS.bgDisabled : OS.bg, OS.radius,
+                isDisabled ? OS.strokeDisabled : OS.stroke, 1,
+            );
+            // 文本盒宽 520 居左：原 mkInline(x=-240, anchor(0,0.5)) 等效盒中心 x = -240+260 = 20
+            const lbl = new UILabel(opt.label, {
+                size: S.font.option, width: 520, height: optionHeight,
+                color: isDisabled ? OS.textDisabled : OS.text, align: 'left',
+            });
+            lbl.pos(20, 0);
+            row.add(lbl);
             if (!isDisabled) {
-                rowNode.on(NodeEventType.TOUCH_END, (event: EventTouch) => {
-                    event.propagationStopped = true;
+                row.onTap(() => {
                     this._selectedIndex = i;
                     if (this._onSelect) this._onSelect(this._options[i].data);
                     this.hide();
                 });
             }
+            list.add(row);
         }
+        list.mount(this._contentNode);
+        list.pos(0, -topPadding - list.h / 2, 0);
 
         // 重置 content 位置到顶部（确保首行可见）
         if (this._contentNode) this._contentNode.setPosition(0, 0, 0);

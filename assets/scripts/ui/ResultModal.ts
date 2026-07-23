@@ -7,9 +7,9 @@
  * 外部调用：ResultModal.instance?.showResult(title, message)
  */
 
-import { Label } from 'cc';
 import { ModalPanel } from './ModalPanel';
 import { C, Btn } from './theme';
+import { UIVStack, UILabel, UIButton } from './widgets';
 
 export class ResultModal extends ModalPanel {
     protected panelW = 600;
@@ -22,14 +22,13 @@ export class ResultModal extends ModalPanel {
 
     protected render(): void {
         this.clearContent();
-        // 结果文案（多行，自动换行；mkText 已内建 enableWrapText）
-        this.mkText(
-            this._content!, 0, -10, this.panelW - 80, 240,
-            this._msgText, 22, C.body,
-            { anchorY: 0.5, align: 'center' },
-        );
-        // 确认按钮
-        this.mkBtn(this._content!, 0, -170, 240, 64, '确定', Btn.confirm, () => this.hide());
+        const cw = this.panelW - 80;
+        // 声明式：文案 → 确定按钮，VStack 自动排布
+        const stack = new UIVStack().gap(28).align('center').fixedWidth(cw)
+            .add(new UILabel(this._msgText, { size: 22, width: cw, color: C.body, align: 'center' }))
+            .add(new UIButton('确定', Btn.confirm, () => this.hide(), 240, 64));
+        stack.mount(this._content!);
+        stack.pos(0, -stack.h / 2 - 10, 0);
     }
 
     /** 显示结果（标题 + 多行文案） */
