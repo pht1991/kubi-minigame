@@ -25,6 +25,7 @@ import { ActionExecutor } from '../actions/ActionExecutor';
 import { DialogPanel, DialogOption } from './DialogPanel';
 import { BagPanel } from './BagPanel';
 import { BattlePanel } from './BattlePanel';
+import { EventDetailPanel } from './EventDetailPanel';
 import { TradePanel } from './TradePanel';
 import { QuantityPanel } from './QuantityPanel';
 import { Toast } from './Toast';
@@ -189,6 +190,9 @@ export class MainScene extends Component {
     /** 战斗面板 */
     private _battlePanel: BattlePanel | null = null;
 
+    /** 事件详情面板（NPC 对话界面） */
+    private _eventDetailPanel: EventDetailPanel | null = null;
+
     /** 交易面板（独立模态，替代原网格式交易页） */
     private _tradePanel: TradePanel | null = null;
 
@@ -288,6 +292,12 @@ export class MainScene extends Component {
         this._battlePanel.onEnd = (win) => this.onBattleEnd(win);
         this._modalLayer!.addChild(battleNode);
 
+        // 创建事件详情面板（NPC 对话界面）
+        const eventDetailNode = new Node('EventDetailPanel');
+        eventDetailNode.layer = this.node.layer;
+        this._eventDetailPanel = eventDetailNode.addComponent(EventDetailPanel);
+        this._modalLayer!.addChild(eventDetailNode);
+
         // 创建交易面板（独立模态窗口）
         const tradeNode = new Node('TradePanel');
         tradeNode.layer = this.node.layer;
@@ -349,6 +359,7 @@ export class MainScene extends Component {
             bagPanel: this._bagPanel!,
             tradePanel: this._tradePanel!,
             battlePanel: this._battlePanel!,
+            eventDetailPanel: this._eventDetailPanel!,
             setMsg: (msg: string) => { this._lastMsg = msg; },
         };
         this._cookPage = new CookPage(pageCtx);

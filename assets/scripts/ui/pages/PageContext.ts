@@ -21,6 +21,7 @@ import { DialogPanel } from '../DialogPanel';
 import { BagPanel } from '../BagPanel';
 import { TradePanel } from '../TradePanel';
 import { BattlePanel } from '../BattlePanel';
+import { EventDetailPanel } from '../EventDetailPanel';
 
 export interface PageContext {
     /** 导航栈（push/pop/replace/setRoot） */
@@ -41,6 +42,8 @@ export interface PageContext {
     tradePanel: TradePanel;
     /** 战斗面板 */
     battlePanel: BattlePanel;
+    /** 事件详情面板（NPC 对话界面） */
+    eventDetailPanel: EventDetailPanel;
     /** 反馈文案：弹 Toast + 立即存档（等价 MainScene._lastMsg setter） */
     setMsg: (msg: string) => void;
 
