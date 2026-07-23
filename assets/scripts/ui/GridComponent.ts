@@ -365,8 +365,10 @@ export class GridComponent extends Component {
         btnTf.setContentSize(BTN_W, BTN_H);
 
         // 定位：紧贴 titleLabel 右侧（动态读取标题 Y 坐标，适配容器缩放后的位置）
-        const titleY = this.titleLabel ? this.titleLabel.position.y : 515;
-        const titleTf = this.titleLabel ? this.titleLabel.getComponent(UITransform) : null;
+        // ⚠️ titleLabel 是 Label【组件】引用，position 在 Node 上 → 必须走 .node.position
+        const titleNode = this.titleLabel ? this.titleLabel.node : null;
+        const titleY = titleNode ? titleNode.position.y : 515;
+        const titleTf = titleNode ? titleNode.getComponent(UITransform) : null;
         const titleW = titleTf ? titleTf.width : 112;
         btn.setPosition(titleW / 2 + 8 + BTN_W / 2, titleY, 0);
 
