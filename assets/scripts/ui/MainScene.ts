@@ -581,20 +581,29 @@ export class MainScene extends Component {
 
         const VIEW_W = 700; // 保持原宽度
 
-        // 同步调整 GridContainer、ScrollView、view 三者的 UITransform 高度
-        const nodesToFit = [gridContainer, scrollView, viewNode];
-        for (const node of nodesToFit) {
-            const tf = node.getComponent(UITransform);
-            if (tf) {
-                tf.setContentSize(VIEW_W, availH);
-            }
-        }
+        // 【关键修复】原实现把 ScrollView/view 高度直接设为 availH（与容器同高），
+        // 导致滚动区上沿覆盖了顶部标题/面包屑区 → 标题被滚动区背景 Sprite 遮挡。
+        // 正确做法：从可用高度里预留 HEADER_H（标题+面包屑）与底部留白 BOTTOM_PAD，
+        // 滚动区高度 = availH - HEADER_H - BOTTOM_PAD，并整体下移到头部下方。
+        const HEADER_H = 100;     // 顶部标题+面包屑预留（原 1100 容器里 450~550 = 100）
+        const BOTTOM_PAD = 16;    // 底部留白（与 GridComponent.bottomPadding 一致）
+        const svH = availH - HEADER_H - BOTTOM_PAD;
+        if (svH <= 0) return;
 
-        // view 锚点 (0.5,0.5) → 居中放在 GridContainer 内部即可（三者同中心）
-        // 无需改 position，因为 anchor=(0.5,0.5) + contentSize 更新后自动撑满
+        // 1) GridContainer 填满「状态栏底 ~ 底栏顶」整段可用高度，并居中到该区中心
+        const gcTf = gridContainer.getComponent(UITransform);
+        if (gcTf) gcTf.setContentSize(750, availH);
+        gridContainer.setPosition(0, (topEdge + bottomEdge) / 2, 0);
 
-        // 同步调整标题栏标签位置（原为场景编辑器硬编码 _lpos，基于旧容器高度 1100；
-        // 容器缩放后必须重新定位，否则标题跑到容器外面）
+        // 2) ScrollView + view 高度 = 预留头部后的剩余空间；
+        //    位置下移：顶部留 HEADER_H、底部留 BOTTOM_PAD → 中心 y = (BOTTOM_PAD - HEADER_H) / 2
+        const svTf = scrollView.getComponent(UITransform);
+        if (svTf) svTf.setContentSize(VIEW_W, svH);
+        scrollView.setPosition(0, (BOTTOM_PAD - HEADER_H) / 2, 0);
+        const viewTf = viewNode.getComponent(UITransform);
+        if (viewTf) viewTf.setContentSize(VIEW_W, svH);
+
+        // 3) 标题/面包屑定位到 GridContainer 顶部（头部区内、滚动区之上，不会被覆盖）
         const TITLE_TOP_PAD = 35;   // 标题距容器顶边（原 550-515=35）
         const CRUMB_GAP = 40;         // 面包屑在标题下方（原 515-475=40）
         const halfH = availH / 2;
@@ -604,14 +613,6 @@ export class MainScene extends Component {
         if (breadcrumbLabel) breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0);
         const backButton = gridContainer.getChildByName('BackButton');
         if (backButton) backButton.setPosition(-300, halfH - TITLE_TOP_PAD, 0);
-
-        // 【关键】ScrollView 是 GridContainer 最后一个子节点，其 view 会盖住标签。
-        // 必须把标题/面包屑/返回按钮移到 ScrollView 之上（更高 siblingIndex），
-        // 否则坐标正确但渲染被遮挡（用户看不到标题）。
-        const topIndex = scrollView.getSiblingIndex() + 1;
-        for (const label of [titleLabel, breadcrumbLabel, backButton]) {
-            if (label) label.setSiblingIndex(topIndex++);
-        }
     }
 
     /**
