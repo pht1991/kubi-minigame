@@ -209,7 +209,7 @@ export abstract class ModalPanel extends Component {
         g.fill();
     }
 
-    /** 自适应高度：重绘面板 + 重定位标题/关闭按钮。返回可用滚动可视高度推导用的面板高 */
+    /** 自适应高度：重绘面板 + 重定位标题/关闭按钮/内容容器。返回可用滚动可视高度推导用的面板高 */
     protected resizePanel(h: number): void {
         this.panelH = h;
         // 同步 _panel 和 _panelBg 的 UITransform 尺寸
@@ -220,6 +220,12 @@ export abstract class ModalPanel extends Component {
         this.drawPanelBg();
         if (this._titleNode) this._titleNode.setPosition(-this.panelW / 2 + 36, h / 2 - 42, 0);
         if (this._closeNode) this._closeNode.setPosition(this.panelW / 2 - 34, h / 2 - 34, 0);
+        // ⚠️ 同步 _content 内容容器（否则高度变化后内容区错位，被 Mask 截断）
+        if (this._content) {
+            const ct = this._content.getComponent(UITransform);
+            if (ct) ct.setContentSize(this.panelW - 48, h - 140);
+            this._content.setPosition(0, h / 2 - 90, 0);
+        }
     }
 
     // ════ 对外接口 ════
