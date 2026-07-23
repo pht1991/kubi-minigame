@@ -64,19 +64,22 @@ export class RestPage extends BasePage {
 
         const cells: GridCellData[] = [];
 
-        // ── 顶行：当前等级 ──
-        cells.push({ id: 'levelInfo', name: `当前床铺等级：${currentLevelName}`, state: 'disabled', type: 'list' });
-
-        // ── 睡觉操作（恢复速率按等级递增，实际恢复量随选定小时倍数增长） ──
+        // ── 顶行：当前床铺等级 + 效果（置灰，代表当前床铺的恢复效果） ──
         // 等级恢复速率表（模块级 REST_TABLE_REF）：[每小时体力, 每小时精神]
         const restIdx = Math.min(level, REST_TABLE_REF.length - 1);
         const [psPerH, sanPerH] = REST_TABLE_REF[restIdx];
+        cells.push({
+            id: 'levelInfo',
+            name: `当前床铺：${currentLevelName}\n每小时恢复 体力+${psPerH} 精神+${sanPerH}`,
+            state: 'disabled',
+            type: 'list',
+        });
         // 升级后（下一级）每小时恢复量，用于升级弹窗的效果描述
         const nextRestIdx = Math.min(level + 1, REST_TABLE_REF.length - 1);
         const [nextPsPerH, nextSanPerH] = REST_TABLE_REF[nextRestIdx];
         cells.push({
             id: 'sleep',
-            name: `[睡觉]  每小时约恢复 体力+${psPerH} 精神+${sanPerH}（可选 1~8 小时）`,
+            name: `[睡觉]  可选 1~8 小时`,
             state: 'normal',
             type: 'list',
             noTruncate: true,
