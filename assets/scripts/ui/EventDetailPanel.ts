@@ -1,21 +1,24 @@
 /**
  * EventDetailPanel.ts - NPC 事件详情面板（专用对话界面，纯视图）
  *
- * 继承 ModalPanel，用 Graphics + Label 手绘完整的 NPC 对话界面：
- *   - 标题栏显示 NPC 名
- *   - 对话气泡区（带圆角浅底，展示 d_1 / desc）
- *   - 需求 / 奖励信息行
- *   - 底部操作按钮（交谈 / 触发）
+ * ★ 组件库 POC：内容区已迁移到 ui/widgets/（UIVStack/UILabel/UIButton/UIShape），
+ *   布局由 VStack 自动排列，不再手写绝对 y。外壳仍复用 ModalPanel 骨架。
  *
- * 完全脱离 GridCell 网格，作为模态弹窗覆盖在页面上方。
+ * 结构：
+ *   - 标题栏显示 NPC 名（ModalPanel 骨架）
+ *   - 对话气泡区（UIShape 圆角浅底 + UILabel，高度随文本量自适应，钳制 80~280）
+ *   - 需求 / 奖励信息行（UIShape 行底 + 标签/内容 UILabel）
+ *   - 底部操作按钮（UIHStack + UIButton：交谈 / 触发）
+ *
  * 本面板不持有 gm / dialogPanel，所有状态由调用方通过 EventDetailParams 传入，
  * 交谈 / 触发 / 关闭均通过回调上抛给调用方处理，避免面板误用未注入的依赖。
  */
 
-import { _decorator, Color, Label, Node, UITransform, Graphics, view } from 'cc';
+import { _decorator, Color, view } from 'cc';
 import { ModalPanel } from './ModalPanel';
 import { C, S, BtnStyle } from './theme';
 import { ITEM_DATA } from '../data/data';
+import { UIVStack, UIHStack, UILabel, UIButton, UIShape } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -62,7 +65,7 @@ export class EventDetailPanel extends ModalPanel {
     /** 气泡区最小 / 最大高度（动态计算时钳制） */
     private static readonly BUBBLE_MIN_H = 80;
     private static readonly BUBBLE_MAX_H = 280;
-    /** 面板最大可用高度（不超过屏幕可用空间的 85%） */
+    /** 面板最大可用高度（不超过屏幕可用空间的 82%） */
     private _maxPanelH = 900;     // onLoad 后由可见尺寸更新
     protected showMask = true;
     protected maskClose = false;   // 不允许点遮罩关闭（必须点按钮）
@@ -96,121 +99,95 @@ export class EventDetailPanel extends ModalPanel {
         const p = this._p;
         const cw = this.panelW - 48; // 内容可用宽度
 
-        let y = 0; // 从 _content 顶部(anchor 0.5,1)向下递增
+        // 声明式垂直栈：气泡 → 需求 → 奖励 → 已完成 → 按钮，布局自动排
+        const stack = new UIVStack().gap(14).align('center').fixedWidth(cw);
 
-        // ── 1. 对话气泡区（动态高度） ──
-        const talkTexts = p.dialogs;
-        let bubbleH = EventDetailPanel.BUBBLE_MIN_H;
-        if (talkTexts.length > 0) {
-            const fullText = talkTexts.map(t => `"${t}"`).join('\n');
+        // ── 1. 对话气泡区（高度随文本量，钳制 min~max） ──
+        if (p.dialogs.length > 0) {
+            const fullText = p.dialogs.map(t => `"${t}"`).join('\n');
             const fontSize = S.font.body;
             const lineHeight = 32;
-            const textPadX = 40;   // 气泡内左右 padding
-            const textPadY = 32;   // 气泡内上下 padding
-            const availTextW = cw - textPadX;
-
-            // 估算行数：每行约容纳 availTextW / fontSize 个汉字（汉字≈等宽）
-            const charPerLine = Math.max(1, Math.floor(availTextW / (fontSize * 0.6)));
+            const textW = cw - 40;                 // 气泡内左右各 20 padding
+            // 估算文本高度（汉字≈fontSize*0.6 宽）
+            const charPerLine = Math.max(1, Math.floor(textW / (fontSize * 0.6)));
             const totalChars = fullText.replace(/\n/g, '').length;
             const newlines = (fullText.match(/\n/g) || []).length;
             const estLines = Math.ceil(totalChars / charPerLine) + newlines;
-            const needTextH = estLines * lineHeight;
-            // 气泡高度 = 文本高度 + padding，钳制在 min~max
-            bubbleH = Math.min(EventDetailPanel.BUBBLE_MAX_H,
-                Math.max(EventDetailPanel.BUBBLE_MIN_H, needTextH + textPadY));
+            const textH = Math.min(EventDetailPanel.BUBBLE_MAX_H - 32, estLines * lineHeight);
+            const bubbleH = Math.max(EventDetailPanel.BUBBLE_MIN_H, textH + 32);
 
-            const bubbleNode = new Node('Bubble');
-            const bt = bubbleNode.addComponent(UITransform);
-            bt.setContentSize(cw, bubbleH); bt.setAnchorPoint(0.5, 1);
-            bubbleNode.setPosition(0, y, 0); bubbleNode.setParent(this._content);
-            const bgGfx = bubbleNode.addComponent(Graphics);
-            this.mkRect(bgGfx, -cw / 2, -bubbleH, cw, bubbleH, 12, DIALOG_BG, DIALOG_BORDER, 1.5);
-
-            const talkLbl = this.mkText(bubbleNode, -cw / 2 + 20, -16, cw - 40, bubbleH - textPadY,
-                fullText, S.font.body, DIALOG_TEXT, { align: 'left', bold: false });
-            talkLbl.enableWrapText = true;
-            talkLbl.overflow = Label.Overflow.CLAMP;
-            talkLbl.lineHeight = lineHeight;
-
-            y -= (bubbleH + 16); // 气泡高度 + 间距
+            const bubble = new UIShape('Bubble').rect(cw, bubbleH, DIALOG_BG, 12, DIALOG_BORDER, 1.5);
+            bubble.add(new UILabel(fullText, {
+                size: fontSize, width: textW, height: textH,
+                color: DIALOG_TEXT, align: 'left', lineHeight,
+            }));
+            stack.add(bubble);
         }
 
         // ── 2. 需求行 ──
         if (Object.keys(p.want).length > 0) {
             const wantStr = Object.entries(p.want).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
-            y -= this._buildLabelRow(cw, y, '需求', wantStr, p.canTrigger ? C.body : C.warn);
+            stack.add(this._infoRow(cw, '需求', wantStr, p.canTrigger ? C.body : C.warn));
         }
 
         // ── 3. 奖励行 ──
         if (p.reward) {
             const getStr = Object.entries(p.reward).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
-            y -= this._buildLabelRow(cw, y, '奖励', getStr, C.accent2);
+            stack.add(this._infoRow(cw, '奖励', getStr, C.accent2));
         }
 
         // ── 4. 已完成标记 ──
         if (p.experienced) {
-            y -= this._buildLabelRow(cw, y, '', '(已完成)', C.sub);
+            stack.add(this._infoRow(cw, '', '(已完成)', C.sub));
         }
 
         // ── 5. 底部按钮区 ──
-        y -= 24; // 按钮区上方间距
-
-        const hasTalk = talkTexts.length > 0;
-        const btnW = 150;
-        const btnH = 52;
-        const btnGap = 24;
-
+        const btnRow = new UIHStack().gap(24).padding(10, 0, 0, 0);
+        const hasTalk = p.dialogs.length > 0;
         if (hasTalk) {
-            const talkLbl = p.experienced ? '回顾对话' : '交谈';
-            this.mkBtn(this._content, -btnW / 2 - btnGap / 2, y - btnH / 2, btnW, btnH, talkLbl, TALK_STYLE, () => {
+            btnRow.add(new UIButton(p.experienced ? '回顾对话' : '交谈', TALK_STYLE, () => {
                 this._p?.onTalk?.();
-            });
+            }));
         }
-
         if (p.experienced) {
-            this.mkBtn(this._content,
-                hasTalk ? btnGap / 2 + btnW / 2 : 0,
-                y - btnH / 2, btnW, btnH, '已完成', DISABLED_STYLE, () => {});
+            btnRow.add(new UIButton('已完成', DISABLED_STYLE).setEnabled(false));
         } else if (!p.canTrigger) {
-            this.mkBtn(this._content,
-                hasTalk ? btnGap / 2 + btnW / 2 : 0,
-                y - btnH / 2, btnW, btnH, '触发(不足)', DISABLED_STYLE, () => {});
+            btnRow.add(new UIButton('触发(不足)', DISABLED_STYLE).setEnabled(false));
         } else {
-            this.mkBtn(this._content,
-                hasTalk ? btnGap / 2 + btnW / 2 : 0,
-                y - btnH / 2, btnW, btnH, '触发交付', TRIGGER_STYLE, () => {
-                    this._p?.onTrigger?.();
-                    this.hide();
-                });
+            btnRow.add(new UIButton('触发交付', TRIGGER_STYLE, () => {
+                this._p?.onTrigger?.();
+                this.hide();
+            }));
         }
+        stack.add(btnRow);
+
+        // 挂载（mount 时自动递归 layout），顶部对齐 _content(anchor 0.5,1) 原点
+        stack.mount(this._content);
+        stack.pos(0, -stack.h / 2, 0);
 
         // 自适应面板高度（钳制不超过屏幕 82%）
-        const totalContentH = Math.abs(y) + btnH + 28;
         const minPanelH = 380;
-        const rawH = Math.max(minPanelH, totalContentH + 120);
+        const rawH = Math.max(minPanelH, stack.h + 150); // 150 = 标题区 90 + 底部留白
         const targetH = Math.min(this._maxPanelH, rawH);
         if (Math.abs(targetH - this.panelH) > 4) {
             this.resizePanel(targetH);
+            // resizePanel 后 _content 顶点位置不变（仍为局部原点），stack 无需重新定位
         }
     }
 
-    /** 构建一行「标签: 内容」信息条 */
-    private _buildLabelRow(cw: number, topY: number, label: string, value: string, valueColor: Color): number {
+    /** 构建一行「标签: 内容」信息条（UIShape 行底 + 标签/内容 UILabel 手动内嵌） */
+    private _infoRow(cw: number, label: string, value: string, valueColor: Color): UIShape {
         const rowH = 44;
-        const rowNode = new Node('InfoRow');
-        const rt = rowNode.addComponent(UITransform);
-        rt.setContentSize(cw, rowH); rt.setAnchorPoint(0.5, 1);
-        rowNode.setPosition(0, topY, 0); rowNode.setParent(this._content);
-
-        const rgfx = rowNode.addComponent(Graphics);
-        this.mkRect(rgfx, -cw / 2, -rowH, cw, rowH, 6, LABEL_BG);
-
+        const row = new UIShape('InfoRow').rect(cw, rowH, LABEL_BG, 6);
         if (label) {
-            this.mkInline(rowNode, -cw / 2 + 16, -rowH / 2, 60, rowH, label, S.font.sub, LABEL_TEXT, true);
+            const tag = new UILabel(label, { size: S.font.sub, color: LABEL_TEXT, bold: true });
+            tag.pos(-cw / 2 + 16 + tag.w / 2, 0);
+            row.add(tag);
         }
-        const valX = label ? -cw / 2 + 80 : -cw / 2 + 16;
-        this.mkInline(rowNode, valX, -rowH / 2, cw - (label ? 96 : 32), rowH, value, S.font.body, valueColor);
-
-        return rowH + 10; // 返回占用高度+间距
+        const valW = cw - (label ? 96 : 32);
+        const val = new UILabel(value, { size: S.font.body, width: valW, height: rowH, color: valueColor, align: 'left' });
+        val.pos(-cw / 2 + (label ? 80 : 16) + valW / 2, 0);
+        row.add(val);
+        return row;
     }
 }

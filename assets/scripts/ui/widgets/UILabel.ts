@@ -6,7 +6,7 @@
  * 支持换行宽度声明，未给高度时按文本量估算（汉字 ≈ 字号×0.6 宽）。
  */
 
-import { Label, Color } from 'cc';
+import { Label, Color, Node, UITransform } from 'cc';
 import { UINode } from './UINode';
 
 export interface LabelOpts {
