@@ -199,6 +199,10 @@ export class ActionBuilding {
         if (!trapData?.own) return { success: false, message: '需要先建造陷阱' };
         const trap = TRAP_DATA[trapId];
         if (!trap) return { success: false, message: '陷阱不存在' };
+        // 科技前置门禁（如 antiRogue 需「防盗术」），与建造/制造台一致
+        if (trap.science && this._gm.getScienceLevel(trap.science) <= 0) {
+            return { success: false, message: '需要先研究对应科技' };
+        }
         if (trapData.list.length >= trapData.size) return { success: false, message: '陷阱已满' };
         if (!this._gm.checkHaveResource(trap.require)) return { success: false, message: '诱饵不足' };
 

@@ -390,387 +390,387 @@ export const ALCHEMY_DATA = {
     },
 }
 export const SCIENCE_DATA = {
-    heatedBed:{
+    heatedBed:{ name:'加热床铺',
         timeNeed:4,
         require:{"wood":3,'iron':3},
         building:'sleepPlace',
     },
-    tool:{
+    tool:{ name:'工具学',
         timeNeed:4,
         require:{"wood":4},
         building:'makeTable',
     },
-    meterial:{
+    meterial:{ name:'材料学',
         timeNeed:4,
         require:{"wood":4},
         building:'makeTable',
     },
-    bagSize_1:{
+    bagSize_1:{ name:'背包扩容·1',
         timeNeed:4,
         require:{"part":4,'bark':4,'rope':2}
     },
-    bagSize_2:{
+    bagSize_2:{ name:'背包扩容·2',
         timeNeed:4,
         require:{"part":8,'bark':4,'rope':2},
         science:'bagSize_1'
     },
-    bagSize_3:{
+    bagSize_3:{ name:'背包扩容·3',
         timeNeed:4,
         require:{"part":16,'bark':4,'rope':2},
         science:'bagSize_2'
     },
-    bagSize_4:{
+    bagSize_4:{ name:'背包扩容·4',
         timeNeed:4,
         require:{"part":32,'bark':4,'rope':2},
         science:'bagSize_3'
     },
 
-    bagSize_5:{
+    bagSize_5:{ name:'背包扩容·5',
         timeNeed:4,
         require:{"crystal":10,'gem':10},
         science:'bagSize_4'
     },
-    bagSize_6:{
+    bagSize_6:{ name:'背包扩容·6',
         timeNeed:4,
         require:{"crystal":10,'gem':10},
         science:'bagSize_5'
     },
-    bagSize_7:{
+    bagSize_7:{ name:'背包扩容·7',
         timeNeed:4,
         require:{"crystal":10,'gem':10},
         science:'bagSize_6'
     },
-    bagSize_8:{
+    bagSize_8:{ name:'背包扩容·8',
         timeNeed:4,
         require:{"crystal":10,'gem':10},
         science:'bagSize_7'
     },
 
 
-    trapSize_1:{
+    trapSize_1:{ name:'陷阱扩容·1',
         timeNeed:4,
         require:{"part":4,'iron':4},
         building:'trap'
     },
-    trapSize_2:{
+    trapSize_2:{ name:'陷阱扩容·2',
         timeNeed:4,
         require:{"part":8,'iron':8},
         science:'trapSize_1'
     },
 
-    trapGet_1:{
+    trapGet_1:{ name:'陷阱收获·1',
         timeNeed:4,
         require:{"iron":12,'teeth':12},
     },
-    trapGet_2:{
+    trapGet_2:{ name:'陷阱收获·2',
         timeNeed:4,
         require:{"iron":24,'teeth':24},
         science:'trapGet_1'
     },
-    trapGet_3:{
+    trapGet_3:{ name:'陷阱收获·3',
         timeNeed:4,
         require:{"iron":36,'teeth':36},
         science:'trapGet_2'
     },
 
-    trapChance_1:{
+    trapChance_1:{ name:'陷阱几率·1',
         timeNeed:4,
         require:{"feather":12,'meat':12},
     },
-    trapChance_2:{
+    trapChance_2:{ name:'陷阱几率·2',
         timeNeed:4,
         require:{"feather":24,'meat':24},
         science:'trapChance_1'
     },
-    trapChance_3:{
+    trapChance_3:{ name:'陷阱几率·3',
         timeNeed:4,
         require:{"feather":36,'meat':36},
         science:'trapChance_2'
     },
 
 
-    farmSize_1:{
+    farmSize_1:{ name:'农田扩容·1',
         timeNeed:4,
         require:{'wood':30,"fertilizer":6},
         building:'farm'
     },
-    farmSize_2:{
+    farmSize_2:{ name:'农田扩容·2',
         timeNeed:4,
         require:{'wood':50,"fertilizer":10},
         science:'farmSize_1'
     },
-    farmSize_3:{
+    farmSize_3:{ name:'农田扩容·3',
         timeNeed:4,
         require:{'wood':70,"fertilizer":20},
         science:'farmSize_2'
     },
-    farmSize_4:{
+    farmSize_4:{ name:'农田扩容·4',
         timeNeed:4,
         require:{'wood':100,"fertilizer":30},
         science:'farmSize_3'
     },
-    farmSize_5:{
+    farmSize_5:{ name:'农田扩容·5',
         timeNeed:4,
         require:{'wood':200,"fertilizer":40},
         science:'farmSize_4'
     },
-    farmSize_6:{
+    farmSize_6:{ name:'农田扩容·6',
         timeNeed:4,
         require:{'wood':300,"fertilizer":50},
         science:'farmSize_5'
     },
 
-    alcoSize_1:{
+    alcoSize_1:{ name:'酿酒扩容·1',
         timeNeed:4,
         require:{"wood":12,'bark':2,'rope':2},
         building:'farm'
     },
-    alcoSize_2:{
+    alcoSize_2:{ name:'酿酒扩容·2',
         timeNeed:4,
         require:{"wood":24,'bark':4,'rope':3},
         science:'alcoSize_1'
     },
-    alcoSize_3:{
+    alcoSize_3:{ name:'酿酒扩容·3',
         timeNeed:4,
         require:{"wood":44,'bark':6,'rope':4},
         science:'alcoSize_2'
     },
-    alcoSize_4:{
+    alcoSize_4:{ name:'酿酒扩容·4',
         timeNeed:4,
         require:{"wood":64,'bark':8,'rope':5},
         science:'alcoSize_3'
     },
-    alcoSize_5:{
+    alcoSize_5:{ name:'酿酒扩容·5',
         timeNeed:4,
         require:{"wood":100,'bark':12,'rope':6},
         science:'alcoSize_4'
     },
-    alcoSize_6:{
+    alcoSize_6:{ name:'酿酒扩容·6',
         timeNeed:4,
         require:{"wood":200,'bark':20,'rope':8},
         science:'alcoSize_5'
     },
-    potion_1:{
+    potion_1:{ name:'药剂学·1',
         timeNeed:4,
         building:'alchemyTable',
         require:{'bark':4,'part':4}
     },
-    potion_2:{
+    potion_2:{ name:'药剂学·2',
         timeNeed:4,
         require:{"bone":10,'bark':4,'part':4},
         science:'potion_1'
     },
-    smith_1:{
+    smith_1:{ name:'锻造术·1',
         timeNeed:4,
         require:{"iron":10,'wood':10}
     },
-    smith_2:{
+    smith_2:{ name:'锻造术·2',
         timeNeed:6,
         require:{"iron":20,'wood':20},
         building:'makeTable',
         science:'smith_1',
     },
 
-    antiRogue:{
+    antiRogue:{ name:'防盗术',
         timeNeed:6,
         require:{'gold':10},
     },
-    lock_1:{
+    lock_1:{ name:'锁匠·1',
         timeNeed:6,
         require:{"iron":20},
     },
-    lock_2:{
+    lock_2:{ name:'锁匠·2',
         timeNeed:6,
         require:{"part":40},
         science:'lock_1',
     },
-    lock_3:{
+    lock_3:{ name:'锁匠·3',
         timeNeed:6,
         require:{"gold":60},
         science:'lock_2',
     },
-    securityBox_1:{
+    securityBox_1:{ name:'保险箱·1',
         timeNeed:4,
         require:{"wood":30,'part':10},
     },
-    securityBox_2:{
+    securityBox_2:{ name:'保险箱·2',
         timeNeed:4,
         require:{"iron":80,'part':30},
         science:'securityBox_1',
     },
-    securityBox_3:{
+    securityBox_3:{ name:'保险箱·3',
         timeNeed:4,
         require:{"gold":100,'part':50},
         science:'securityBox_2',
     },
-    securityBox_4:{
+    securityBox_4:{ name:'保险箱·4',
         timeNeed:4,
         require:{"crystal":100,'part':80},
         science:'securityBox_3',
     },
-    securityBox_5:{
+    securityBox_5:{ name:'保险箱·5',
         timeNeed:4,
         require:{"gem":100,'part':100},
         science:'securityBox_4',
     },
 
-    makeSpeed_1:{
+    makeSpeed_1:{ name:'制造加速·1',
         timeNeed:6,
         require:{"gold":100},
         building:'makeTable',
         science:'smith_2',
         event:'goblin_5',
     },
-    makeSpeed_2:{
+    makeSpeed_2:{ name:'制造加速·2',
         timeNeed:6,
         require:{"gold":200},
         science:'makeSpeed_1',
     },
-    makeSpeed_3:{
+    makeSpeed_3:{ name:'制造加速·3',
         timeNeed:6,
         require:{"gold":300},
         science:'makeSpeed_2',
     },
-    makeSpeed_4:{
+    makeSpeed_4:{ name:'制造加速·4',
         timeNeed:6,
         require:{"gold":400},
         science:'makeSpeed_3',
     },
-    makeSpeed_5:{
+    makeSpeed_5:{ name:'制造加速·5',
         timeNeed:6,
         require:{"gold":500},
         science:'makeSpeed_4',
     },
 
-    collectDec_1:{
+    collectDec_1:{ name:'采集减免·1',
         timeNeed:6,
         require:{wood:100,part:10},
         building:'makeTable',
         science:'smith_2',
     },
-    collectDec_2:{
+    collectDec_2:{ name:'采集减免·2',
         timeNeed:6,
         require:{iron:200,part:30},
         science:'collectDec_1',
     },
-    collectDec_3:{
+    collectDec_3:{ name:'采集减免·3',
         timeNeed:6,
         require:{iron:300,part:50},
         science:'collectDec_2',
     },
-    collectDec_4:{
+    collectDec_4:{ name:'采集减免·4',
         timeNeed:6,
         require:{iron:400,part:80},
         science:'collectDec_3',
     },
 
 
-    gun_expert:{
+    gun_expert:{ name:'枪械专家',
         timeNeed:6,
         require:{"iron":20,'part':20},
         building:'makeTable',
         science:'smith_2',
     },
-    durableUpdate_1:{
+    durableUpdate_1:{ name:'耐久强化·1',
         timeNeed:4,
         require:{"part":10,'iron':10},
         science:'smith_2',
     },
-    durableUpdate_2:{
+    durableUpdate_2:{ name:'耐久强化·2',
         timeNeed:4,
         require:{"part":30,'iron':30},
         building:'makeTable',
         science:'durableUpdate_1',
     },
-    durableUpdate_3:{
+    durableUpdate_3:{ name:'耐久强化·3',
         timeNeed:4,
         require:{"part":60,'iron':60},
         science:'durableUpdate_2',
     },
 
-    magicDurableUpdate_1:{
+    magicDurableUpdate_1:{ name:'魔法耐久强化·1',
         timeNeed:4,
         require:{"gem":3,'soul':8},
         science:'magicWeapon',
         building:'magicTable',
     },
-    magicDurableUpdate_2:{
+    magicDurableUpdate_2:{ name:'魔法耐久强化·2',
         timeNeed:4,
         require:{"gem":6,'soul':16},
         science:'magicDurableUpdate_1',
     },
-    magicDurableUpdate_3:{
+    magicDurableUpdate_3:{ name:'魔法耐久强化·3',
         timeNeed:4,
         require:{"gem":9,'soul':32},
         science:'magicDurableUpdate_2',
     },
 
-    tailor_1:{
+    tailor_1:{ name:'裁缝术·1',
         timeNeed:4,
         require:{"part":10,'wood':10},
         science:'smith_1',
     },
-    tailor_2:{
+    tailor_2:{ name:'裁缝术·2',
         timeNeed:4,
         require:{"part":20,'wood':20},
         science:'tailor_1',
     },
-    beacon:{
+    beacon:{ name:'信标',
         timeNeed:4,
         require:{"part":12,'iron':12}
     },
-    beacon_2:{
+    beacon_2:{ name:'信标·改',
         timeNeed:4,
         require:{"part":24,'wood':24,'paper':1},
         science:'beacon',
     },
-    beaconMax_1:{
+    beaconMax_1:{ name:'信标扩容·1',
         timeNeed:4,
         require:{wood:100,iron:20},
         science:'beacon_2',
     },
-    beaconMax_2:{
+    beaconMax_2:{ name:'信标扩容·2',
         timeNeed:4,
         require:{wood:500,iron:100},
         science:'beaconMax_1',
     },
-    beaconMax_3:{
+    beaconMax_3:{ name:'信标扩容·3',
         timeNeed:4,
         require:{wood:1000,iron:500},
         science:'beaconMax_2',
     },
-    beaconMax_4:{
+    beaconMax_4:{ name:'信标扩容·4',
         timeNeed:4,
         require:{gold:1000,iron:800,fur:10},
         science:'beaconMax_3',
     },
-    magicWeapon:{
+    magicWeapon:{ name:'魔法武器学',
         timeNeed:4,
         require:{"crystal":10,'gem':10},
         building:'magicTable',
     },
-    magicEquip:{
+    magicEquip:{ name:'魔法装备学',
         timeNeed:4,
         require:{"crystal":10,'gem':10},
         science:'magicWeapon',
     },
-    magicEquip_2:{
+    magicEquip_2:{ name:'魔法装备学·2',
         timeNeed:4,
         require:{"dragonBone":10,'dragonScale':2},
         science:'magicEquip',
     },
-    scrollScience:{
+    scrollScience:{ name:'卷轴学',
         timeNeed:4,
         require:{'paper':10,"gem":2},
         building:'magicTable',
     },
-    dungeonRopeScience:{
+    dungeonRopeScience:{ name:'地牢绳索学',
         timeNeed:4,
         require:{'part':10,"wood":10},
         building:'magicTable',
     },
 
-    upgradePlace:{
+    upgradePlace:{ name:'据点升级',
         timeNeed:4,
         require:{"wood":500,'iron':100},
         building:'magicTable',

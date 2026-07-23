@@ -115,7 +115,11 @@ export class BuildPage extends BasePage {
     /** 执行建造动作（复用 ActionBuilding 完整逻辑） */
     public doBuild(buildingId: string): void {
         const r = ActionBuilding.instance.build(buildingId);
-        if (!r.success) this.setMsg(r.message);
+        if (!r.success) {
+            // 失败（材料不足/前置未达成/已建造）：留在建造列表，提示原因便于重试
+            this.setMsg(r.message);
+            return;
+        }
         // 成功：进度条播放中，结束后由 OPERATION_DONE 弹反馈；刷新首页（设施动态区会更新）
         this.navigator.setRoot(this.buildHomePage());
         this.eventBus.emit(GameEvents.UI_REFRESH);

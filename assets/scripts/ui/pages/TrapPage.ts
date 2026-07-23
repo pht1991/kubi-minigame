@@ -8,7 +8,7 @@
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionBuilding } from '../../actions/ActionBuilding';
-import { ITEM_DATA, TRAP_DATA } from '../../data/data';
+import { ITEM_DATA, TRAP_DATA, SCIENCE_DATA } from '../../data/data';
 
 export class TrapPage extends BasePage {
     /** 公开入口：打开陷阱管理面板 */
@@ -41,14 +41,18 @@ export class TrapPage extends BasePage {
             cells.push({ id: 'place_label', name: '── 可放置 ──', state: 'disabled' });
             for (const trapId in TRAP_DATA) {
                 const trap = TRAP_DATA[trapId];
-                const canPlace = this.gm.checkHaveResource(trap.require);
+                // 科技前置门禁（如 antiRogue 需「防盗术」），未解锁则置灰并提示
+                const sciName = trap.science ? (SCIENCE_DATA[trap.science]?.name || trap.science) : '';
+                const sciBlocked = !!trap.science && this.gm.getScienceLevel(trap.science) <= 0;
+                const canPlace = !sciBlocked && this.gm.checkHaveResource(trap.require);
                 const reqStr = Object.entries(trap.require)
                     .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
                 const getStr = Object.entries(trap.itemGet)
                     .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
+                const sciTag = sciBlocked ? ` [需科技:${sciName}]` : '';
                 cells.push({
                     id: `place_${trapId}`,
-                    name: `${trap.desc} 诱[${reqStr}] → ${getStr}`,
+                    name: `${trap.desc} 诱[${reqStr}] → ${getStr}${sciTag}`,
                     state: canPlace ? 'normal' : 'disabled',
                 });
             }

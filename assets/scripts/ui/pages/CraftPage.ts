@@ -5,9 +5,11 @@
  * 入口方法 openCraftGrid 被 MainScene 的 onHomeCellClick / facilityRoutes 委托调用。
  */
 
+import { Node } from 'cc';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionCraft } from '../../actions/ActionCraft';
+import { ActionScience } from '../../actions/ActionScience';
 import { GameEvents } from '../../core/EventBus';
 import {
     ITEM_DATA,
@@ -97,18 +99,25 @@ export class CraftPage extends BasePage {
     /** 配方格子（仅列出已解锁配方；名称 + 需求摘要；材料不足置灰） */
     private buildRecipeCells(workbench: string): GridCellData[] {
         const recipeData = this.getRecipeData(workbench);
+        const isScience = workbench === 'scienceTable';
         const cells: GridCellData[] = [];
         for (const key of Object.keys(recipeData)) {
             const recipe = recipeData[key];
             // 原版：前置 科技/事件/建筑 未达成 → 不展示，随进度逐步开放
             if (!this.isRecipeUnlocked(recipe)) continue;
-            const canMake = this.gm.checkHaveResource(recipe.require || {});
+
+            // 科研台：已研究的科技置灰并标记，避免重复研究浪费材料
+            const researched = isScience && !!this.gm.skill[key];
+            const canMake = !researched && this.gm.checkHaveResource(recipe.require || {});
             const reqStr = recipe.require && Object.keys(recipe.require).length > 0
                 ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
                 : '无';
+            const label = isScience
+                ? (recipe.name || ITEM_DATA[key]?.name || key)
+                : (ITEM_DATA[key]?.name || key);
             cells.push({
                 id: key,
-                name: `${ITEM_DATA[key]?.name || key}\n需求: ${reqStr}`,
+                name: `${label}${researched ? ' ✓已研究' : ''}\n需求: ${reqStr}`,
                 state: canMake ? 'normal' : 'disabled',
                 type: 'list',
                 data: key,
@@ -117,38 +126,48 @@ export class CraftPage extends BasePage {
         return cells;
     }
 
-    /** 配方点击 → 校验材料 → QuantityPanel 选数量（受材料上限约束）→ 制造 */
+    /** 配方点击 → 校验材料 → QuantityPanel 选数量（受材料上限约束）→ 制造/研究 */
     private onRecipeClick(workbench: string, recipeId: string): void {
         const recipeData = this.getRecipeData(workbench);
         const recipe = recipeData[recipeId];
         if (!recipe) return;
         if (!this.gm.checkHaveResource(recipe.require || {})) { this.setMsg('材料不足'); return; }
 
-        // 按材料计算可制造的最大次数
-        let max = Infinity;
-        const bag = this.gm.boxSaveData['bag'] || {};
-        for (const k in (recipe.require || {})) {
-            max = Math.min(max, Math.floor((bag[k] || 0) / recipe.require[k]));
+        const isScience = workbench === 'scienceTable';
+
+        // 科技为一次性解锁，最多研究 1 次；制造按材料计算可制造的最大次数
+        let max = 1;
+        if (!isScience) {
+            max = Infinity;
+            const bag = this.gm.boxSaveData['bag'] || {};
+            for (const k in (recipe.require || {})) {
+                max = Math.min(max, Math.floor((bag[k] || 0) / recipe.require[k]));
+            }
         }
         if (!isFinite(max) || max < 1) { this.setMsg('材料不足'); return; }
 
-        const itemName = ITEM_DATA[recipeId]?.name || recipeId;
+        const itemName = isScience
+            ? (recipe.name || ITEM_DATA[recipeId]?.name || recipeId)
+            : (ITEM_DATA[recipeId]?.name || recipeId);
         this.ensureQtyPanel().show(
-            `制造【${itemName}】`,
+            isScience ? `研究【${itemName}】` : `制造【${itemName}】`,
             max,
             (qty) => {
-                const r = ActionCraft.instance.make(recipeId, recipeData, qty);
+                const r = isScience
+                    ? ActionScience.instance.research(recipeId, recipeData, qty)
+                    : ActionCraft.instance.make(recipeId, recipeData, qty);
                 if (!r.success) this.setMsg(r.message);
                 // 成功：进度条播放中，完成后由 OPERATION_DONE 弹反馈；列表由 rebuild(UI_REFRESH) 刷新
                 this.eventBus.emit(GameEvents.UI_REFRESH); // 失败/即时动作立即刷新；成功也会在进度结束后再刷一次
             },
             {
-                confirmLabel: '制造',
+                confirmLabel: isScience ? '研究' : '制造',
                 getPreview: (qty) => {
                     const lines: string[] = [];
                     for (const k in (recipe.require || {})) {
                         lines.push(`消耗 ${ITEM_DATA[k]?.name || k} ×${recipe.require[k] * qty}`);
                     }
+                    if (isScience) lines.push(`→ 解锁科技：${itemName}`);
                     return lines;
                 },
             }

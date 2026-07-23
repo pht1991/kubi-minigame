@@ -2898,7 +2898,6 @@ export const ITEM_DATA = {
         name:'元素吊坠',
         type:'equip',
         desc:'增加魔法伤害(50%)',
-        equipType:'head',
         magicMul:0.5,
         equipType:'neck',
     },

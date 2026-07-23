@@ -53,9 +53,12 @@ export class ActionCraft {
             return { success: false, message: '材料不足' };
         }
 
-        // 执行：产出 get × amount × count
+        // 执行：产出 = 配方的输出物品。
+        // MAKE/ALCHEMY/MAGIC 配方以「键名即物品 id」为产出（无 get 字段），
+        // 仅 ALCO 等少数配方显式声明 get；故优先用 get，缺失时回退到配方键名。
         const canGet: Record<string, number> = {};
-        canGet[recipe.get] = (recipe.amount || 1) * count;
+        const outKey = recipe.get || recipeId;
+        canGet[outKey] = (recipe.amount || 1) * count;
         const outName = ITEM_DATA[recipeId]?.name || recipeId;
         return this._exec.execute(canGet, scaledRequire, recipe.timeNeed * count, {
             title: `制造 ${outName}`,
