@@ -153,10 +153,18 @@ export class MainScene extends Component {
         const node = new Node('SaveIndicator');
         node.layer = this.node.layer;
         this._toastLayer!.addChild(node);
-        // 右下角：x 靠右留边距，y 在底部快捷栏上方（动态适配屏幕高度 + 安全区域）
+        // 右下角：x 靠右留边距，y 在底部快捷栏**上方**（避免与底栏重叠）
         const vs = view.getVisibleSize();
         const minBm = 16;
-        node.setPosition(vs.width / 2 - 95, -vs.height / 2 + 85 + Math.max(this._safeBottom, minBm), 0);
+        const SAVE_GAP = 6; // 与底栏顶边的间距
+        const BAR_H = 92;   // 底栏高度（与 createBottomBar 一致）
+        const BOTTOM_MARGIN = 3;
+        const MIN_BOTTOM_MARGIN = 16;
+        const totalBottomOffset = BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
+        // 底栏顶边 Y 坐标（设计坐标，锚点0.5居中系）
+        const barTopY = -vs.height / 2 + BAR_H + totalBottomOffset;
+        // 保存指示器中心 Y = 底栏顶边 + 指示器半高(18) + 间距
+        node.setPosition(vs.width / 2 - 95, barTopY + 18 + SAVE_GAP, 0);
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
 
         // 接线：仅 SAVE_COMPLETE 静默刷新时间（不显示「保存中」状态，避免每次操作跳动）
@@ -391,6 +399,14 @@ export class MainScene extends Component {
         // 创建底部快捷操作栏
         this.createBottomBar();
 
+        // 【关键】动态适配内容区域：ScrollView view 原为场景预置固定尺寸(700×900)，
+        // 代码化后状态栏/底栏改为绝对定位浮于两端，view 必须重新填满两者之间的空间，
+        // 否则出现上下大块空白（红框间距）。
+        this.fitContentArea();
+
+        // 适配后刷新一次网格（让 GridComponent 基于新 view 尺寸重算滚动边界 + scrollToTop）
+        this._eventBus.emit(GameEvents.UI_REFRESH);
+
         // 注册导航变化回调：返回主页时同步底栏「出门/回家」按钮状态
         this._navigator.onChange = () => this.onNavChanged();
 
@@ -526,6 +542,68 @@ export class MainScene extends Component {
         // Canvas 锚点(0.5,0.5)居中 → 屏幕顶 = +vs.height/2
         const targetY = vs.height / 2 - this._safeTop - TOP_PADDING - AD_TOP_OFFSET - nodeH / 2;
         this._statusBar.setPosition(0, targetY, 0);
+    }
+
+    /**
+     * 动态适配 ScrollView view 尺寸，使其精确填满「状态栏底边 → 底栏顶边」的可用区域。
+     *
+     * 背景：代码化迁移前 StatusBar/BottomBar 依赖 Widget 自适应，view 固定 700×900 居中即可。
+     * 迁移后两者改为绝对定位（createStatusBar / createBottomBar 用 setPosition 锚定到屏幕上下沿），
+     * 但场景预置的 ScrollView view 仍是旧尺寸——导致 view 与状态栏/底栏之间出现大块空白。
+     *
+     * 本方法在 start() 中 createStatusBar + createBottomBar 之后调用，一次性将 view 撑满可用空间。
+     */
+    private fitContentArea(): void {
+        const canvas = this.node;
+        // 查找场景预置的 GridContainer → ScrollView → view 节点
+        const gridContainer = canvas.getChildByName('GridContainer');
+        if (!gridContainer) return;
+        const scrollView = gridContainer.getChildByName('ScrollView');
+        if (!scrollView) return;
+        const viewNode = scrollView.getChildByName('view');
+        if (!viewNode) return;
+
+        const vs = view.getVisibleSize();
+        const SB_H = 120;             // 状态栏高度（与 createStatusBar 一致）
+        const SB_TOP_PAD = 8;          // 状态栏安全区间距（与 _applySafeAreaToScene 一致）
+        const BAR_H = 92;              // 底栏高度（与 createBottomBar 一致）
+        const BAR_BOTTOM_MARGIN = 3;   // 底栏底部间距（与 createBottomBar 一致）
+        const MIN_BOTTOM_MARGIN = 16;  // 底部最小间距（与 createBottomBar 一致）
+        const totalBottomOffset = BAR_BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
+
+        // 可用区域（设计分辨率坐标）：
+        //   顶 = 屏幕顶 - safeTop - 间距 - SB_H   （即状态栏底边的 Y 坐标）
+        //   底 = 屏幕底 + BAR_H + totalBottomOffset （即底栏顶边的 Y 坐标）
+        const topEdge = vs.height / 2 - this._safeTop - SB_TOP_PAD - SB_H;
+        const bottomEdge = -vs.height / 2 + BAR_H + totalBottomOffset;
+        const availH = topEdge - bottomEdge;
+        if (availH <= 0) return; // 异常：空间不足，不修改
+
+        const VIEW_W = 700; // 保持原宽度
+
+        // 同步调整 GridContainer、ScrollView、view 三者的 UITransform 高度
+        const nodesToFit = [gridContainer, scrollView, viewNode];
+        for (const node of nodesToFit) {
+            const tf = node.getComponent(UITransform);
+            if (tf) {
+                tf.setContentSize(VIEW_W, availH);
+            }
+        }
+
+        // view 锚点 (0.5,0.5) → 居中放在 GridContainer 内部即可（三者同中心）
+        // 无需改 position，因为 anchor=(0.5,0.5) + contentSize 更新后自动撑满
+
+        // 同步调整标题栏标签位置（原为场景编辑器硬编码 _lpos，基于旧容器高度 1100；
+        // 容器缩放后必须重新定位，否则标题跑到容器外面）
+        const TITLE_TOP_PAD = 35;   // 标题距容器顶边（原 550-515=35）
+        const CRUMB_GAP = 40;         // 面包屑在标题下方（原 515-475=40）
+        const halfH = availH / 2;
+        const titleLabel = gridContainer.getChildByName('TitleLabel');
+        if (titleLabel) titleLabel.setPosition(0, halfH - TITLE_TOP_PAD, 0);
+        const breadcrumbLabel = gridContainer.getChildByName('BreadcrumbLabel');
+        if (breadcrumbLabel) breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0);
+        const backButton = gridContainer.getChildByName('BackButton');
+        if (backButton) backButton.setPosition(-300, halfH - TITLE_TOP_PAD, 0);
     }
 
     /**
