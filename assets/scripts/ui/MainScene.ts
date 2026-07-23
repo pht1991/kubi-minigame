@@ -604,6 +604,14 @@ export class MainScene extends Component {
         if (breadcrumbLabel) breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0);
         const backButton = gridContainer.getChildByName('BackButton');
         if (backButton) backButton.setPosition(-300, halfH - TITLE_TOP_PAD, 0);
+
+        // 【关键】ScrollView 是 GridContainer 最后一个子节点，其 view 会盖住标签。
+        // 必须把标题/面包屑/返回按钮移到 ScrollView 之上（更高 siblingIndex），
+        // 否则坐标正确但渲染被遮挡（用户看不到标题）。
+        const topIndex = scrollView.getSiblingIndex() + 1;
+        for (const label of [titleLabel, breadcrumbLabel, backButton]) {
+            if (label) label.setSiblingIndex(topIndex++);
+        }
     }
 
     /**
