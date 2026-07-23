@@ -7,7 +7,7 @@
 import { Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType, view } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
 import { S } from './theme';
-import { UIVStack, UIHStack, UILabel, UIButton } from './widgets';
+import { UIShape, UIVStack, UIHStack, UILabel, UIButton } from './widgets';
 import { ActionCombat, CombatState } from '../actions/ActionCombat';
 import { GameManager } from '../core/GameManager';
 import { ITEM_DATA } from '../data/data';
@@ -42,16 +42,11 @@ export class BattlePanel extends ModalPanel {
 
         const vs = view.getVisibleSize();
         const sw = vs.width, sh = vs.height;
-        const hw = sw / 2, hh = sh / 2;
 
         // 不透明战斗背景（置于最底层，拦截所有点击）
-        this._bgNode = new Node('BattleBg');
-        const bgT = this._bgNode.addComponent(UITransform);
-        bgT.setContentSize(sw, sh);
+        const bgShape = new UIShape('BattleBg').rect(sw, sh, C.battleBg);
+        this._bgNode = bgShape.node;
         this._bgNode.setParent(this.node);
-        const bgGfx = this._bgNode.addComponent(Graphics);
-        bgGfx.fillColor = C.battleBg;
-        bgGfx.rect(-hw, -hh, sw, sh); bgGfx.fill();
         this._bgNode.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
         this.node.insertChild(this._bgNode, 0); // 放到面板之下
 
@@ -84,14 +79,9 @@ export class BattlePanel extends ModalPanel {
 
         this._mstNameLabel = this.mkCenter(mstSection, 0, 440, 640, 40, '', 30, new Color(80, 40, 30), true);
 
-        const mstHpBg = new Node('MstHpBg');
-        mstHpBg.setParent(mstSection);
-        const mstHpBgT = mstHpBg.addComponent(UITransform);
-        mstHpBgT.setContentSize(500, 24);
-        mstHpBg.setPosition(0, 400, 0);
-        const mstHpBgGfx = mstHpBg.addComponent(Graphics);
-        mstHpBgGfx.fillColor = new Color(80, 80, 80, 200);
-        mstHpBgGfx.rect(-250, -12, 500, 24); mstHpBgGfx.fill();
+        const mstHpBgShape = new UIShape('MstHpBg').rect(500, 24, new Color(80, 80, 80, 200));
+        mstHpBgShape.mount(mstSection).pos(0, 400, 0);
+        const mstHpBg = mstHpBgShape.node;
 
         this._mstHpBar = new Node('MstHpBar');
         this._mstHpBar.setParent(mstHpBg);
@@ -107,14 +97,9 @@ export class BattlePanel extends ModalPanel {
         const plSection = new Node('PlSection');
         plSection.setParent(panel);
 
-        const plHpBg = new Node('PlHpBg');
-        plHpBg.setParent(plSection);
-        const plHpBgT = plHpBg.addComponent(UITransform);
-        plHpBgT.setContentSize(500, 24);
-        plHpBg.setPosition(0, 330, 0);
-        const plHpBgGfx = plHpBg.addComponent(Graphics);
-        plHpBgGfx.fillColor = new Color(80, 80, 80, 200);
-        plHpBgGfx.rect(-250, -12, 500, 24); plHpBgGfx.fill();
+        const plHpBgShape = new UIShape('PlHpBg').rect(500, 24, new Color(80, 80, 80, 200));
+        plHpBgShape.mount(plSection).pos(0, 330, 0);
+        const plHpBg = plHpBgShape.node;
 
         this._playerHpBar = new Node('PlHpBar');
         this._playerHpBar.setParent(plHpBg);
@@ -128,12 +113,8 @@ export class BattlePanel extends ModalPanel {
         this.mkCenter(plSection, 0, 350, 640, 30, '玩家', 22, new Color(40, 80, 40));
 
         // —— 分隔线 ——
-        const sep = new Node('Separator');
-        sep.setParent(panel);
-        const sepGfx = sep.addComponent(Graphics);
-        sepGfx.strokeColor = C.battleSep;
-        sepGfx.lineWidth = 2;
-        sepGfx.moveTo(-310, 260); sepGfx.lineTo(310, 260); sepGfx.stroke();
+        const sep = new UIShape('Separator').line(-310, 260, 310, 260, C.battleSep, 2);
+        sep.mount(panel);
 
         // —— 战斗日志区（ScrollView） ——
         const logContainer = new Node('LogContainer');

@@ -3,7 +3,8 @@
  * 核心组件：接收 GridPage 数据，动态生成/复用 GridCell，处理触摸事件
  */
 
-import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Graphics, Widget } from 'cc';
+import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Color, Widget } from 'cc';
+import { UIShape, UILabel } from './widgets';
 import { GridPage, GridCellData } from '../data/types';
 import { GridCell } from './GridCell';
 import { GridNavigator } from '../core/GridNavigator';
@@ -81,6 +82,8 @@ export class GridComponent extends Component {
     private _footerCells: GridCell[] = [];
     /** 标题栏升级按钮节点（挂在 titleLabel 同级右侧，公共可复用） */
     private _upgradeBtnNode: Node | null = null;
+    private _upgradeShape: UIShape | null = null;
+    private _upgradeLabel: UILabel | null = null;
 
     onLoad(): void {
         // 监听刷新：UI_REFRESH（通用）+ SKILL_CHANGE（科研/事件授技解锁配方）+ EVENT_TRIGGER（事件完成解锁配方）
@@ -128,32 +131,19 @@ export class GridComponent extends Component {
     private styleContentBg(): void {
         if (!this.scrollView || this._contentBgReady) return;
         const viewNode = this.scrollView.view;
-        if (!viewNode) return;
+        if (!viewNode || !viewNode.isValid) return;
 
-        // 防御：检查节点上是否已有任意渲染组件（Graphics/Sprite/Label 等）
-        // 如果已有 Graphics 则复用，否则尝试新建
-        let gfx = viewNode.getComponent(Graphics);
-        if (!gfx) {
-            // 检查是否有其他渲染组件占用（避免 "Can't add renderable" 警告）
-            const hasRenderable = viewNode.getComponent(Sprite)
-                || viewNode.getComponent(Label);
-            if (hasRenderable) {
-                // 已有其他渲染组件，跳过 Graphics 背景绘制
-                this._contentBgReady = true;
-                return;
-            }
-            gfx = viewNode.addComponent(Graphics);
-        }
-        this._contentBgReady = true;
         const t = viewNode.getComponent(UITransform);
-        if (t) {
-            gfx.clear();
-            gfx.fillColor = C.infoBg;
-            const ax = t.width * t.anchorX;
-            const ay = t.height * t.anchorY;
-            gfx.rect(-ax, -ay, t.width, t.height);
-            gfx.fill();
-        }
+        if (!t) return;
+
+        // 视图锚点可能非 0.5，按 ax/ay 偏移使矩形恰好覆盖可视区（等价于原始 Graphics.rect(-ax,-ay,...)）
+        const ax = t.width * t.anchorX;
+        const ay = t.height * t.anchorY;
+        const bg = new UIShape('ContentBg').rect(t.width, t.height, C.infoBg);
+        bg.node.setPosition(t.width / 2 - ax, t.height / 2 - ay, 0);
+        viewNode.insertChild(bg.node, 0); // 置于内容之下（背景层）
+
+        this._contentBgReady = true;
     }
 
     /** 设置滚动条样式：细条 + 半透明 */
@@ -372,61 +362,41 @@ export class GridComponent extends Component {
         const titleW = titleTf ? titleTf.width : 112;
         btn.setPosition(titleW / 2 + 8 + BTN_W / 2, titleY, 0);
 
-        // 背景 Graphics（暖杏色药丸）
-        let gfx = btn.getComponent(Graphics);
-        if (!gfx) gfx = btn.addComponent(Graphics);
-        gfx.clear();
-        const R = 10; // 圆角半径
-        if (info.state === 'maxed') {
-            // 已满级：灰色标签
-            gfx.fillColor.set(220, 218, 212); // 浅灰
-            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
-            gfx.fill();
-            gfx.strokeColor.set(190, 188, 182);
-            gfx.lineWidth = 1;
-            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
-            gfx.stroke();
-        } else if (info.state === 'disabled') {
-            // 材料不足：浅杏色+灰边
-            gfx.fillColor.fromHEX('#EDE8D5');
-            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
-            gfx.fill();
-            gfx.strokeColor.fromHEX('#D0C9B0');
-            gfx.lineWidth = 1;
-            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
-            gfx.stroke();
-        } else {
-            // normal：暖杏色实心+金描边
-            gfx.fillColor.fromHEX('#EDE8D5');
-            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
-            gfx.fill();
-            gfx.strokeColor.fromHEX('#C9B87A');
-            gfx.lineWidth = 1;
-            gfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, R);
-            gfx.stroke();
+        // 背景（UIShape 药丸，按状态着色；复用同一 shape 每次重绘）
+        const R = 10;
+        if (!this._upgradeShape || !this._upgradeShape.node.isValid) {
+            this._upgradeShape = new UIShape('UpgradeBg');
+            this._upgradeShape.node.setParent(btn);
         }
+        const shape = this._upgradeShape!;
+        let fill: Color, stroke: Color;
+        if (info.state === 'maxed') {
+            fill = new Color(220, 218, 212);        // 浅灰
+            stroke = new Color(190, 188, 182);
+        } else if (info.state === 'disabled') {
+            fill = new Color().fromHEX('#EDE8D5');   // 浅杏色
+            stroke = new Color().fromHEX('#D0C9B0');
+        } else {
+            fill = new Color().fromHEX('#EDE8D5');   // 暖杏色
+            stroke = new Color().fromHEX('#C9B87A');  // 金描边
+        }
+        shape.gfx.clear();
+        shape.rect(BTN_W, BTN_H, fill, R, stroke, 1);
 
-        // 文字 Label（⚠️ 必须放子节点！同节点 Graphics+Label 冲突导致 Label 不显）
-        let lblNode = btn.getChildByName('lbl');
-        if (!lblNode) {
-            lblNode = new Node('lbl');
-            lblNode.addComponent(UITransform);
-            btn.addChild(lblNode);
+        // 文字（UILabel 子节点，居中覆盖药丸；复用同一 label 每次改文字/颜色）
+        if (!this._upgradeLabel || !this._upgradeLabel.node.isValid) {
+            this._upgradeLabel = new UILabel('', { size: 14, width: BTN_W, height: BTN_H, align: 'center' });
+            this._upgradeLabel.node.setParent(btn);
         }
-        let lbl = lblNode.getComponent(Label);
-        if (!lbl) lbl = lblNode.addComponent(Label);
-        lbl.string = info.state === 'maxed' ? '已满级' : info.label;
-        lbl.fontSize = 14;
-        lbl.overflow = Label.Overflow.CLAMP;
+        const ulabel = this._upgradeLabel!;
+        ulabel.setText(info.state === 'maxed' ? '已满级' : info.label);
         if (info.state === 'maxed') {
-            lbl.color.fromHEX('#888780'); // 灰色文字
+            ulabel.setColor(new Color().fromHEX('#888780')); // 灰色文字
         } else if (info.state === 'disabled') {
-            lbl.color.fromHEX('#A89F80'); // 暗杏色文字
+            ulabel.setColor(new Color().fromHEX('#A89F80')); // 暗杏色文字
         } else {
-            lbl.color.fromHEX('#8B6914'); // 金棕色文字
+            ulabel.setColor(new Color().fromHEX('#8B6914')); // 金棕色文字
         }
-        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-        lbl.verticalAlign = Label.VerticalAlign.CENTER;
 
         // 点击事件（仅 normal 状态响应）
         // 先移除旧监听防重复绑定
@@ -483,17 +453,10 @@ export class GridComponent extends Component {
         footerTf.setContentSize(footerW, totalFooterH);
         this._footerNode.setPosition(0, footerY, 0);
 
-        // 给页脚加背景
-        let fgfx = this._footerNode.getComponent(Graphics);
-        if (!fgfx) fgfx = this._footerNode.addComponent(Graphics);
-        fgfx.clear();
-        fgfx.fillColor = C.panelBg;
-        fgfx.roundRect(-footerW / 2, -totalFooterH / 2, footerW, totalFooterH, 10);
-        fgfx.fill();
-        fgfx.strokeColor = C.panelBorder;
-        fgfx.lineWidth = 1;
-        fgfx.roundRect(-footerW / 2, -totalFooterH / 2, footerW, totalFooterH, 10);
-        fgfx.stroke();
+        // 给页脚加背景（UIShape 圆角矩形 + 描边，替代手绘 Graphics）
+        const fbg = new UIShape('FooterBg').rect(footerW, totalFooterH, C.panelBg, 10, C.panelBorder, 1);
+        fbg.node.setParent(this._footerNode);
+        fbg.node.setPosition(0, 0, 0);
 
         // 逐格创建页脚格子（复用 cellPrefab）
         if (!this.cellPrefab) return;

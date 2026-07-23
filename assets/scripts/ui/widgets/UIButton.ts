@@ -39,6 +39,9 @@ export class UIButton extends UINode {
 
     setText(t: string): this { this._label.setText(t); return this; }
 
+    /** 暴露文字标签（供外部动态改文字，如底栏「出门/回家」切换） */
+    get label(): UILabel { return this._label; }
+
     setEnabled(b: boolean): this {
         this._enabled = b;
         const s: BtnStyle = b ? this._style

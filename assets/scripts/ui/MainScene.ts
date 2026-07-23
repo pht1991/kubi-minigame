@@ -3,7 +3,7 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, Label, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Graphics, Color, Widget } from 'cc';
+import { _decorator, Component, Node, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Color, Widget } from 'cc';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
@@ -36,7 +36,8 @@ import { HarvestModal } from './HarvestModal';
 import { StatusBar } from './StatusBar';
 import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
-import { C } from './theme';
+import { C, BtnStyle } from './theme';
+import { UIShape, UILabel, UIButton } from './widgets';
 import { CookPage } from './pages/CookPage';
 import { CraftPage } from './pages/CraftPage';
 import { FarmPage } from './pages/FarmPage';
@@ -85,7 +86,7 @@ export class MainScene extends Component {
     /** 本次出门随机摇出的在场商人 key 列表（回家清空，再出门重摇；保证出门期间稳定） */
     private _rolledTraders: string[] = [];
     /** 底栏第3个按钮（出门/回家）的 Label 引用，用于动态改文字 */
-    private _goBtnLabel: Label | null = null;
+    private _goBtnLabel: UILabel | null = null;
 
     /** 最近一次动作反馈（显示在各面板；赋值时自动弹 Toast + 立即存档） */
     private _lastMsgValue: string = '';
@@ -676,11 +677,8 @@ export class MainScene extends Component {
         // 挂专属 StatusBar 层（Content 之上、BottomBar 之下），由 _applySafeAreaToScene 绝对定位
         bar.setParent(this._statusBarLayer!);
 
-        // 背景（替代原场景 Bg Sprite）：Graphics 矩形，暖色底
-        const bg = bar.addComponent(Graphics);
-        bg.fillColor = new Color(245, 240, 230, 255);
-        bg.rect(-SB_W / 2, -SB_H / 2, SB_W, SB_H);
-        bg.fill();
+        // 背景（替代原场景 Bg Sprite / 手绘 Graphics）：UIShape 暖色矩形
+        new UIShape('StatusBarBg').rect(SB_W, SB_H, new Color(245, 240, 230, 255)).mount(bar);
 
         // 时间标题行
         const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, 36, 200, 48, 24);
@@ -694,12 +692,12 @@ export class MainScene extends Component {
             ['San_Label', 180],
             ['Temp_Label', 300],
         ];
-        const labels: Label[] = [];
+        const labels: UILabel[] = [];
         for (const [name, x] of attrs) {
             labels.push(this._mkStatusLabel(bar, name, x, -10, 120, 48, 20));
         }
 
-        // 挂 StatusBar 组件并赋值 Label 字段（StatusBar.onLoad 也会按名字兜底绑定）
+        // 挂 StatusBar 组件并赋值 UILabel 字段
         const comp = bar.addComponent(StatusBar);
         comp.timeLabel = timeLabel;
         comp.hpLabel = labels[0];
@@ -708,30 +706,27 @@ export class MainScene extends Component {
         comp.psLabel = labels[3];
         comp.sanLabel = labels[4];
         comp.tempLabel = labels[5];
+        comp.refresh(); // 首帧立即填充（字段已在 addComponent 后赋值）
 
         this._statusBar = bar;
     }
 
-    /** 创建一个状态栏属性 Label 子节点并返回其 Label 组件 */
+    /** 创建一个状态栏属性 UILabel 子节点并返回其 UILabel 组件 */
     private _mkStatusLabel(
         parent: Node, name: string,
         x: number, y: number, w: number, h: number, fontSize: number
-    ): Label {
-        const n = new Node(name);
-        n.layer = parent.layer;
-        const t = n.addComponent(UITransform);
-        t.setAnchorPoint(0.5, 0.5);
-        t.setContentSize(w, h);
-        n.setPosition(x, y, 0);
-        n.setParent(parent);
-        const lab = n.addComponent(Label);
-        lab.fontSize = fontSize;
-        lab.lineHeight = fontSize + 4;
-        lab.horizontalAlign = Label.HorizontalAlign.CENTER;
-        lab.verticalAlign = Label.VerticalAlign.CENTER;
-        // overflow 默认即为 Label.Overflow.NONE，无需显式设置
-        lab.color = new Color(60, 45, 30, 255);
-        return lab;
+    ): UILabel {
+        const ui = new UILabel('', {
+            size: fontSize,
+            width: w,
+            height: h,
+            align: 'center',
+            color: new Color(60, 45, 30, 255),
+            lineHeight: fontSize + 4,
+        });
+        ui.node.name = name;
+        ui.mount(parent).pos(x, y, 0);
+        return ui;
     }
 
     /** 创建底部固定快捷操作栏（休息 / 背包 / 状态） */
@@ -765,15 +760,8 @@ export class MainScene extends Component {
         const totalBottomOffset = BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
         this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + totalBottomOffset, 0);
 
-        // 背景（暖色）
-        const gfx = this._bottomBar.addComponent(Graphics);
-        gfx.fillColor = C.barBg;
-        gfx.rect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H);
-        gfx.fill();
-        gfx.strokeColor = C.barBorder;
-        gfx.lineWidth = 1.5;
-        gfx.rect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H);
-        gfx.stroke();
+        // 背景（暖色）：UIShape 矩形 + 描边，替代手绘 Graphics
+        new UIShape('BottomBarBg').rect(BAR_W, BAR_H, C.barBg, 0, C.barBorder, 1.5).mount(this._bottomBar);
 
         // 按钮定义（3 个：背包 / 出门(回家) / 菜单）
         // 注：「休息」已移除——休息仅限在家（床铺）使用，不应全局暴露（可卡 bug 随地恢复）
@@ -783,60 +771,32 @@ export class MainScene extends Component {
             { label: '菜单', action: () => this.onBottomAction('menu') },
         ];
 
+        // 统一按钮样式（组件库 UIButton：背景 + 圆角 + 文字 + 点击，自带 stopPropagation）
+        const btnStyle: BtnStyle = {
+            bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1,
+            text: C.barBtnText, radius: 12, fontSize: 22,
+        };
+
         const spacing = (BAR_W - buttons.length * BTN_W) / (buttons.length + 1);
         for (let i = 0; i < buttons.length; i++) {
             const btn = buttons[i];
             const bx = -BAR_W / 2 + spacing + i * (BTN_W + spacing) + BTN_W / 2;
-            const by = 0;
 
-            const btnNode = new Node(`Btn_${btn.label}`);
-            btnNode.layer = this.node.layer;
-            const btnTf = btnNode.addComponent(UITransform);
-            btnTf.setContentSize(BTN_W, BTN_H);
+            const uiBtn = new UIButton(btn.label, btnStyle, btn.action, BTN_W, BTN_H);
+            uiBtn.mount(this._bottomBar).pos(bx, 0, 0);
 
-            // 按钮背景（圆角矩形）
-            const btnGfx = btnNode.addComponent(Graphics);
-            btnGfx.fillColor = C.barBtnBg;
-            btnGfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, 12);
-            btnGfx.fill();
-            btnGfx.strokeColor = C.barBtnBorder;
-            btnGfx.lineWidth = 1;
-            btnGfx.roundRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, 12);
-            btnGfx.stroke();
+            // 原逻辑：TOUCH_CANCEL 同效触发（防长按误触/取消也走动作）
+            uiBtn.node.on(Node.EventType.TOUCH_CANCEL, btn.action);
 
-            // 【关键修复3】Label 用独立子节点（避免与 Graphics 同节点渲染冲突导致文字不显示）
-            const lblNode = new Node('Lbl');
-            lblNode.layer = this.node.layer;
-            const lbl = lblNode.addComponent(Label);
-            lbl.string = btn.label;
-            lbl.fontSize = 22;
-            lbl.color = C.barBtnText; // 深棕
-            lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-            lbl.verticalAlign = Label.VerticalAlign.CENTER;
-            lbl.overflow = Label.Overflow.CLAMP;
-            const lblTf = lblNode.getComponent(UITransform);
-            if (lblTf) {
-                lblTf.setContentSize(BTN_W, BTN_H);
-            }
-            lblNode.setPosition(0, 0, 0);
-
-            // 保存第2个按钮（出门/回家）的 Label 引用，供动态切换文字
-            if (i === 1) this._goBtnLabel = lbl;
-
-            btnNode.setPosition(bx, by, 0);
-            btnNode.addChild(lblNode);     // Label 作为按钮子节点
-            this._bottomBar.addChild(btnNode); // 按钮加入底栏
-
-            // 点击事件
-            btnNode.on(Node.EventType.TOUCH_END, btn.action);
-            btnNode.on(Node.EventType.TOUCH_CANCEL, btn.action);
+            // 保存第2个按钮（出门/回家）的文字引用，供动态切换
+            if (i === 1) this._goBtnLabel = uiBtn.label;
         }
     }
 
     /** 刷新底栏第3按钮文字（出门 ↔ 回家） */
     private refreshGoButton(): void {
         if (this._goBtnLabel) {
-            this._goBtnLabel.string = this._outdoorPage?.isOutdoors ? '回家' : '出门';
+            this._goBtnLabel.setText(this._outdoorPage?.isOutdoors ? '回家' : '出门');
         }
     }
 
