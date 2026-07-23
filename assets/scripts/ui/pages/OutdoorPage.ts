@@ -15,7 +15,6 @@ import { ActionTrade } from '../../actions/ActionTrade';
 import { ActionBuilding } from '../../actions/ActionBuilding';
 import { ActionBrew } from '../../actions/ActionBrew';
 import { ActionMap } from '../../actions/ActionMap';
-import { ActionEvent } from '../../actions/ActionEvent';
 import {
     TRADE_DATA, PLACE_DATA, ITEM_DATA, BUILDING_DATA,
     MST_DATA, EVENT_DATA,
@@ -612,9 +611,10 @@ export class OutdoorPage extends BasePage {
                     this.setMsg('附近没有怪物');
                     this.navigator.replace(this.buildPlaceDetailPage(placeId));
                 } else if (data?.action === 'event') {
-                    const r = ActionEvent.instance.trigger(data.evId);
-                    this.setMsg(r.message);
-                    this.navigator.replace(this.buildPlaceDetailPage(placeId));
+                    // 与主页「事件」入口一致：打开事件详情页（NPC 对话 + 需求/奖励 + 触发按钮，
+                    // 需求不满足时置灰），而不是直接 trigger 只弹 toast。
+                    // 对齐原版：点 NPC 先展示对话、再用「给/触发」按钮交付（不满足则灰掉）。
+                    this.ctx.eventPage?.openEventDetail(data.evId);
                 }
             },
         };

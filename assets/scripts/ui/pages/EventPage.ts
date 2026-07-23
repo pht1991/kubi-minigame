@@ -33,8 +33,8 @@ export class EventPage extends BasePage {
         });
     }
 
-    /** 事件详情 + 对话弹窗 + 触发动作 */
-    private openEventDetail(eventId: string): void {
+    /** 事件详情 + 对话弹窗 + 触发动作（主页「事件」入口与地图地点事件共用，对齐原版先对话再交付的交互） */
+    public openEventDetail(eventId: string): void {
         this.navigator.push(this.buildEventDetailPage(eventId));
     }
 
