@@ -19,6 +19,8 @@ export interface LabelOpts {
     align?: 'left' | 'center' | 'right';
     bold?: boolean;
     lineHeight?: number;
+    /** 溢出策略：true=SHRINK（文字过长自动缩字，不截断）；默认 false=CLAMP */
+    shrink?: boolean;
 }
 
 export class UILabel extends UINode {
@@ -50,7 +52,7 @@ export class UILabel extends UINode {
                 : Label.HorizontalAlign.CENTER,
             verticalAlign: Label.VerticalAlign.CENTER,
             enableWrapText: !!opts.width,
-            overflow: Label.Overflow.CLAMP,
+            overflow: opts.shrink ? Label.Overflow.SHRINK : Label.Overflow.CLAMP,
             lineHeight: lh,
             isBold: !!opts.bold,
         });

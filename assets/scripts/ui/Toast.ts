@@ -4,8 +4,9 @@
  * 风格与暖羊皮纸 UI 一致：半透明深棕底 + 暖白文字，自动淡入淡出，不拦截触摸。
  */
 
-import { _decorator, Component, Node, Label, UITransform, UIOpacity, tween, Color, Graphics } from 'cc';
+import { _decorator, Component, Node, UITransform, UIOpacity, tween, Color } from 'cc';
 import { C, S } from './theme';
+import { UIShape, UILabel } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -14,7 +15,7 @@ export class Toast extends Component {
     private static _instance: Toast | null = null;
     static get instance(): Toast | null { return Toast._instance; }
 
-    private _label: Label | null = null;
+    private _label: UILabel | null = null;
     private _op: UIOpacity | null = null;
     private _tween: any = null;
 
@@ -30,30 +31,25 @@ export class Toast extends Component {
         const W = 620, H = 64;
 
         // 背景（暖羊皮纸浅色半透明圆角矩形，与整体 UI 一致）
-        const g = this.node.addComponent(Graphics);
-        g.fillColor = new Color(C.panelBg.r, C.panelBg.g, C.panelBg.b, 225);
-        g.roundRect(-W / 2, -H / 2, W, H, S.panelRadius);
-        g.fill();
-        g.strokeColor = new Color(C.panelBorder.r, C.panelBorder.g, C.panelBorder.b, 200);
-        g.lineWidth = 1.5;
-        g.roundRect(-W / 2, -H / 2, W, H, S.panelRadius);
-        g.stroke();
+        const bg = new UIShape('ToastBg').rect(
+            W, H,
+            new Color(C.panelBg.r, C.panelBg.g, C.panelBg.b, 225),
+            S.panelRadius,
+            new Color(C.panelBorder.r, C.panelBorder.g, C.panelBorder.b, 200),
+            1.5
+        );
+        bg.mount(this.node);
 
-        // 文字
-        const lblNode = new Node('ToastLabel');
-        lblNode.parent = this.node;
-        const lblTf = lblNode.addComponent(UITransform);
-        lblTf.setContentSize(W - 48, H);
-        lblTf.setAnchorPoint(0.5, 0.5);
-        const lbl = lblNode.addComponent(Label);
-        lbl.string = '';
-        lbl.fontSize = S.font.body;
-        lbl.lineHeight = 26;
-        lbl.color = C.title; // 深棕，浅底上清晰可读
-        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-        lbl.verticalAlign = Label.VerticalAlign.CENTER;
-        // 改为 SHRINK：文字过长时自动缩小字号而非截断（修复原 CLAMP 把长文案裁掉的问题）
-        lbl.overflow = Label.Overflow.SHRINK;
+        // 文字（SHRINK：过长自动缩字而非截断，避免长文案被裁掉）
+        const lbl = new UILabel('', {
+            size: S.font.body,
+            lineHeight: 26,
+            color: C.title,
+            align: 'center',
+            width: W - 48,
+            shrink: true,
+        });
+        lbl.mount(this.node);
         this._label = lbl;
 
         // 初始透明
@@ -73,7 +69,7 @@ export class Toast extends Component {
      */
     show(msg: string, duration: number = 900): void {
         if (!msg || !this._label || !this._op) return;
-        this._label.string = msg;
+        this._label.setText(msg);
 
         const op = this._op;
         if (this._tween) this._tween.stop();

@@ -6,8 +6,9 @@
  * 每次保存只静默刷新时间，避免闪烁跳动干扰玩家。
  */
 
-import { _decorator, Component, Node, Label, UITransform, Graphics } from 'cc';
+import { _decorator, Component, Node, UITransform } from 'cc';
 import { C } from './theme';
+import { UIShape, UILabel } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -16,7 +17,7 @@ export class SaveIndicator extends Component {
     private static _instance: SaveIndicator | null = null;
     static get instance(): SaveIndicator | null { return SaveIndicator._instance; }
 
-    private _label: Label | null = null;
+    private _label: UILabel | null = null;
     private _gfx: Graphics | null = null;
 
     onLoad(): void {
@@ -28,29 +29,12 @@ export class SaveIndicator extends Component {
         tf.setAnchorPoint(0.5, 0.5);
 
         // 背景小药丸（淡暖白半透明 + 棕描边），低调不抢眼；宽度贴合文字，避免两侧留白过多
-        const g = this.node.addComponent(Graphics);
-        g.fillColor = C.saveBg;
-        g.roundRect(-70, -18, 140, 36, 18);
-        g.fill();
-        g.strokeColor = C.saveBorder;
-        g.lineWidth = 1;
-        g.roundRect(-70, -18, 140, 36, 18);
-        g.stroke();
-        this._gfx = g;
+        const bg = new UIShape('SavePill').rect(140, 36, C.saveBg, 18, C.saveBorder, 1);
+        bg.mount(this.node);
+        this._gfx = bg.gfx;
 
-        const lblNode = new Node('SaveLabel');
-        lblNode.parent = this.node;
-        const lblTf = lblNode.addComponent(UITransform);
-        lblTf.setContentSize(130, 32);
-        lblTf.setAnchorPoint(0.5, 0.5);
-        const lbl = lblNode.addComponent(Label);
-        lbl.string = '保存于 --:--';
-        lbl.fontSize = 16;
-        lbl.lineHeight = 20;
-        lbl.color = C.title; // 深棕：完成态
-        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-        lbl.verticalAlign = Label.VerticalAlign.CENTER;
-        lbl.overflow = Label.Overflow.CLAMP;
+        const lbl = new UILabel('保存于 --:--', { size: 16, color: C.title, align: 'center', width: 130 });
+        lbl.mount(this.node);
         this._label = lbl;
     }
 
@@ -61,16 +45,16 @@ export class SaveIndicator extends Component {
     /** 设置初始文案（启动时立即显示，无延迟） */
     setInitial(timeStr?: string): void {
         if (!this._label) return;
-        this._label.string = timeStr ? `保存于 ${timeStr}` : '保存于 --:--';
-        this._label.color = C.title;
+        this._label.setText(timeStr ? `保存于 ${timeStr}` : '保存于 --:--');
+        this._label.setColor(C.title);
         if (this._gfx) this._gfx.fillColor = C.saveBg;
     }
 
     /** 保存完成：立即静默刷新时间（无「保存中」闪烁、无延迟切换） */
     showSaved(timeStr?: string): void {
         if (!this._label || !timeStr) return; // 失败/无时间则保持原样，不跳动
-        this._label.string = `保存于 ${timeStr}`;
-        this._label.color = C.title;
+        this._label.setText(`保存于 ${timeStr}`);
+        this._label.setColor(C.title);
         if (this._gfx) this._gfx.fillColor = C.saveBg;
     }
 }
