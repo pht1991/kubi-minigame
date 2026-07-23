@@ -72,6 +72,7 @@ export class EventDetailPanel extends ModalPanel {
 
     /** onLoad 时根据屏幕可用空间限制面板最大高度 */
     onLoad(): void {
+        super.onLoad();   // ⚠️ 必须先建骨架（_panelBgGfx 等），否则首次 show 时 drawPanelBg 崩溃
         const vs = view.getVisibleSize();
         // 面板不超过屏幕高度的 85%，留出标题栏+底栏+边距
         this._maxPanelH = Math.floor(vs.height * 0.82);
