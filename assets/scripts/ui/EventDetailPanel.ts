@@ -11,7 +11,8 @@
  */
 
 import { _decorator, Color, Label, Node, UITransform } from 'cc';
-import { ModalPanel, C, S, BtnStyle } from './ModalPanel';
+import { ModalPanel } from './ModalPanel';
+import { C, S, BtnStyle } from './theme';
 import { DialogOption } from './DialogPanel';
 import { ActionEvent } from '../actions/ActionEvent';
 import { EVENT_DATA, ITEM_DATA } from '../data/data';
