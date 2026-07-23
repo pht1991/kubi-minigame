@@ -6,6 +6,8 @@
 
 import { Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType, view } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
+import { S } from './theme';
+import { UIVStack, UIHStack, UILabel, UIButton } from './widgets';
 import { ActionCombat, CombatState } from '../actions/ActionCombat';
 import { GameManager } from '../core/GameManager';
 import { ITEM_DATA } from '../data/data';
@@ -146,51 +148,38 @@ export class BattlePanel extends ModalPanel {
         this._resultLabel = this.mkCenter(panel, 0, 0, 600, 80, '', 28, C.battleTitle);
         this._resultLabel.node.active = false;
 
-        // —— 继续按钮 ——
-        this._continueBtn = new Node('ContinueBtn');
-        this._continueBtn.setParent(panel);
-        const cBtnT = this._continueBtn.addComponent(UITransform);
-        cBtnT.setContentSize(200, 60);
-        this._continueBtn.setPosition(0, -100, 0);
-        const cBtnGfx = this._continueBtn.addComponent(Graphics);
-        this.mkRect(cBtnGfx, -100, -30, 200, 60, 0, new Color(200, 140, 80, 255), new Color(140, 80, 40, 255), 2);
-        this.mkCenter(this._continueBtn, 0, 0, 200, 40, '继续', 26, new Color(255, 255, 255), true);
+        // —— 继续按钮（widgets） ——
+        const contBtn = new UIButton('继续',
+            { bg: new Color(200, 140, 80, 255), border: new Color(140, 80, 40, 255), borderW: 2, text: C.white, radius: 0, fontSize: 26 },
+            () => this.close(), 200, 60);
+        contBtn.mount(panel).pos(0, -100, 0);
+        this._continueBtn = contBtn.node;
         this._continueBtn.active = false;
-        this._continueBtn.on(NodeEventType.TOUCH_END, () => { this.close(); });
 
-        // —— 操作网格 ——
-        this._actionGrid = new Node('ActionGrid');
-        this._actionGrid.setParent(panel);
-        const agT = this._actionGrid.addComponent(UITransform);
-        agT.setContentSize(640, 180);
-        this._actionGrid.setPosition(0, -300, 0);
-
+        // —— 操作按钮行（UIHStack 自动排布） ——
         const actions = [
             { id: 'attack', name: '攻击', color: C.actAttack },
             { id: 'skill', name: '技能', color: C.actSkill },
             { id: 'item', name: '道具', color: C.actItem },
             { id: 'flee', name: '逃跑', color: C.actFlee },
         ];
-        for (let i = 0; i < actions.length; i++) {
-            const btn = this.makeActionBtn(actions[i], i);
-            btn.setParent(this._actionGrid);
+        const actRow = new UIHStack().gap(20);
+        for (const cfg of actions) {
+            actRow.add(new UIButton(cfg.name,
+                { bg: cfg.color, border: C.btnBorder, borderW: S.btnBorderW, text: C.white, radius: S.btnRadius, fontSize: 26 },
+                () => {
+                    if (!this._combat.state || this._combat.state.ended) return;
+                    switch (cfg.id) {
+                        case 'attack': this._combat.attack(); break;
+                        case 'skill': this.showSkillGrid(); return;
+                        case 'item': this.showItemGrid(); return;
+                        case 'flee': this._combat.flee(); break;
+                    }
+                    this.refreshUI();
+                }, 140, 150));
         }
-    }
-
-    private makeActionBtn(cfg: { id: string; name: string; color: Color }, idx: number): Node {
-        const spacing = 160;
-        const x = (idx - 1.5) * spacing;
-        const ref = this.mkButton(this._actionGrid!, x, 0, 140, 150, cfg.name, cfg.color, () => {
-            if (!this._combat.state || this._combat.state.ended) return;
-            switch (cfg.id) {
-                case 'attack': this._combat.attack(); break;
-                case 'skill': this.showSkillGrid(); return;
-                case 'item': this.showItemGrid(); return;
-                case 'flee': this._combat.flee(); break;
-            }
-            this.refreshUI();
-        });
-        return ref.node;
+        actRow.mount(panel).pos(0, -300, 0);
+        this._actionGrid = actRow.node;
     }
 
     /** 弹出技能选择子网格（含冷却显示 + 防御/敏捷姿态技能） */
@@ -304,19 +293,14 @@ export class BattlePanel extends ModalPanel {
         if (!this._logContent) return;
         for (const c of [...this._logContent.children]) c.destroy();
 
+        // 日志行：VStack 自动排布（顶部对齐 content anchor(0.5,1)）
         const recent = s.log.slice(-5);
-        for (let i = 0; i < recent.length; i++) {
-            const line = new Node(`Log_${i}`);
-            line.setParent(this._logContent);
-            const lT = line.addComponent(UITransform);
-            lT.setContentSize(580, 36);
-            lT.setAnchorPoint(0.5, 1);
-            line.setPosition(0, -i * 38, 0);
-            const lbl = line.addComponent(Label);
-            lbl.string = recent[i];
-            lbl.fontSize = 18; lbl.lineHeight = 26;
-            lbl.color = new Color(220, 210, 190, 255);
+        const list = new UIVStack().gap(2).align('center').fixedWidth(580);
+        for (const text of recent) {
+            list.add(new UILabel(text, { size: 18, width: 580, height: 36, color: new Color(220, 210, 190, 255), align: 'center', lineHeight: 26 }));
         }
+        list.mount(this._logContent);
+        list.pos(0, -list.h / 2, 0);
     }
 
     private close(): void {
