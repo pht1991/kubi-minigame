@@ -153,19 +153,10 @@ export class MainScene extends Component {
         const node = new Node('SaveIndicator');
         node.layer = this.node.layer;
         this._toastLayer!.addChild(node);
-        // 右下角：x 靠右留边距，y 在底部快捷栏**上方**（避免与底栏重叠）
-        const vs = view.getVisibleSize();
-        const minBm = 16;
-        const SAVE_GAP = 6; // 与底栏顶边的间距
-        const BAR_H = 92;   // 底栏高度（与 createBottomBar 一致）
-        const BOTTOM_MARGIN = 3;
-        const MIN_BOTTOM_MARGIN = 16;
-        const totalBottomOffset = BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
-        // 底栏顶边 Y 坐标（设计坐标，锚点0.5居中系）
-        const barTopY = -vs.height / 2 + BAR_H + totalBottomOffset;
-        // 保存指示器中心 Y = 底栏顶边 + 指示器半高(18) + 间距
-        node.setPosition(vs.width / 2 - 95, barTopY + 18 + SAVE_GAP, 0);
+        // 定位：默认放标题行最右侧（具体坐标由 positionSaveIndicator() 计算，
+        // 并在 fitContentArea 内随布局重算，保证与标题行同高、不压中间滚动区）
         node.addComponent(SaveIndicator);  // onLoad 内自动构建
+        this.positionSaveIndicator();
 
         // 接线：仅 SAVE_COMPLETE 静默刷新时间（不显示「保存中」状态，避免每次操作跳动）
         this._eventBus.on(GameEvents.SAVE_COMPLETE, (savedAt: number, ok: boolean = true) => {
@@ -613,6 +604,28 @@ export class MainScene extends Component {
         if (breadcrumbLabel) breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0);
         const backButton = gridContainer.getChildByName('BackButton');
         if (backButton) backButton.setPosition(-300, halfH - TITLE_TOP_PAD, 0);
+
+        // 存档指示器随布局重算：始终贴在标题行最右侧（与标题同高，避开中间滚动区）
+        this.positionSaveIndicator();
+    }
+
+    /**
+     * 将常驻存档指示器定位到标题行（内容区）最右侧。
+     * 标题行纵向中心（MainScene 根坐标）= topEdge - TITLE_TOP_PAD，
+     * 与 fitContentArea 内标题 Label 的绝对 Y 一致，故与标题同高、右对齐到内容区右边。
+     */
+    private positionSaveIndicator(): void {
+        const ind = SaveIndicator.instance;
+        if (!ind || !ind.node || !ind.node.isValid) return;
+        const vs = view.getVisibleSize();
+        const SB_H = 120;        // 状态栏高度（与 createStatusBar 一致）
+        const SB_TOP_PAD = 8;    // 状态栏安全区间距（与 _applySafeAreaToScene 一致）
+        const TITLE_TOP_PAD = 35;// 标题距容器顶边（与 fitContentArea 一致）
+        // 标题行绝对 Y（= 状态栏底边 - 35）
+        const titleTopY = vs.height / 2 - this._safeTop - SB_TOP_PAD - SB_H - TITLE_TOP_PAD;
+        // 最右侧：内容区右缘(=vs.width/2)留 16，再往左退半宽(70)
+        const indX = vs.width / 2 - 16 - 70;
+        ind.node.setPosition(indX, titleTopY, 0);
     }
 
     /**
