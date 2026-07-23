@@ -44,32 +44,61 @@ export class EventPage extends BasePage {
         const experienced = !!this.gm.eventSaveData[eventId]?.experienced;
         const want = data.want || {};
         const canTrigger = !experienced && this.gm.checkHaveResource(want);
-        const wantStr = Object.keys(want).length > 0
-            ? Object.entries(want).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
-        const getStr = data.get
-            ? Object.entries(data.get).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
-        const cells: GridCellData[] = [];
-        cells.push(
-            { id: 'name', name: data.name, state: 'disabled' },
-            { id: 'desc', name: data.desc || '', state: 'disabled' },
-            { id: 'want', name: `需求: ${wantStr}`, state: 'disabled' },
-            { id: 'get', name: `奖励: ${getStr}`, state: 'disabled' },
-        );
 
-        // 有对话(d_1)或描述(desc)就提供「交谈」按钮，让玩家看到 NPC 说了什么
-        // （此前仅 d_1 才显示，导致纯 desc 事件如「饥饿的流浪汉」只能触发、看不到对话）
+        // ── 构建信息卡片文本（单格多行展示，不再拆成散落单元格）──
+        const lines: string[] = [];
+        // NPC 名
+        lines.push(`【${data.name}】`);
+        // 对话/描述
+        if (dialogInfo.dialogBefore.length > 0) {
+            dialogInfo.dialogBefore.forEach(t => lines.push(`"${t}"`));
+        } else if (data.desc) {
+            lines.push(`"${data.desc}"`);
+        }
+        // 需求
+        if (Object.keys(want).length > 0) {
+            const wantStr = Object.entries(want).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
+            lines.push(`需求: ${wantStr}`);
+        }
+        // 奖励
+        if (data.get) {
+            const getStr = Object.entries(data.get).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
+            lines.push(`奖励: ${getStr}`);
+        }
+        // 已完成标记
+        if (experienced) {
+            lines.push('(已完成)');
+        }
+
+        const cells: GridCellData[] = [
+            // 信息卡片（置灰不可点，多行自动换行）
+            {
+                id: 'info',
+                name: lines.join('\n'),
+                state: 'disabled',
+                noTruncate: true,
+            },
+        ];
+
+        // 操作按钮行
         const hasTalk = dialogInfo.dialogBefore.length > 0 || (data.desc && data.desc.length > 0);
         if (hasTalk) {
-            cells.push({ id: 'talk', name: experienced ? '回顾对话' : '交谈', state: 'normal' });
+            cells.push({
+                id: 'talk',
+                name: experienced ? '回顾对话' : '[交谈]',
+                state: 'normal',
+            });
         }
-        cells.push({ id: 'trigger', name: experienced ? '已完成' : '触发', state: experienced ? 'disabled' : (canTrigger ? 'normal' : 'disabled') });
+        cells.push({
+            id: 'trigger',
+            name: experienced ? '[已完成]' : (!canTrigger ? '[触发](需求不足)' : '[触发]'),
+            state: experienced ? 'disabled' : (canTrigger ? 'normal' : 'disabled'),
+        });
 
         return {
             title: data.name,
             breadcrumb: data.name,
-            columns: 4,
+            columns: 2,       // 两列：信息卡片占满一行 + 按钮并排
             cells,
             onCellClick: (index, cell) => {
                 if (cell.id === 'talk' && dialogInfo) {
