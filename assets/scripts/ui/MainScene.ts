@@ -362,6 +362,12 @@ export class MainScene extends Component {
             eventDetailPanel: this._eventDetailPanel!,
             setMsg: (msg: string) => { this._lastMsg = msg; },
         };
+        // 统一向各模态面板注入上下文，规避「面板误用未注入依赖」类崩溃
+        this._dialogPanel?.attach(pageCtx);
+        this._bagPanel?.attach(pageCtx);
+        this._battlePanel?.attach(pageCtx);
+        this._eventDetailPanel?.attach(pageCtx);
+        this._tradePanel?.attach(pageCtx);
         this._cookPage = new CookPage(pageCtx);
         this._craftPage = new CraftPage(pageCtx);
         // 回填各 Page 引用到 ctx，供少数跨域导航（如建筑详情打开农田/陷阱/酿酒管理页）

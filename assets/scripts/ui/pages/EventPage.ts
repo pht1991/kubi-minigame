@@ -4,11 +4,16 @@
  * 从 MainScene 抽离：事件总览网格 + 事件详情（通过 EventDetailPanel 弹窗）。
  * 入口 openQuestGrid 被 MainScene（onHomeCellClick）委托调用。
  * 事件详情走专用 NPC 对话面板（EventDetailPanel），不再用 GridCell 网格。
+ *
+ * 本页持有 gm / dialogPanel（继承自 BasePage），负责计算事件状态并把数据
+ * 喂给面板；面板是纯视图，交谈 / 触发的实际逻辑落在本页。
  */
 
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { EVENT_DATA } from '../../data/data';
+import { ActionEvent } from '../../actions/ActionEvent';
+import { DialogOption } from '../../ui/DialogPanel';
 
 export class EventPage extends BasePage {
     /** 公开入口：打开事件总览网格 */
@@ -34,15 +39,93 @@ export class EventPage extends BasePage {
 
     /** 打开事件详情：弹出专用 NPC 对话面板（主页「事件」入口与地图地点事件共用） */
     public openEventDetail(eventId: string): void {
+        const data = EVENT_DATA[eventId];
+        if (!data) return;
+        const dialogInfo = ActionEvent.instance.getDialogInfo(eventId);
+        if (!dialogInfo) return;
+
+        const want = data.want || {};
+        const reward = data.get;
+        const dialogs = dialogInfo.dialogBefore.length > 0
+            ? dialogInfo.dialogBefore
+            : (data.desc ? [data.desc] : []);
+
         this.ctx.eventDetailPanel?.showDetail({
-            eventId,
-            onTrigger: () => {
-                // 触发后刷新当前导航页（如果还在事件列表则重建列表）
+            title: data.name,
+            dialogs,
+            dialogAfter: dialogInfo.dialogAfter,
+            want,
+            reward,
+            experienced: dialogInfo.experienced,
+            canTrigger: dialogInfo.canTrigger,
+            onTalk: () => this.showEventTalkDialog(eventId, dialogInfo),
+            onTrigger: () => this.doEventTrigger(eventId, dialogInfo),
+            onClose: () => {
+                // 触发后刷新事件列表（若当前仍在事件网格）
                 const cur = this.navigator.current;
-                if (cur && cur.title === '事件') {
-                    this.openQuestGrid();
-                }
+                if (cur && cur.title === '事件') this.openQuestGrid();
             },
         });
+    }
+
+    /** 显示 NPC 对话（交谈）弹窗 */
+    private showEventTalkDialog(eventId: string, dialogInfo: ReturnType<ActionEvent['getDialogInfo']>): void {
+        if (!dialogInfo) return;
+        const data = EVENT_DATA[eventId];
+        const talkTexts = dialogInfo.dialogBefore.length > 0
+            ? dialogInfo.dialogBefore
+            : (data?.desc ? [data.desc] : []);
+        const options: DialogOption[] = talkTexts.map(text => ({
+            label: text,
+            data: null,
+            disabled: true,
+        }));
+        if (!dialogInfo.experienced && dialogInfo.canTrigger) {
+            options.push({ label: '→ 交付并触发', data: { action: 'trigger' } });
+        }
+        if (dialogInfo.experienced && dialogInfo.dialogAfter.length > 0) {
+            dialogInfo.dialogAfter.forEach(text => {
+                options.push({ label: text, data: null, disabled: true });
+            });
+        }
+        options.push({ label: '关闭', data: { action: 'close' } });
+
+        this.dialogPanel?.show(
+            data?.name || '事件',
+            options,
+            (d) => {
+                if (d?.action === 'trigger' && !dialogInfo.experienced) {
+                    this.doEventTrigger(eventId, dialogInfo);
+                }
+            },
+            () => {}
+        );
+    }
+
+    /** 执行事件触发：扣需求 → 发奖 → 提示 → 展示后续对话 */
+    private doEventTrigger(eventId: string, dialogInfo: ReturnType<ActionEvent['getDialogInfo']>): void {
+        const r = ActionEvent.instance.trigger(eventId);
+        this.setMsg(r.message);
+        // 触发后展示 d_2 后续对话
+        if (dialogInfo?.dialogAfter.length > 0) {
+            this.showEventAfterDialog(eventId, dialogInfo.dialogAfter);
+        }
+    }
+
+    /** 显示完成后对话 */
+    private showEventAfterDialog(eventId: string, dialogAfter: string[]): void {
+        const data = EVENT_DATA[eventId];
+        const options: DialogOption[] = dialogAfter.map(text => ({
+            label: text,
+            data: null,
+            disabled: true,
+        }));
+        options.push({ label: '继续', data: { action: 'close' } });
+        this.dialogPanel?.show(
+            `${data?.name || '事件'} - 完成`,
+            options,
+            () => {},
+            () => {}
+        );
     }
 }

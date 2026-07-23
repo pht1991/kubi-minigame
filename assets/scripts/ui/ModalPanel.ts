@@ -21,6 +21,9 @@ import {
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment, view,
 } from 'cc';
 import { C, S, Btn, BtnStyle } from './theme';
+import { GameManager } from '../core/GameManager';
+import { EventBus } from '../core/EventBus';
+import type { DialogPanel } from './DialogPanel';
 
 const { ccclass } = _decorator;
 
@@ -28,6 +31,16 @@ const { ccclass } = _decorator;
 export { C };
 
 export interface BtnRef { node: Node; label: Label; gfx: Graphics; }
+
+/**
+ * 面板所需的最小上下文（规避「面板误用未注入依赖」类崩溃）：
+ * 由 MainScene 在创建面板后调用 attach(ctx) 注入。结构需与 PageContext 兼容。
+ */
+export interface PanelContextLike {
+    gm: GameManager;
+    eventBus: EventBus;
+    dialogPanel: DialogPanel;
+}
 
 @ccclass('ModalPanel')
 export abstract class ModalPanel extends Component {
@@ -55,6 +68,24 @@ export abstract class ModalPanel extends Component {
     protected _titleLbl!: Label;
     protected _closeNode: Node | null = null;
     protected _content: Node | null = null;   // 子类内容构建区（anchor 0.5,1，位于标题下方）
+
+    // ════ 上下文（由 MainScene 在创建后 attach，提供 gm/eventBus/dialogPanel）════
+    // 拦截器：若子类在 attach 之前访问这些 getter，会立即抛出清晰的报错，
+    // 而不是在深层嵌套里以 "Cannot read property 'xxx' of undefined" 崩溃。
+    private _ctx: PanelContextLike | null = null;
+    public attach(ctx: PanelContextLike): void { this._ctx = ctx; }
+    protected get gm(): GameManager {
+        if (!this._ctx) throw new Error(`[ModalPanel] ${this.constructor.name} 未调用 attach(ctx) 注入上下文`);
+        return this._ctx.gm;
+    }
+    protected get eventBus(): EventBus {
+        if (!this._ctx) throw new Error(`[ModalPanel] ${this.constructor.name} 未调用 attach(ctx) 注入上下文`);
+        return this._ctx.eventBus;
+    }
+    protected get dialogPanel(): DialogPanel {
+        if (!this._ctx) throw new Error(`[ModalPanel] ${this.constructor.name} 未调用 attach(ctx) 注入上下文`);
+        return this._ctx.dialogPanel;
+    }
 
     onLoad(): void {
         // 取实际可见尺寸（FIXED_WIDTH 下高度随屏幕比例变化）
