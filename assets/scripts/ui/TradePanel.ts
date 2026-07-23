@@ -12,9 +12,10 @@
  */
 
 import {
-    Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType,
+    Node, Label, UITransform, Color, Graphics,
 } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
+import { UIVStack, UILabel, UIShape } from './widgets';
 import { ITEM_DATA, TRADE_DATA } from '../data/data';
 import { ActionTrade } from '../actions/ActionTrade';
 import { GameManager } from '../core/GameManager';
@@ -168,40 +169,39 @@ export class TradePanel extends ModalPanel {
         }
 
         const lh = 480, rh = 76;
-        const { view: sv, content: cnt } = this.mkScroll(this._content!, 0, -(by + 34), PW - 48, lh);
+        const { content: cnt } = this.mkScroll(this._content!, 0, -(by + 34), PW - 48, lh);
         cnt.getComponent(UITransform)!.setContentSize(PW - 48, Math.max(lh, items.length * rh + 16));
 
-        items.forEach((id, i) => {
+        // 易货行：widgets 声明式（UIShape 行底 + UILabel），VStack 自动排布
+        const rowW = PW - 68, rowH = rh - 6;
+        const list = new UIVStack().gap(6).align('center').fixedWidth(rowW).padding(6, 0, 0, 0);
+        for (const id of items) {
             const q = bag[id] || 0, nm = ITEM_DATA[id]?.name || id;
             const out = ActionTrade.instance.previewBarter(this._tid, id, q);
-            const row = new Node(`r_${id}`);
-            const rt = row.addComponent(UITransform); rt.setContentSize(PW - 68, rh - 6); rt.setAnchorPoint(0.5, 0.5);
-            row.setPosition(0, -i * rh - rh / 2 - 6, 0); row.setParent(cnt);
-            const rg = row.addComponent(Graphics); rg.fillColor = C.white;
-            this.mkRect(rg, -(PW - 68) / 2, -(rh - 6) / 2, PW - 68, rh - 6, 10, C.white, C.panelBorder, 1.5);
-
-            this.mkInline(row, -(PW - 68) / 2 + 12, 0, PW - 102, rh - 6,
+            const row = new UIShape(`r_${id}`).rect(rowW, rowH, C.white, 10, C.panelBorder, 1.5);
+            const lbl = new UILabel(
                 out >= 1 ? `${nm} \u00d7${q}  \u2192 \u6362 ${this._gName} \u00d7${out}` : `${nm} \u00d7${q}  (\u4ef7\u503c\u4e0d\u8db3)`,
-                19, out >= 1 ? C.body : C.disabled);
-
-            row.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
-                e.propagationStopped = true;
+                { size: 19, width: rowW - 24, height: rowH, color: out >= 1 ? C.body : C.disabled, align: 'left' },
+            );
+            row.add(lbl);
+            row.onTap(() => {
                 // 弹出数量选择弹窗（复用 QuantityPanel）
-                const bq = bag[id] || 0;
-                const onm = ITEM_DATA[id]?.name || id;
                 const opts: QtyOptions = {
                     infoLines: [`\u6301\u6709 ${q} \u4e2a`],
                     confirmLabel: '\u786e\u8ba4\u6613\u8d27',
                     getPreview: (qty) => {
                         const r = ActionTrade.instance.previewBarter(this._tid, id, qty);
                         return r >= 1
-                            ? [`\u7ed9\uff1a${onm} \u00d7${qty}`, `\u2192 \u6362\uff1a${this._gName} \u00d7${r}`]
-                            : [`\u7ed9\uff1a${onm} \u00d7${qty}`, `\u2192 \u4ef7\u503c\u4e0d\u8db3`];
+                            ? [`\u7ed9\uff1a${nm} \u00d7${qty}`, `\u2192 \u6362\uff1a${this._gName} \u00d7${r}`]
+                            : [`\u7ed9\uff1a${nm} \u00d7${qty}`, `\u2192 \u4ef7\u503c\u4e0d\u8db3`];
                     },
                 };
-                this._getQty().show(`\u4ea4\u6362\u7269\uff1a${onm}`, bq, (qty) => this._doWithOffer(id, qty), opts);
+                this._getQty().show(`\u4ea4\u6362\u7269\uff1a${nm}`, q, (qty) => this._doWithOffer(id, qty), opts);
             });
-        });
+            list.add(row);
+        }
+        list.mount(cnt);
+        list.pos(0, -list.h / 2, 0);
 
         const mp = Math.round(ActionTrade.instance.getBarterMargin() * 100);
         this._tx(by + lh + 44, `\u63d0\u793a\uff1a\u6613\u8d27 >> \u5356\u8d27\u6362\u91d1\u5e01\u518d\u4e70 (${mp}%\u5dee\u4ef7)`, 15, C.sub);

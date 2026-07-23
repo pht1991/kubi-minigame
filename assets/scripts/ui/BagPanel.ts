@@ -1,7 +1,8 @@
-import { _decorator, Node, Label, UITransform, Graphics, EventTouch, NodeEventType } from 'cc';
+import { _decorator, Node, UITransform } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
 import { S } from './theme';
 import { GridCellData } from '../data/types';
+import { UIGrid, UILabel, UIShape } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -81,91 +82,65 @@ export class BagPanel extends ModalPanel {
 
         const usable = this.CONTENT_W - 2 * this.MARGIN_X;
         const cellW = (usable - (this.COLS - 1) * this.GAP_X) / this.COLS;
-        const startX = -this.CONTENT_W / 2 + this.MARGIN_X + cellW / 2;
 
-        for (let i = 0; i < cells.length; i++) {
-            const cell = cells[i];
-            const col = i % this.COLS;
-            const row = Math.floor(i / this.COLS);
-            const x = startX + col * (cellW + this.GAP_X);
-            const y = -this.TOP_PADDING - this.CELL_H / 2 - row * (this.CELL_H + this.GAP_Y);
-
-            const cellNode = new Node(`Cell_${i}`);
-            const cellT = cellNode.addComponent(UITransform);
-            cellT.setContentSize(cellW, this.CELL_H);
-            cellT.setAnchorPoint(0.5, 0.5);
-            cellNode.setPosition(x, y, 0);
-            cellNode.setParent(this._contentNode);
-
-            const isDisabled = cell.state === 'disabled';
-
-            const bgGfx = cellNode.addComponent(Graphics);
-            this.mkRect(
-                bgGfx, -cellW / 2, -this.CELL_H / 2, cellW, this.CELL_H, S.cellRadius,
-                isDisabled ? C.cellBgDisabled : C.cellBg,
-                isDisabled ? C.cellStrokeDisabled : C.cellStroke, 1,
-            );
-
-            const hasDur = !!cell.durability;
-            // 有耐久时名字区上移并加高，给底部耐久条留出独立空间
-            const nameY = hasDur ? 22 : 10;
-            const nameH = hasDur ? 50 : 64;
-            this.mkInline(
-                cellNode, -cellW / 2 + 6, nameY, cellW - 12, nameH,
-                cell.name, S.font.cellName, isDisabled ? C.cellTextDisabled : C.cellText,
-            );
-
-            if (typeof cell.count === 'number') {
-                // 数量标签贴在格子右下角（anchorX=1 右对齐）
-                this.mkText(
-                    cellNode, cellW / 2 - 6, -this.CELL_H / 2 + 12, 50, 24,
-                    `×${cell.count}`, S.font.cellCount, C.cellCount,
-                    { align: 'right', anchorX: 1, anchorY: 0.5 },
-                );
-            }
-
-            if (cell.durability && cell.durability.max > 0) {
-                const cur = Math.max(0, cell.durability.cur);
-                const ratio = Math.min(1, cur / cell.durability.max);
-                const barW = cellW - 16;
-                const barH = 7;
-                const barY = -this.CELL_H / 2 + 8;
-
-                const trackNode = new Node('DurTrack');
-                const trackT = trackNode.addComponent(UITransform);
-                trackT.setContentSize(barW, barH);
-                trackNode.setPosition(0, barY, 0);
-                trackNode.setParent(cellNode);
-                const trackG = trackNode.addComponent(Graphics);
-                trackG.fillColor = C.durTrack;
-                trackG.roundRect(-barW / 2, -barH / 2, barW, barH, 3); trackG.fill();
-
-                const fillW = Math.max(2, barW * ratio);
-                const fillColor = ratio > 0.5 ? C.durHigh
-                    : ratio > 0.25 ? C.durMid
-                    : C.durLow;
-                const fillNode = new Node('DurFill');
-                const fillT = fillNode.addComponent(UITransform);
-                fillT.setContentSize(fillW, barH);
-                fillNode.setPosition(-barW / 2 + fillW / 2, barY, 0);
-                fillNode.setParent(cellNode);
-                const fillG = fillNode.addComponent(Graphics);
-                fillG.fillColor = fillColor;
-                fillG.roundRect(-fillW / 2, -barH / 2, fillW, barH, 3); fillG.fill();
-
-                // 耐久文字放在进度条上方，不与名字区重叠
-                this.mkInline(cellNode, -barW / 2 + 2, barY + 13, barW - 4, 14, `${cur}/${cell.durability.max}`, S.font.durText, C.durText);
-            }
-
-            if (!isDisabled && cell.id !== 'empty' && cell.id !== 'msg') {
-                cellNode.on(NodeEventType.TOUCH_END, (event: EventTouch) => {
-                    event.propagationStopped = true;
-                    if (this._onSelect) this._onSelect(cell.id);
-                });
-            }
-        }
+        // 网格布局：UIGrid 自动算行列坐标，不再手写 startX/x/y
+        const grid = new UIGrid().cols(this.COLS).cellSize(cellW, this.CELL_H)
+            .gap(this.GAP_X, this.GAP_Y)
+            .padding(this.TOP_PADDING, this.BOTTOM_PADDING, this.MARGIN_X, this.MARGIN_X);
+        for (const cell of cells) grid.add(this.buildCell(cell, cellW));
+        grid.mount(this._contentNode);
+        grid.pos(0, -grid.h / 2, 0);   // content anchor(0.5,1)，网格顶贴容器顶
 
         if (this._contentNode) this._contentNode.setPosition(0, 0, 0);
+    }
+
+    /** 构建单个背包格（UIShape 底 + 名称/数量/耐久条），可点击 */
+    private buildCell(cell: GridCellData, cellW: number): UIShape {
+        const isDisabled = cell.state === 'disabled';
+        const box = new UIShape(`Cell_${cell.id}`).rect(
+            cellW, this.CELL_H, isDisabled ? C.cellBgDisabled : C.cellBg, S.cellRadius,
+            isDisabled ? C.cellStrokeDisabled : C.cellStroke, 1,
+        );
+
+        const hasDur = !!(cell.durability && cell.durability.max > 0);
+        // 名称（有耐久时上移并压缩高度，给底部耐久条留出空间）
+        const nameH = hasDur ? 50 : 64;
+        const name = new UILabel(cell.name, {
+            size: S.font.cellName, width: cellW - 12, height: nameH,
+            color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left',
+        });
+        name.pos(0, hasDur ? 22 : 10);
+        box.add(name);
+
+        if (typeof cell.count === 'number') {
+            // 数量贴右下角
+            const cnt = new UILabel(`×${cell.count}`, { size: S.font.cellCount, width: 50, height: 24, color: C.cellCount, align: 'right' });
+            cnt.pos(cellW / 2 - 6 - 25, -this.CELL_H / 2 + 12);
+            box.add(cnt);
+        }
+
+        if (hasDur) {
+            const cur = Math.max(0, cell.durability!.cur);
+            const ratio = Math.min(1, cur / cell.durability!.max);
+            const barW = cellW - 16;
+            const barH = 7;
+            const barY = -this.CELL_H / 2 + 8;
+
+            const track = new UIShape('DurTrack').rect(barW, barH, C.durTrack, 3);
+            track.pos(0, barY);
+            const fillW = Math.max(2, barW * ratio);
+            const fillColor = ratio > 0.5 ? C.durHigh : ratio > 0.25 ? C.durMid : C.durLow;
+            const fill = new UIShape('DurFill').rect(fillW, barH, fillColor, 3);
+            fill.pos(-barW / 2 + fillW / 2, barY);
+            const durTxt = new UILabel(`${cur}/${cell.durability!.max}`, { size: S.font.durText, width: barW - 4, height: 14, color: C.durText, align: 'left' });
+            durTxt.pos(0, barY + 13);
+            box.add(track, fill, durTxt);
+        }
+
+        if (!isDisabled && cell.id !== 'empty' && cell.id !== 'msg') {
+            box.onTap(() => { if (this._onSelect) this._onSelect(cell.id); });
+        }
+        return box;
     }
 
     /** 根据内容高度自适应面板与滚动区域尺寸 */
