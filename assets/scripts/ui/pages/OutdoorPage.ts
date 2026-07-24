@@ -306,6 +306,8 @@ export class OutdoorPage extends BasePage {
                         name: `[沼气池]  粪便×${pitAmt} 池内×${tankAmt}`,
                         state: pitAmt > 0 ? 'normal' : 'disabled', type: 'list', noTruncate: true,
                     });
+                } else {
+                    cells.push({ id: 'toilet_biogas_lock', name: '[沼气池]  需升级卫生间解锁', state: 'disabled', type: 'list', noTruncate: true });
                 }
             }
         }
