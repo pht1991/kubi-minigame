@@ -65,11 +65,16 @@ export class UILabel extends UINode {
 
     /** 按当前文本估算高度（用于未显式给定 height 时） */
     private estimateHeight(): number {
-        if (!this._wrapW) return Math.ceil(this._size * 1.5);
         const lh = Math.ceil(this._size * 1.5);
+        if (!this._wrapW) return lh + 4;
         const charsPerLine = Math.max(1, Math.floor(this._wrapW / (this._size * 0.6)));
-        const lines = Math.max(1, Math.ceil(this._text.length / charsPerLine));
-        return lines * lh;
+        // 按 \n 分段后再逐段估算换行数（否则 "生命\n100" 被算成 1 行）
+        const segments = this._text.split('\n');
+        let totalLines = 0;
+        for (const seg of segments) {
+            totalLines += Math.max(1, Math.ceil(seg.length / charsPerLine));
+        }
+        return totalLines * lh + 4; // +4px 余量防字体 ascent/descent 被 CLAMP 裁切
     }
 
     setText(t: string): this {
