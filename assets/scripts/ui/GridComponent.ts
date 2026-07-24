@@ -3,7 +3,7 @@
  * 核心组件：接收 GridPage 数据，动态生成/复用 GridCell，处理触摸事件
  */
 
-import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Color, Widget } from 'cc';
+import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Color, Widget, Graphics } from 'cc';
 import { UIShape, UILabel } from './widgets';
 import { GridPage, GridCellData } from '../data/types';
 import { GridCell } from './GridCell';
@@ -128,24 +128,28 @@ export class GridComponent extends Component {
         // 不设置 contentSize / position —— 完全交给场景编辑器原始配置
     }
 
-    /** 给 ScrollView 可视区域加暖色底纹 */
+    /** 给 ScrollView 可视区域加暖色底纹（Graphics 直接画在 view 节点自身，确保在 content 之下） */
     private styleContentBg(): void {
         if (!this.scrollView || this._contentBgReady) return;
-        // 注意：ScrollView.view 返回的是 UITransform，不是 Node！取 .node 才是节点
+        // ScrollView.view 返回 UITransform，取 .node 拿到真正节点
         const t = this.scrollView.view;
         if (!t || !t.isValid) return;
         const viewNode = t.node;
         if (!viewNode || !viewNode.isValid) return;
 
-        // 视图锚点可能非 0.5，按 ax/ay 偏移使矩形恰好覆盖可视区（等价于原始 Graphics.rect(-ax,-ay,...)）
+        // 直接在 view 节点上加 Graphics（不是子节点），确保渲染顺序：节点组件 → 子节点 content
+        let gfx = viewNode.getComponent(Graphics);
+        if (!gfx) {
+            gfx = viewNode.addComponent(Graphics);
+        }
+        this._contentBgReady = true;
+
         const ax = t.width * t.anchorX;
         const ay = t.height * t.anchorY;
-        const bg = new UIShape('ContentBg').rect(t.width, t.height, C.infoBg);
-        bg.node.setPosition(t.width / 2 - ax, t.height / 2 - ay, 0);
-        viewNode.addChild(bg.node);
-        bg.node.setSiblingIndex(0); // 置于内容之下（背景层）
-
-        this._contentBgReady = true;
+        gfx.clear();
+        gfx.fillColor = C.infoBg;
+        gfx.rect(-ax, -ay, t.width, t.height);
+        gfx.fill();
     }
 
     /** 设置滚动条样式：细条 + 半透明 */
