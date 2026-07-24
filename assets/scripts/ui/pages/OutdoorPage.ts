@@ -205,7 +205,10 @@ export class OutdoorPage extends BasePage {
         this.navigator.push(this.buildBuildingDetailPage(buildingId));
     }
 
-    /** 建筑详情页（建造/升级/子功能入口：农田·陷阱·酿酒·水井） */
+    /** 建筑详情页（建造/升级/子功能入口：农田·陷阱·酿酒·水井·卫生间）
+     *
+     * 布局策略：单列 list 模式（非 4 列网格），确保描述文字和操作按钮不被截断。
+     */
     public buildBuildingDetailPage(buildingId: string): GridPage {
         const d = BUILDING_DATA[buildingId];
         const built = this.gm.buildingSaveData[buildingId]?.own;
@@ -215,22 +218,24 @@ export class OutdoorPage extends BasePage {
         const timeNeed = d.timeNeed || 4;
 
         const cells: GridCellData[] = [];
+
+        // === 信息区（disabled，纯展示，全宽）===
         cells.push(
-            { id: 'name', name: d.name, state: 'disabled' },
-            { id: 'desc', name: d.desc || '', state: 'disabled' },
+            { id: 'name', name: d.name, state: 'disabled', type: 'list' },
+            { id: 'desc', name: d.desc || '', state: 'disabled', type: 'list' },
         );
         if (!built) {
             const preName = d.building ? BUILDING_DATA[d.building]?.name || d.building : null;
             const canBuild = (!preName || this.gm.buildingSaveData[d.building]?.own)
                 && this.gm.checkHaveResource(d.require || {});
             cells.push(
-                { id: 'pre', name: preName ? `前置: ${preName}` : '前置: 无', state: 'disabled' },
-                { id: 'req', name: `材料: ${reqStr}`, state: 'disabled' },
-                { id: 'time', name: `耗时: ${timeNeed} 小时`, state: 'disabled' },
-                { id: 'build', name: '建造', state: canBuild ? 'normal' : 'disabled' },
+                { id: 'pre', name: preName ? `前置: ${preName}` : '前置: 无', state: 'disabled', type: 'list' },
+                { id: 'req', name: `材料: ${reqStr}`, state: 'disabled', type: 'list' },
+                { id: 'time', name: `耗时: ${timeNeed} 小时`, state: 'disabled', type: 'list' },
+                { id: 'build', name: '建造', state: canBuild ? 'normal' : 'disabled', type: 'list' },
             );
         } else {
-            cells.push({ id: 'built', name: '已建造', state: 'disabled' });
+            cells.push({ id: 'built', name: '已建造', state: 'disabled', type: 'list' });
             if (buildingId === 'farm') {
                 const farmData = this.gm.buildingSaveData['farm'];
                 const slots = ActionBuilding.instance.getFarmSlots();
@@ -238,7 +243,7 @@ export class OutdoorPage extends BasePage {
                 cells.push({
                     id: 'farm_manage',
                     name: `农田管理 (${slots.length}/${farmData?.size || 2}${readyCount > 0 ? ` · ${readyCount}可收` : ''})`,
-                    state: 'normal',
+                    state: 'normal', type: 'list',
                 });
             }
             if (buildingId === 'trap') {
@@ -248,7 +253,7 @@ export class OutdoorPage extends BasePage {
                 cells.push({
                     id: 'trap_manage',
                     name: `陷阱管理 (${slots.length}/${trapData?.size || 2}${canCheckCount > 0 ? ` · ${canCheckCount}可查` : ''})`,
-                    state: 'normal',
+                    state: 'normal', type: 'list',
                 });
             }
             if (buildingId === 'alco') {
@@ -257,7 +262,7 @@ export class OutdoorPage extends BasePage {
                 cells.push({
                     id: 'brew_manage',
                     name: `酿酒管理 (${slots.length}/${ActionBrew.MAX_SLOTS}${readyCount > 0 ? ` · ${readyCount}可收` : ''})`,
-                    state: 'normal',
+                    state: 'normal', type: 'list',
                 });
             }
             if (buildingId === 'well') {
@@ -265,7 +270,7 @@ export class OutdoorPage extends BasePage {
                 cells.push({
                     id: 'well_collect',
                     name: frozen ? '取水 (冬季封冻)' : '取水',
-                    state: frozen ? 'disabled' : 'normal',
+                    state: frozen ? 'disabled' : 'normal', type: 'list',
                 });
             }
             if (buildingId === 'toilet') {
@@ -275,17 +280,17 @@ export class OutdoorPage extends BasePage {
                 cells.push({
                     id: 'toilet_shit',
                     name: canShit ? '排便 (精神+2 粪便×4)' : '排便 (冷却中)',
-                    state: canShit ? 'normal' : 'disabled',
+                    state: canShit ? 'normal' : 'disabled', type: 'list',
                 });
                 if (level > 0) {
                     const reqStr = winter ? '清水×4 木×2' : '清水×4';
                     cells.push({
                         id: 'toilet_shower',
                         name: `洗澡 (精神+30 体温${winter ? '+20' : '-10'}) 需${reqStr}`,
-                        state: 'normal',
+                        state: 'normal', type: 'list',
                     });
                 } else {
-                    cells.push({ id: 'toilet_shower_lock', name: '洗澡 (需升级卫生间解锁)', state: 'disabled' });
+                    cells.push({ id: 'toilet_shower_lock', name: '洗澡 (需升级卫生间解锁)', state: 'disabled', type: 'list' });
                 }
                 if (level > 1) {
                     const tank = this.gm.boxSaveData['marshGasTank'] || {};
@@ -295,7 +300,7 @@ export class OutdoorPage extends BasePage {
                     cells.push({
                         id: 'toilet_biogas',
                         name: `沼气池 (粪坑×${pitAmt} 池内×${tankAmt})`,
-                        state: pitAmt > 0 ? 'normal' : 'disabled',
+                        state: pitAmt > 0 ? 'normal' : 'disabled', type: 'list',
                     });
                 }
             }
@@ -312,7 +317,7 @@ export class OutdoorPage extends BasePage {
         return {
             title: d.name,
             breadcrumb: d.name,
-            columns: 4,
+            columns: 1,   // 单列：详情页每项独占一行
             cells,
             // 升级按钮走公共标题栏接口（与所有可升级建筑统一），替代旧内联升级格
             ...this.makeUpgradeInfo(upType, {
