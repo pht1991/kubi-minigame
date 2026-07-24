@@ -200,8 +200,8 @@ export class OutdoorPage extends BasePage {
         });
     }
 
-    /** 建筑详情 + 建造/升级动作 */
-    private openBuildingDetail(buildingId: string): void {
+    /** 建筑详情 + 建造/升级动作（public：供 MainScene 设施入口直达） */
+    public openBuildingDetail(buildingId: string): void {
         this.navigator.push(this.buildBuildingDetailPage(buildingId));
     }
 

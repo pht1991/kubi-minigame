@@ -899,12 +899,12 @@ export class MainScene extends Component {
             home_magic:   () => this._craftPage?.openCraftGrid('magicTable'),
             home_science: () => this._craftPage?.openCraftGrid('scienceTable'),
             home_cook:    () => this._cookPage?.openCookPanel(),
-            home_farm:    () => this._outdoorPage?.openBuildingGrid(), // 农田在建筑详情里管理种植/收获
+            home_farm:    () => this._outdoorPage?.openBuildingDetail('farm'),   // 直达农田详情（种植/收获管理）
             home_alco:    () => this._brewPage?.openBrewPanel(),
-            home_trap:    () => this._outdoorPage?.openBuildingGrid(), // 陷阱检查在建筑详情
+            home_trap:    () => this._outdoorPage?.openBuildingDetail('trap'),   // 直达陷阱详情（查陷阱管理）
             home_box:     () => this._bigBoxPage?.openBigBoxGrid(),   // 大箱子=独立导航页
-            home_well:    () => this._outdoorPage?.openBuildingGrid(), // 取水在建筑详情
-            home_toilet:  () => this._outdoorPage?.openBuildingGrid(),
+            home_well:    () => this._outdoorPage?.openBuildingDetail('well'),   // 直达水井详情（取水）
+            home_toilet:  () => this._outdoorPage?.openBuildingDetail('toilet'), // 直达卫生间详情（排便/洗澡/沼气池）
             home_sleep:   () => { if (this._restPage) this._navigator.push(this._restPage.openRestPage()); },
         };
         if (facilityRoutes[id]) { facilityRoutes[id](); return; }
