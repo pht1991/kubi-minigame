@@ -681,10 +681,10 @@ export class MainScene extends Component {
         // 背景（替代原场景 Bg Sprite / 手绘 Graphics）：UIShape 暖色矩形
         new UIShape('StatusBarBg').rect(SB_W, SB_H, new Color(245, 240, 230, 255)).mount(bar);
 
-        // 时间标题行
-        const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, 36, 200, 48, 24);
+        // 时间标题行（一行文本，字号 24，留足高度防 CLAMP 裁切）
+        const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, 36, 200, 56, 24);
 
-        // 6 个属性横排（间距 120），每格 "标题\n数值" 两行
+        // 6 个属性横排（间距 120），每格 "标题\n数值" 两行（字号 20，行高 24，2 行+余量）
         const attrs: Array<[string, number]> = [
             ['HP_Label', -300],
             ['Full_Label', -180],
@@ -695,7 +695,7 @@ export class MainScene extends Component {
         ];
         const labels: UILabel[] = [];
         for (const [name, x] of attrs) {
-            labels.push(this._mkStatusLabel(bar, name, x, -10, 120, 48, 20));
+            labels.push(this._mkStatusLabel(bar, name, x, -10, 120, 52, 20));
         }
 
         // 挂 StatusBar 组件并赋值 UILabel 字段
