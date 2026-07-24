@@ -48,7 +48,7 @@ export class BattlePanel extends ModalPanel {
         this._bgNode = bgShape.node;
         this._bgNode.setParent(this.node);
         this._bgNode.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
-        this.node.insertChild(this._bgNode, 0); // 放到面板之下
+        this._bgNode.setSiblingIndex(0); // 放到面板之下
 
         // 标题（战斗界面居中显示）
         if (this._titleLbl) {

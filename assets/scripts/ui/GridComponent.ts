@@ -141,7 +141,8 @@ export class GridComponent extends Component {
         const ay = t.height * t.anchorY;
         const bg = new UIShape('ContentBg').rect(t.width, t.height, C.infoBg);
         bg.node.setPosition(t.width / 2 - ax, t.height / 2 - ay, 0);
-        viewNode.insertChild(bg.node, 0); // 置于内容之下（背景层）
+        viewNode.addChild(bg.node);
+        bg.node.setSiblingIndex(0); // 置于内容之下（背景层）
 
         this._contentBgReady = true;
     }

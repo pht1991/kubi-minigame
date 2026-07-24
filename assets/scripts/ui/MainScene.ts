@@ -122,7 +122,8 @@ export class MainScene extends Component {
         };
         // Content 层：空占位语义节点，置于最底（在场景预置内容节点之前）
         this._contentLayer = mk('UILayer_Content');
-        this.node.insertChild(this._contentLayer, 0);
+        this.node.addChild(this._contentLayer);
+        this._contentLayer.setSiblingIndex(0);
         // StatusBar 层（Content 之上、BottomBar 之下：
         //  状态栏浮于网格内容之上，但被 Modal 遮罩盖住；不靠 setSiblingIndex）
         this._statusBarLayer = mk('UILayer_StatusBar');
