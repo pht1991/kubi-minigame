@@ -298,12 +298,12 @@ export class OutdoorPage extends BasePage {
                 }
                 if (level > 1) {
                     const tank = this.gm.boxSaveData['marshGasTank'] || {};
-                    const pit = this.gm.boxSaveData['shit'] || {};
+                    const bag = this.gm.boxSaveData['bag'] || {};
                     const tankAmt = tank['shit'] || 0;
-                    const pitAmt = pit['shit'] || 0;
+                    const pitAmt = bag['shit'] || 0;
                     cells.push({
                         id: 'toilet_biogas',
-                        name: `[沼气池]  粪坑×${pitAmt} 池内×${tankAmt}`,
+                        name: `[沼气池]  粪便×${pitAmt} 池内×${tankAmt}`,
                         state: pitAmt > 0 ? 'normal' : 'disabled', type: 'list', noTruncate: true,
                     });
                 }

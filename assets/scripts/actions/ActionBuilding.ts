@@ -301,7 +301,7 @@ export class ActionBuilding {
         const r = this._exec.execute({ san: 2, shit: 4 }, {}, 1, {
             title: '排便',
             successMessage: '解决完毕 精神+2 粪便×4',
-            outputBox: 'shit',
+            outputBox: 'bag',
             coolDownId: 'shit',
             coolDownHours: ts.day + 2,
         });
@@ -336,7 +336,7 @@ export class ActionBuilding {
     }
 
     /**
-     * 投入沼气池：将粪坑（box='shit'）中的粪便全部转入沼气池（box='marshGasTank'）。
+     * 投入沼气池：将背包中的粪便全部转入沼气池（box='marshGasTank'）。
      * 需卫生间升级到二级（沼气池）。仅做储存转移，对齐原版沼气池展示逻辑。
      */
     feedBiogas(): ActionResult {
@@ -344,13 +344,13 @@ export class ActionBuilding {
         if (!toilet?.own) return { success: false, message: '需要先建造卫生间' };
         const level = this._gm.getBuildingLevel('toiletUpdate');
         if (level <= 1) return { success: false, message: '需先升级沼气池' };
-        const pit = this._gm.boxSaveData['shit'] || {};
-        const amt = pit['shit'] || 0;
-        if (amt <= 0) return { success: false, message: '粪便坑是空的' };
-        this._gm.changeItem({ shit: -amt }, 'shit');
+        const bag = this._gm.boxSaveData['bag'] || {};
+        const amt = bag['shit'] || 0;
+        if (amt <= 0) return { success: false, message: '背包里没有粪便' };
+        this._gm.changeItem({ shit: -amt }, 'bag');
         this._gm.changeItem({ shit: amt }, 'marshGasTank');
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'marshGasTank');
-        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'shit');
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
         return { success: true, message: `将粪便×${amt}投入了沼气池` };
     }
 }
