@@ -118,7 +118,8 @@ export class GridComponent extends Component {
      */
     private setupFixedView(): void {
         if (!this.scrollView || !this.scrollView.view) return;
-        const viewNode = this.scrollView.view;
+        // ScrollView.view 是 UITransform，取 .node 才是节点
+        const viewNode = this.scrollView.view.node;
         // 仅做防御：移除可能残留的 Widget（避免和 ScrollView 引擎预期冲突）
         const oldWidget = viewNode.getComponent(Widget);
         if (oldWidget) {
@@ -130,11 +131,11 @@ export class GridComponent extends Component {
     /** 给 ScrollView 可视区域加暖色底纹 */
     private styleContentBg(): void {
         if (!this.scrollView || this._contentBgReady) return;
-        const viewNode = this.scrollView.view;
+        // 注意：ScrollView.view 返回的是 UITransform，不是 Node！取 .node 才是节点
+        const t = this.scrollView.view;
+        if (!t || !t.isValid) return;
+        const viewNode = t.node;
         if (!viewNode || !viewNode.isValid) return;
-
-        const t = viewNode.getComponent(UITransform);
-        if (!t) return;
 
         // 视图锚点可能非 0.5，按 ax/ay 偏移使矩形恰好覆盖可视区（等价于原始 Graphics.rect(-ax,-ay,...)）
         const ax = t.width * t.anchorX;
@@ -438,7 +439,7 @@ export class GridComponent extends Component {
         const GAP = 10;
         let footerY = -460; // 兜底：view 约 900 高时底部下方的中心估值
         if (this.scrollView && this.scrollView.view && this.scrollView.view.isValid) {
-            const viewTf = this.scrollView.view.getComponent(UITransform);
+            const viewTf = this.scrollView.view; // ScrollView.view 本身即 UITransform
             if (viewTf) {
                 const viewH = viewTf.height;
                 const anchorY = viewTf.anchorY; // 通常 0.5
