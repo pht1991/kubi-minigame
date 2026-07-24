@@ -219,31 +219,35 @@ export class OutdoorPage extends BasePage {
 
         const cells: GridCellData[] = [];
 
-        // === 信息区（disabled，纯展示，全宽）===
-        cells.push(
-            { id: 'name', name: d.name, state: 'disabled', type: 'list' },
-            { id: 'desc', name: d.desc || '', state: 'disabled', type: 'list' },
-        );
+        // === 信息区（名称+描述合并为一个 cell，仿床铺页 levelInfo 风格）===
+        cells.push({
+            id: 'info',
+            name: `${d.name}${d.desc ? '\n' + d.desc : ''}`,
+            state: 'disabled',
+            type: 'list',
+        });
         if (!built) {
             const preName = d.building ? BUILDING_DATA[d.building]?.name || d.building : null;
             const canBuild = (!preName || this.gm.buildingSaveData[d.building]?.own)
                 && this.gm.checkHaveResource(d.require || {});
+            if (preName) {
+                cells.push({ id: 'pre', name: `前置：${preName}`, state: 'disabled', type: 'list' });
+            }
             cells.push(
-                { id: 'pre', name: preName ? `前置: ${preName}` : '前置: 无', state: 'disabled', type: 'list' },
-                { id: 'req', name: `材料: ${reqStr}`, state: 'disabled', type: 'list' },
-                { id: 'time', name: `耗时: ${timeNeed} 小时`, state: 'disabled', type: 'list' },
-                { id: 'build', name: '建造', state: canBuild ? 'normal' : 'disabled', type: 'list' },
+                { id: 'req', name: `材料：${reqStr}`, state: 'disabled', type: 'list' },
+                { id: 'time', name: `耗时：${timeNeed} 小时`, state: 'disabled', type: 'list' },
+                { id: 'build', name: '[建造]', state: canBuild ? 'normal' : 'disabled', type: 'list', noTruncate: true },
             );
         } else {
-            cells.push({ id: 'built', name: '已建造', state: 'disabled', type: 'list' });
+            // === 操作区（仿床铺页 [睡觉] 前缀风格，动作+上下文同行）===
             if (buildingId === 'farm') {
                 const farmData = this.gm.buildingSaveData['farm'];
                 const slots = ActionBuilding.instance.getFarmSlots();
                 const readyCount = slots.filter(s => s.ready).length;
                 cells.push({
                     id: 'farm_manage',
-                    name: `农田管理 (${slots.length}/${farmData?.size || 2}${readyCount > 0 ? ` · ${readyCount}可收` : ''})`,
-                    state: 'normal', type: 'list',
+                    name: `[农田管理]  ${slots.length}/${farmData?.size || 2}${readyCount > 0 ? ` · ${readyCount}可收` : ''}`,
+                    state: 'normal', type: 'list', noTruncate: true,
                 });
             }
             if (buildingId === 'trap') {
@@ -252,8 +256,8 @@ export class OutdoorPage extends BasePage {
                 const canCheckCount = slots.filter(s => s.canCheck).length;
                 cells.push({
                     id: 'trap_manage',
-                    name: `陷阱管理 (${slots.length}/${trapData?.size || 2}${canCheckCount > 0 ? ` · ${canCheckCount}可查` : ''})`,
-                    state: 'normal', type: 'list',
+                    name: `[陷阱管理]  ${slots.length}/${trapData?.size || 2}${canCheckCount > 0 ? ` · ${canCheckCount}可查` : ''}`,
+                    state: 'normal', type: 'list', noTruncate: true,
                 });
             }
             if (buildingId === 'alco') {
@@ -261,16 +265,16 @@ export class OutdoorPage extends BasePage {
                 const readyCount = slots.filter(s => s.ready).length;
                 cells.push({
                     id: 'brew_manage',
-                    name: `酿酒管理 (${slots.length}/${ActionBrew.MAX_SLOTS}${readyCount > 0 ? ` · ${readyCount}可收` : ''})`,
-                    state: 'normal', type: 'list',
+                    name: `[酿酒管理]  ${slots.length}/${ActionBrew.MAX_SLOTS}${readyCount > 0 ? ` · ${readyCount}可收` : ''}`,
+                    state: 'normal', type: 'list', noTruncate: true,
                 });
             }
             if (buildingId === 'well') {
                 const frozen = this.timeSys.isWinter();
                 cells.push({
                     id: 'well_collect',
-                    name: frozen ? '取水 (冬季封冻)' : '取水',
-                    state: frozen ? 'disabled' : 'normal', type: 'list',
+                    name: frozen ? '[取水]  冬季封冻' : '[取水]  清水×8',
+                    state: frozen ? 'disabled' : 'normal', type: 'list', noTruncate: true,
                 });
             }
             if (buildingId === 'toilet') {
@@ -279,18 +283,18 @@ export class OutdoorPage extends BasePage {
                 const canShit = this.timeSys.day > (this.gm.coolDownSaveData['shit'] || 0);
                 cells.push({
                     id: 'toilet_shit',
-                    name: canShit ? '排便 (精神+2 粪便×4)' : '排便 (冷却中)',
-                    state: canShit ? 'normal' : 'disabled', type: 'list',
+                    name: canShit ? '[排便]  精神+2 粪便×4' : '[排便]  冷却中',
+                    state: canShit ? 'normal' : 'disabled', type: 'list', noTruncate: true,
                 });
                 if (level > 0) {
                     const reqStr = winter ? '清水×4 木×2' : '清水×4';
                     cells.push({
                         id: 'toilet_shower',
-                        name: `洗澡 (精神+30 体温${winter ? '+20' : '-10'}) 需${reqStr}`,
-                        state: 'normal', type: 'list',
+                        name: `[洗澡]  精神+30 体温${winter ? '+20' : '-10'} 需${reqStr}`,
+                        state: 'normal', type: 'list', noTruncate: true,
                     });
                 } else {
-                    cells.push({ id: 'toilet_shower_lock', name: '洗澡 (需升级卫生间解锁)', state: 'disabled', type: 'list' });
+                    cells.push({ id: 'toilet_shower_lock', name: '[洗澡]  需升级卫生间解锁', state: 'disabled', type: 'list', noTruncate: true });
                 }
                 if (level > 1) {
                     const tank = this.gm.boxSaveData['marshGasTank'] || {};
@@ -299,8 +303,8 @@ export class OutdoorPage extends BasePage {
                     const pitAmt = pit['shit'] || 0;
                     cells.push({
                         id: 'toilet_biogas',
-                        name: `沼气池 (粪坑×${pitAmt} 池内×${tankAmt})`,
-                        state: pitAmt > 0 ? 'normal' : 'disabled', type: 'list',
+                        name: `[沼气池]  粪坑×${pitAmt} 池内×${tankAmt}`,
+                        state: pitAmt > 0 ? 'normal' : 'disabled', type: 'list', noTruncate: true,
                     });
                 }
             }
