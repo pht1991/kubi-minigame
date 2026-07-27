@@ -28,23 +28,23 @@ export class BrewPage extends BasePage {
         const slots = ActionBrew.instance.getBrewSlots();
         const cells: GridCellData[] = [];
 
-        cells.push({ id: 'start', name: '开始酿造', state: 'normal' });
-        cells.push({ id: 'slot_label', name: `── 酿造中 (${slots.length}/${ActionBrew.MAX_SLOTS}) ──`, state: 'disabled' });
+        cells.push({ id: 'start', name: '[开始酿造]', state: 'normal', type: 'list', noTruncate: true });
+        cells.push({ id: 'slot_label', name: `── 酿造中 (${slots.length}/${ActionBrew.MAX_SLOTS}) ──`, state: 'disabled', type: 'list', noTruncate: true });
         if (slots.length === 0) {
-            cells.push({ id: 'empty', name: '暂无酿造', state: 'disabled' });
+            cells.push({ id: 'empty', name: '暂无酿造', state: 'disabled', type: 'list', noTruncate: true });
         }
         slots.forEach((s, i) => {
             if (s.ready) {
-                cells.push({ id: `harvest_${i}`, name: `${s.recipeDesc} [可收获]`, state: 'normal' });
+                cells.push({ id: `harvest_${i}`, name: `[收获]  ${s.recipeDesc} 已就绪`, state: 'normal', type: 'list', noTruncate: true });
             } else {
-                cells.push({ id: `slot_${i}`, name: `${s.recipeDesc} 酿造${s.progress}% (${Math.ceil(s.remaining)}h)`, state: 'disabled' });
+                cells.push({ id: `slot_${i}`, name: `${s.recipeDesc} 酿造 ${s.progress}% (剩余 ${Math.ceil(s.remaining)}h)`, state: 'disabled', type: 'list', noTruncate: true });
             }
         });
 
         return {
             title: '酿酒管理',
             breadcrumb: '酿酒',
-            columns: 4,
+            columns: 1,
             cells,
             onCellClick: (index, cell) => {
                 if (cell.id === 'start') {

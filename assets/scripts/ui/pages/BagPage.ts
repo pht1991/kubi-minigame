@@ -288,7 +288,7 @@ export class BagPage extends BasePage {
         }
 
         const cells: GridCellData[] = [
-            { id: 'summary', name: atkInfo, state: 'disabled' },
+            { id: 'summary', name: atkInfo, state: 'disabled', type: 'list', noTruncate: true },
         ];
 
         for (const slot of slots) {
@@ -302,6 +302,7 @@ export class BagPage extends BasePage {
                 id: `equip_${slot}`,
                 name: `${EQUIP_TYPE_DATA[slot]}：${name}${durStr}`,
                 state: item ? 'normal' : 'disabled',
+                type: 'list', noTruncate: true,
                 data: slot,
             });
         }
@@ -334,7 +335,7 @@ export class BagPage extends BasePage {
                     this.navigator.replace({
                         title: '装备',
                         breadcrumb: '装备',
-                        columns: 4,
+                        columns: 1,
                         cells: this.buildEquipCells(),
                         onCellClick: (index, c) => this.onEquipCellClick(c),
                     });
@@ -350,7 +351,7 @@ export class BagPage extends BasePage {
         this.navigator.push({
             title: '装备',
             breadcrumb: '装备',
-            columns: 4,
+            columns: 1,
             cells: this.buildEquipCells(),
             onCellClick: (index, cell) => this.onEquipCellClick(cell),
         });

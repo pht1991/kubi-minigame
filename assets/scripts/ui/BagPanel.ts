@@ -104,18 +104,18 @@ export class BagPanel extends ModalPanel {
 
         const hasDur = !!(cell.durability && cell.durability.max > 0);
         // 名称（有耐久时上移并压缩高度，给底部耐久条留出空间）
-        const nameH = hasDur ? 50 : 64;
+        const nameH = hasDur ? 44 : 64;
         const name = new UILabel(cell.name, {
             size: S.font.cellName, width: cellW - 12, height: nameH,
             color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left',
         });
-        name.pos(0, hasDur ? 22 : 10);
+        name.pos(0, hasDur ? 20 : 10);
         box.add(name);
 
         if (typeof cell.count === 'number') {
-            // 数量贴右下角
+            // 数量：有耐久时上移到耐久条之上（y=-14），避免与底部耐久条(y≈-48)重叠
             const cnt = new UILabel(`×${cell.count}`, { size: S.font.cellCount, width: 50, height: 24, color: C.cellCount, align: 'right' });
-            cnt.pos(cellW / 2 - 6 - 25, -this.CELL_H / 2 + 12);
+            cnt.pos(cellW / 2 - 6 - 25, hasDur ? -14 : -this.CELL_H / 2 + 12);
             box.add(cnt);
         }
 
@@ -124,7 +124,7 @@ export class BagPanel extends ModalPanel {
             const ratio = Math.min(1, cur / cell.durability!.max);
             const barW = cellW - 16;
             const barH = 7;
-            const barY = -this.CELL_H / 2 + 8;
+            const barY = -this.CELL_H / 2 + 6; // -48：下移到格子底部，远离名称与数量
 
             const track = new UIShape('DurTrack').rect(barW, barH, C.durTrack, 3);
             track.pos(0, barY);

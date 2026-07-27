@@ -209,16 +209,16 @@ export class MenuPage extends BasePage {
         const canReincarnate = ActionEvent.instance.canReincarnate();
         const maouLevel = this.gm.maouLevel;
         const cells: GridCellData[] = [
-            { id: 'info', name: `当前轮回: 第 ${maouLevel} 世`, state: 'disabled' },
-            { id: 'cond', name: canReincarnate ? '条件已满足，可以转生' : '需到达地牢10层或击败魔王', state: 'disabled' },
-            { id: 'desc', name: '转生将重置地牢进度与状态，但保留技能与魔王等级', state: 'disabled' },
-            { id: 'doReincarnate', name: '确认转生', state: canReincarnate ? 'normal' : 'disabled' },
+            { id: 'info', name: `当前轮回: 第 ${maouLevel} 世`, state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'cond', name: canReincarnate ? '条件已满足，可以转生' : '需到达地牢10层或击败魔王', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'desc', name: '转生将重置地牢进度与状态，但保留技能与魔王等级', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'doReincarnate', name: '确认转生', state: canReincarnate ? 'normal' : 'disabled', type: 'list', noTruncate: true },
         ];
 
         this.navigator.push({
             title: '转生',
             breadcrumb: '转生',
-            columns: 4,
+            columns: 1,
             cells,
             onCellClick: (index, cell) => {
                 if (cell.id === 'doReincarnate' && canReincarnate) {
@@ -269,27 +269,27 @@ export class MenuPage extends BasePage {
     /** 帮助面板 */
     private openHelpPanel(): void {
         const cells: GridCellData[] = [
-            { id: 'h1', name: '【操作说明】', state: 'disabled' },
-            { id: 'h2', name: '点击网格格子进入对应功能', state: 'disabled' },
-            { id: 'h3', name: '弹窗可点击右上角×或蒙层关闭', state: 'disabled' },
-            { id: 'h4', name: '【生存指南】', state: 'disabled' },
-            { id: 'h5', name: '满腹/水分/精神随时间下降', state: 'disabled' },
-            { id: 'h6', name: '通过采集/狩猎/烹饪获取食物', state: 'disabled' },
-            { id: 'h7', name: '建造农田可稳定生产食材', state: 'disabled' },
-            { id: 'h8', name: '【战斗指南】', state: 'disabled' },
-            { id: 'h9', name: '装备武器提升攻击力', state: 'disabled' },
-            { id: 'h10', name: '学习技能获得永久加成', state: 'disabled' },
-            { id: 'h11', name: '地牢每层有战斗和宝箱', state: 'disabled' },
-            { id: 'h12', name: '【进阶提示】', state: 'disabled' },
-            { id: 'h13', name: '陷阱可捕获小动物', state: 'disabled' },
-            { id: 'h14', name: '完成事件解锁新内容', state: 'disabled' },
-            { id: 'h15', name: '到达地牢深层可转生', state: 'disabled' },
+            { id: 'h1', name: '【操作说明】', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h2', name: '点击网格格子进入对应功能', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h3', name: '弹窗可点击右上角×或蒙层关闭', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h4', name: '【生存指南】', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h5', name: '满腹/水分/精神随时间下降', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h6', name: '通过采集/狩猎/烹饪获取食物', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h7', name: '建造农田可稳定生产食材', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h8', name: '【战斗指南】', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h9', name: '装备武器提升攻击力', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h10', name: '学习技能获得永久加成', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h11', name: '地牢每层有战斗和宝箱', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h12', name: '【进阶提示】', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h13', name: '陷阱可捕获小动物', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h14', name: '完成事件解锁新内容', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h15', name: '到达地牢深层可转生', state: 'disabled', type: 'list', noTruncate: true },
         ];
 
         this.navigator.push({
             title: '帮助',
             breadcrumb: '帮助',
-            columns: 4,
+            columns: 1,
             cells,
             onCellClick: (index, cell) => {},
         });

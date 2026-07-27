@@ -58,26 +58,26 @@ export class SkillPage extends BasePage {
         const isOne = !!(data as any).one;
         const cells: GridCellData[] = [];
         cells.push(
-            { id: 'name', name: `${data.name} [${isTalent ? '天赋' : '技能'}]`, state: 'disabled' },
-            { id: 'desc', name: data.desc || '', state: 'disabled' },
-            { id: 'lv', name: `当前等级: ${level}${isOne ? ' (唯一)' : ''}`, state: 'disabled' },
+            { id: 'name', name: `${data.name} [${isTalent ? '天赋' : '技能'}]`, state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'desc', name: data.desc || '', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'lv', name: `当前等级: ${level}${isOne ? ' (唯一)' : ''}`, state: 'disabled', type: 'list', noTruncate: true },
         );
         if ((data as any).buff) {
             const buffVal = (data as any).buff;
             const buffStr = isTalent
                 ? `每级加成: +${Math.round(buffVal * 100)}%`
                 : `每级效果: ${buffVal < 1 ? `×${buffVal}` : `+${Math.round(buffVal * 100)}%`}`;
-            cells.push({ id: 'buff', name: buffStr, state: 'disabled' });
+            cells.push({ id: 'buff', name: buffStr, state: 'disabled', type: 'list', noTruncate: true });
         }
         cells.push(
-            { id: 'cost', name: `学习成本: ${costStr}`, state: 'disabled' },
-            { id: 'learn', name: level > 0 ? '升级' : '学习', state: canLearn ? 'normal' : 'disabled' },
+            { id: 'cost', name: `学习成本: ${costStr}`, state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'learn', name: level > 0 ? '升级' : '学习', state: canLearn ? 'normal' : 'disabled', type: 'list', noTruncate: true },
         );
 
         return {
             title: data.name,
             breadcrumb: data.name,
-            columns: 4,
+            columns: 1,
             cells,
             onCellClick: (index, cell) => {
                 if (cell.id === 'learn') {
