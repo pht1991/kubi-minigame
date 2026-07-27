@@ -3,12 +3,13 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Color, Widget } from 'cc';
+import { _decorator, Component, Node, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Color, Widget, game } from 'cc';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { SaveManager } from '../core/SaveManager';
 import { CloudSaveProvider } from '../core/CloudSaveProvider';
+import { initPerfTier } from '../core/PerfTier';
 import { TimeSystem } from '../systems/TimeSystem';
 import { ActionCraft } from '../actions/ActionCraft';
 import { ActionItem } from '../actions/ActionItem';
@@ -238,6 +239,11 @@ export class MainScene extends Component {
         // 设置适配模式：FIXED_WIDTH 保持设计宽度 750 不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
         view.setDesignResolutionSize(750, 1334, ResolutionPolicy.FIXED_WIDTH);
+
+        // 设备性能分级：低端机降帧省电，档位供后续布局降级(减少重绘/GridCell 等)使用
+        const tier = initPerfTier();
+        game.frameRate = (tier === 'low') ? 30 : 60;
+        console.log('[PerfTier] tier =', tier, 'frameRate =', game.frameRate);
 
         // 获取微信安全区域（刘海屏顶部 / Home Indicator 底部），避免 UI 被遮挡
         this._fetchSafeArea();
