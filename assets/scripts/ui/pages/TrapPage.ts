@@ -28,22 +28,22 @@ export class TrapPage extends BasePage {
         const cells: GridCellData[] = [];
 
         // 已放置的陷阱
-        cells.push({ id: 'slot_label', name: `── 已放置 (${slots.length}/${trapData?.size || 2}) ──`, state: 'disabled' });
+        cells.push({ id: 'slot_label', name: `── 已放置 (${slots.length}/${trapData?.size || 2}) ──`, state: 'disabled', type: 'list', noTruncate: true });
         for (let i = 0; i < slots.length; i++) {
             const s = slots[i];
             if (s.canCheck) {
-                cells.push({ id: `check_${i}`, name: `${s.trapDesc} [可检查]`, state: 'normal' });
+                cells.push({ id: `check_${i}`, name: `${s.trapDesc} [可检查]`, state: 'normal', type: 'list', noTruncate: true });
             } else if (s.checked) {
-                cells.push({ id: `remove_${i}`, name: `${s.trapDesc} [已检查·移除]`, state: 'normal' });
+                cells.push({ id: `remove_${i}`, name: `${s.trapDesc} [已检查·移除]`, state: 'normal', type: 'list', noTruncate: true });
             } else {
                 const hoursLeft = Math.max(0, 6 - s.elapsed);
-                cells.push({ id: `slot_${i}`, name: `${s.trapDesc} 等待中(${Math.ceil(hoursLeft)}h)`, state: 'disabled' });
+                cells.push({ id: `slot_${i}`, name: `${s.trapDesc} 等待中(${Math.ceil(hoursLeft)}h)`, state: 'disabled', type: 'list', noTruncate: true });
             }
         }
 
         // 可放置的陷阱列表
         if (slots.length < (trapData?.size || 2)) {
-            cells.push({ id: 'place_label', name: '── 可放置 ──', state: 'disabled' });
+            cells.push({ id: 'place_label', name: '── 可放置 ──', state: 'disabled', type: 'list', noTruncate: true });
             for (const trapId in TRAP_DATA) {
                 const trap = TRAP_DATA[trapId];
                 // 科技前置门禁（如 antiRogue 需「防盗术」），未解锁则置灰并提示
@@ -57,8 +57,9 @@ export class TrapPage extends BasePage {
                 const sciTag = sciBlocked ? ` [需科技:${sciName}]` : '';
                 cells.push({
                     id: `place_${trapId}`,
-                    name: `${trap.desc} 诱[${reqStr}] → ${getStr}${sciTag}`,
+                    name: `[放置] ${trap.desc}\n诱饵[${reqStr}] → 产出[${getStr}]${sciTag}`,
                     state: canPlace ? 'normal' : 'disabled',
+                    type: 'list', noTruncate: true,
                 });
             }
         }
@@ -66,7 +67,7 @@ export class TrapPage extends BasePage {
         return {
             title: '陷阱管理',
             breadcrumb: '陷阱',
-            columns: 4,
+            columns: 1,   // 单列 list：每行一个陷阱，全宽展示完整信息（仿卫生间详情页）
             cells,
             rebuild: () => this.buildTrapPage().cells,
             onCellClick: (index, cell) => {
