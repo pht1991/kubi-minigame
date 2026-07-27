@@ -1,5 +1,5 @@
 # 项目记忆 · 超苦逼冒险者微信小游戏
-路径：D:\Projects\demos\front_end\kubi-minigame ｜ Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ gitee：`git push https://pht-gitee:Wit123456!!@gitee.com/pht-gitee/kubi-minigame.git master`（Windows credential.helper 会崩，URL 内嵌凭据）
+路径：D:\Projects\demos\front_end\kubi-minigame ｜ Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 远程仓库：GitHub `git@github.com:pht1991/kubi-minigame.git`（SSH key 已注册 pht1991 账号，`git push` 走 SSH 不触发 credential.helper 崩溃，已设 upstream）；原 Gitee `pht-gitee/kubi-minigame` 远程仓库仍保留，本地 origin 已切走（如需回退 `git remote add gitee https://gitee.com/pht-gitee/kubi-minigame.git`）
 
 ## 阶段进度
 - 一~三 ✅（搭建+数据迁移 / 11 Action 接 MainScene / UI 网格 3.1~3.12 全建）
