@@ -19,3 +19,9 @@ Desktop.ini
 
 # ===== 误建文件（Windows 保留设备名，无法删除，忽略即可） =====
 /nul
+
+# ===== Cocos 生成的噪声 profile（构建/编辑器自动重写，无关紧要） =====
+# 这 3 个文件每次构建/打开编辑器都会被覆写为时间戳/日志，无任何业务价值，忽略以免 git status 永远脏
+profiles/v2/packages/builder.json
+profiles/v2/packages/scene.json
+profiles/v2/packages/utils.json

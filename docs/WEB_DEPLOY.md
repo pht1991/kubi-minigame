@@ -9,7 +9,7 @@
 ---
 
 ## 前置条件
-1. 一台**已安装 Cocos Creator 3.8 LTS** 的机器（构建必须靠编辑器二进制，无 CLI 替代）。
+1. 一台**已安装 Cocos Creator 3.8 LTS** 的机器（构建必须靠编辑器二进制，但**无需打开编辑器 GUI**——脚本用无头命令行 `CocosCreator.exe --build` 即可，编辑器可全程关闭）。
 2. 该机器已配置 **GitHub SSH key**，且公钥已加到 `pht1991` 账号
    （验证：`ssh -T git@github.com` 返回 `Hi pht1991! ...`）。
 3. 已 clone 本仓库（`git@github.com:pht1991/kubi-minigame.git`）。
@@ -20,8 +20,8 @@
 
 ### Windows
 1. 用记事本打开仓库根目录的 `deploy-web.bat`
-2. 把第 ~25 行的 `COCOS` 改成你机器上 `CocosCreator.exe` 的真实路径
-   （默认 `C:\Program Files\Cocos\Creator\CocosCreator.exe`）
+2. 把脚本顶部 `COCOS` 改成你机器上 `CocosCreator.exe` 的真实路径
+   （本仓库默认 `C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe`）
 3. 双击运行，等待构建 + 推送完成
 4. 去 GitHub 仓库 **Settings → Pages → Source** 选 `gh-pages` 分支、`/(root)`，点 Save
 
@@ -37,6 +37,22 @@ bash deploy-web.sh
 2. 拉取（或首次创建）`gh-pages` 分支到临时目录
 3. 复制产物、提交、推送到 `gh-pages`
 4. 清理临时目录
+
+---
+
+## 微信小游戏（无头构建）
+
+微信小游戏的 Cocos 构建同样**无需打开编辑器 GUI**，用 `deploy-wechat.bat` 无头构建即可：
+
+1. 用记事本打开仓库根目录的 `deploy-wechat.bat`
+2. 把脚本顶部 `COCOS` 改成你机器上 `CocosCreator.exe` 的真实路径
+   （本仓库默认 `C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe`）
+3. 双击运行，等待构建完成（脚本会自动：构建前/后恢复 `separateEngine=true` 并提交、杀掉残留 Cocos 进程）
+4. 用**微信开发者工具**打开产物目录 `build/wechatgame/`，填 appid，扫码预览 / 上传
+
+脚本自动处理了两个历史坑，你无需手动干预：
+- **`separateEngine` 被构建回退**：脚本在构建前和构建后都强制把它恢复为 `true`（引擎拆子包，主包从 ~3.0M 降到 ~0.5M），并自动提交 `wechatgame.json`。
+- **编辑器/构建进程残留污染 `git status`**：`profiles/v2/packages/` 下的 `builder.json`/`scene.json`/`utils.json` 已被加入 `.gitignore`（纯生成噪声，带时间戳），且脚本结束会 `taskkill` 掉残留的 `CocosCreator.exe`/`CocosDashboard.exe`，工作树始终干净。
 
 ---
 
