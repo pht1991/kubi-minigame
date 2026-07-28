@@ -1,96 +1,111 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableDelayedExpansion
 
 REM ============================================================
-REM  超苦逼冒险者 - 微信小游戏「无头」构建（无需打开 Cocos 编辑器 GUI）
-REM  前置条件：本机已安装 Cocos Creator 3.8 LTS，且 node / git 在 PATH 中
-REM  用法：
-REM   1. 把下面 COCOS 改成你机器上的 CocosCreator.exe 路径
-REM   2. 双击本脚本（或命令行运行）
-REM   3. 脚本流程：
-REM        [0]   环境检查 + 结束残留 Cocos 实例(避免单实例吞掉 --build 参数)
-REM        [1]   构建前强制 separateEngine=true（让本次构建真正拆引擎子包）
-REM        [2]   无头构建 wechatgame  -> build/wechatgame/
-REM        [3]   运行 fix-build-config.js（修复 libVersion / 输出包体报告）
-REM        [4]   构建后再次恢复 separateEngine=true 并提交（防止被构建回退）
-REM        [5]   杀掉残留 Cocos 进程（避免持续重写 profile 文件弄脏 git）
-REM   4. 用微信开发者工具打开 build/wechatgame/ 填 appid -> 预览/上传
-REM  说明：全程不依赖 Cocos 编辑器 GUI，编辑器可保持关闭。
+REM  Super Kubi - WeChat minigame headless build, no Cocos editor GUI needed
+REM  Usage:
+REM   1 - Set COCOS below to your CocosCreator.exe path
+REM   2 - Double-click this script, or run it from a cmd window
+REM   3 - Steps performed:
+REM        step 0   env check plus kill leftover Cocos instances
+REM        step 1   force separateEngine=true before build
+REM        step 2   headless build wechatgame into build/wechatgame
+REM        step 3   run fix-build-config.js to fix libVersion and print size
+REM        step 4   force separateEngine=true again after build and commit
+REM        step 5   kill leftover Cocos processes
+REM   4 - Open build/wechatgame in WeChat DevTools, fill appid, preview or upload
+REM  Note: editor GUI can stay closed. Full log goes to build-wechat.log.
 REM ============================================================
 
-REM >>> 改成你机器上的 Cocos Creator 可执行文件路径 <<<
+REM >>> set this to your Cocos Creator exe path <<<
 set "COCOS=C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe"
 
-REM 仓库根目录（脚本所在目录，去掉尾随反斜杠，避免路径拼接出现双反斜杠）
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 
-echo ============================================================
-echo   微信小游戏「无头」构建（无需打开 Cocos 编辑器 GUI）
-echo   仓库: %ROOT%
-echo   说明: 构建前会自动结束残留 Cocos 实例，避免参数被吞
-echo ============================================================
-echo.
+REM ---------- 0 - if double-clicked with no arg, tee output to screen and build-wechat.log ----------
+if "%~1"=="" (
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "cmd /c '%~f0' __tee__ 2>&1 | Tee-Object -FilePath '%~dp0build-wechat.log'" 2>nul
+  if errorlevel 1 (
+    call "%~f0" __tee__
+  )
+  goto :EOF
+)
 
-REM ---------- 0. 清掉沙箱/环境可能注入的干扰变量（否则 Cocos 内置 Node 会报 bad option / --use-system-ca） ----------
+echo ============================================================
+echo   WeChat minigame headless build (Cocos editor GUI not required)
+echo   Repo: %ROOT%
+echo   Log : %ROOT%\build-wechat.log
+echo ============================================================
+rem
+
+REM ---------- step 0 - clear sandbox-injected env vars else Cocos Node errors ----------
 set "ELECTRON_RUN_AS_NODE="
 set "NODE_OPTIONS="
 
-REM ---------- 0.1 环境检查 ----------
+REM ---------- step 0b - env check ----------
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [错误] 未找到 node.exe，请安装 Node.js 并加入 PATH
-  pause
-  exit /b 1
+  echo [ERROR] node.exe not found. Install Node.js and add it to PATH.
+  goto :END
 )
 where git >nul 2>nul
 if errorlevel 1 (
-  echo [警告] 未找到 git，步骤[4]提交 separateEngine 会跳过（不影响构建产物）
+  echo [WARN] git not found. Step 4 commit will be skipped, build output still fine.
 )
 
-REM ---------- 0.5 结束残留 Cocos 实例（防单实例吞掉 --build 参数，这是双击“没反应”的常见原因） ----------
-echo [0] 结束可能残留的 Cocos 实例 ...
+REM ---------- step 0c - kill leftover Cocos instances, prevents single-instance from swallowing --build ----------
+echo [0] Killing leftover Cocos instances ...
 taskkill /F /IM CocosCreator.exe >nul 2>&1
 taskkill /F /IM CocosDashboard.exe >nul 2>&1
 
 if not exist "%COCOS%" (
-  echo [错误] 找不到 Cocos Creator: %COCOS%
-  echo 请在脚本顶部 COCOS 变量改成你的实际安装路径
-  pause
-  exit /b 1
+  echo [ERROR] Cocos Creator not found: %COCOS%
+  echo Please set the COCOS variable at the top of this script to your real install path.
+  goto :END
 )
 
-REM ---------- 1. 构建前：强制 separateEngine=true ----------
-echo [1/5] 构建前恢复 separateEngine=true ...
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine 已恢复 '+n+' 处为 true'):'  separateEngine 已是 true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
+REM ---------- step 1 - before build, force separateEngine=true ----------
+echo [1/5] Restoring separateEngine=true before build ...
+node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine restored '+n+' place(s) to true'):'  separateEngine already true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
 
-REM ---------- 2. 无头构建 wechatgame（扁平输出到 build/wechatgame/） ----------
-echo [2/5] 正在用 Cocos Creator 无头构建 wechatgame（首次会编译引擎，请稍候）...
+REM ---------- step 2 - headless build wechatgame, flat output to build/wechatgame ----------
+echo [2/5] Building wechatgame with Cocos Creator (first build compiles engine, please wait) ...
 "%COCOS%" --project "%ROOT%" --build "platform=wechatgame;debug=false;buildPath=%ROOT%\build"
-if errorlevel 1 (
-  echo [错误] Cocos 构建失败，请查看上方报错
-  pause
-  exit /b 1
+set BUILD_RC=%errorlevel%
+if %BUILD_RC%==0 goto build_ok
+REM Cocos --build sometimes returns non-zero even on success; verify the artifact instead
+if exist "%ROOT%\build\wechatgame\game.js" (
+  echo [WARN] Cocos exited with code %BUILD_RC% but build artifact game.js exists, treating as success.
+  goto build_ok
 )
+echo [ERROR] Cocos build failed (exit code %BUILD_RC%, no artifact). See above or build-wechat.log
+goto :END
+:build_ok
 
-REM ---------- 3. 后处理：修复 libVersion 等 ----------
-echo [3/5] 运行 fix-build-config.js（修复 libVersion / 包体报告）...
+REM ---------- step 3 - post-process, fix libVersion etc ----------
+echo [3/5] Running fix-build-config.js (fix libVersion and package report) ...
 node "%ROOT%\fix-build-config.js"
 
-REM ---------- 4. 构建后：再次恢复 separateEngine=true 并提交 ----------
-echo [4/5] 构建后再次恢复 separateEngine=true 并提交 ...
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine 已恢复 '+n+' 处为 true'):'  separateEngine 已是 true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
+REM ---------- step 4 - after build, restore separateEngine=true and commit ----------
+echo [4/5] Restoring separateEngine=true after build and committing ...
+node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine restored '+n+' place(s) to true'):'  separateEngine already true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
 cd /d "%ROOT%"
 git add profiles/v2/packages/wechatgame.json
-git -c user.email="bot@workbuddy.local" -c user.name="WorkBuddy" commit -q -m "chore(构建): 恢复 separateEngine=true (被 Cocos 构建回退)" >nul 2>&1 && echo "  已提交 wechatgame.json" || echo "  (wechatgame.json 无变化，跳过提交)"
+git -c user.email="bot@workbuddy.local" -c user.name="WorkBuddy" commit -q -m "chore(build): restore separateEngine=true (reverted by Cocos build)" >nul 2>&1 && echo "  wechatgame.json committed" || echo "  (wechatgame.json unchanged, skip commit)"
 
-REM ---------- 5. 杀掉残留 Cocos 进程（避免持续重写 profile 文件） ----------
-echo [5/5] 清理残留 Cocos 进程 ...
+REM ---------- step 5 - clean leftover Cocos processes ----------
+echo [5/5] Cleaning leftover Cocos processes ...
 taskkill /F /IM CocosCreator.exe >nul 2>&1
 taskkill /F /IM CocosDashboard.exe >nul 2>&1
-echo.
-echo 构建完成！用微信开发者工具打开： %ROOT%\build\wechatgame
-echo 填 appid -^> 扫码预览 / 上传。
-echo.
+rem
+echo Build done. Open in WeChat DevTools: %ROOT%\build\wechatgame
+echo Fill appid then scan to preview or upload.
+rem
+
+:END
+echo ============================================================
+echo   Flow finished. Window stays open, press any key to close.
+echo   If output is unclear, open build-wechat.log in this folder for the full log.
+echo ============================================================
 pause
