@@ -15,13 +15,13 @@ REM   4. 去 GitHub 仓库 Settings -> Pages 选 gh-pages 分支 /(root/) 启用
 REM ============================================================
 
 REM >>> 改成你机器上的 Cocos Creator 可执行文件路径 <<<
-set "COCOS=C:\Program Files\Cocos\Creator\CocosCreator.exe"
+set "COCOS=C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe"
 
 REM 仓库 SSH 地址（与 git remote 一致）
 set "REPO=git@github.com:pht1991/kubi-minigame.git"
 
-REM 构建产物目录（Cocos 默认输出到 build/web-mobile）
-set "BUILD_DIR=build\web-mobile"
+REM 构建产物目录（Cocos 会在 buildPath 后再套一层平台目录 web-mobile，故实际产物在 build/web-mobile/web-mobile）
+set "BUILD_DIR=build"
 
 REM 临时部署目录（用完即删，不进版本库）
 set "DEPLOY_TMP=%CD%\..\.web-deploy-tmp"
@@ -59,7 +59,7 @@ if errorlevel 1 (
 
 REM ---------- 3. 复制产物并提交推送 ----------
 echo [3/3] 复制产物并推送到 gh-pages ...
-xcopy "%CD%\..\%BUILD_DIR%\*" "%DEPLOY_TMP%\" /E /Y /I >nul
+xcopy "%CD%\..\%BUILD_DIR%\web-mobile\*" "%DEPLOY_TMP%\" /E /Y /I >nul
 git add -A
 git commit -q -m "deploy web %date% %time%"
 git push origin gh-pages

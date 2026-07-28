@@ -33,7 +33,7 @@ bash deploy-web.sh
 ```
 
 脚本做了什么：
-1. 调用 Cocos 命令行构建 `web-mobile`（输出到 `build/web-mobile`）
+1. 调用 Cocos 命令行构建 `web-mobile`（实际产物在 `build/web-mobile/web-mobile`，Cocos 会在 buildPath 后再套一层平台目录）
 2. 拉取（或首次创建）`gh-pages` 分支到临时目录
 3. 复制产物、提交、推送到 `gh-pages`
 4. 清理临时目录
