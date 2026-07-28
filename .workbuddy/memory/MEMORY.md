@@ -3,8 +3,8 @@
 
 ## 阶段进度
 - 一~三 ✅（搭建+数据迁移 / 11 Action 接 MainScene / UI 网格 3.1~3.12 全建）
-- 四 🔧 适配优化：引擎裁剪+eraseModules+fix-build 已配（libVersion→3.16.2）。已做：天空盒死重剔除(separateEngine 拆引擎子包)、性能分级(PerfTier 低端机30fps)；待验证：构建后主包体积/真机帧率
-- 五 ❌ 测试上线未开始
+- 四 🔧 适配优化：引擎裁剪+eraseModules+fix-build 已配（libVersion→3.16.2）。已做：天空盒死重剔除、性能分级(PerfTier 低端机30fps)、引擎拆子包(separateEngine=true)；**浏览器版已发布到 gh-pages 分支**（GitHub Pages，待用户在仓库 Settings→Pages 启用 Source=gh-pages）。待验证：构建后微信主包体积/真机帧率
+- 五 ❌ 测试上线（微信小游戏）未开始；浏览器版(Pages)已先行发布
 
 ## 架构
 - 风险 A（MainScene 臃肿）：已治理。抽 CookPage + Craft/Farm/Trap/Brew/Outdoor/Dungeon/Skill/Event/Build/Menu/Rest/Bag 共 13 个 Page（继承 BasePage，经 PageContext 共享服务），MainScene 降至 ~710 行。
@@ -12,10 +12,15 @@
 
 ## 构建部署坑
 改 engine 移除模块后微信 devtools 缓存残留旧 wasm 引用报 ENOENT → 清缓存/重导项目即可；`project.config.json` libVersion 被模板覆盖为 "game"，须 `fix-build-config.js` 事后改 3.16.2；删空 `assets/resources/` bundle 后引擎不再加载其 config.json
+- **Web 构建环境坑**：本机沙箱给 `CocosCreator.exe` 注入了 `ELECTRON_RUN_AS_NODE=1`（Electron 退化成 Node → `--project` 报 `bad option: --project`）+ `NODE_OPTIONS=--require=... --use-system-ca`（内部 Node 报 `--use-system-ca is not allowed`）。命令行构建必须 `env -u ELECTRON_RUN_AS_NODE NODE_OPTIONS= CocosCreator.exe --project <prj> --build "platform=web-mobile;debug=false;buildPath=<prj>/build"`。
+- **Web 产物目录**：Cocos 在 buildPath 后再套平台目录，实际产物在 `build/web-mobile/web-mobile/`（非 `build/web-mobile`）。
+- **separateEngine 构建回退**：每次 Cocos 构建都会把 `wechatgame.json` 的 `separateEngine:true` 写回 `false`（引擎拆子包优化丢失）→ 构建后必须 `grep separateEngine` 复核并改回提交。
+- **残留进程污染 profile**：headless 构建遗留 `CocosCreator.exe`+`CocosDashboard.exe` 进程持续重写 `builder/scene/utils.json`（仅时间戳）→ 先 `taskkill /F /IM CocosCreator.exe` + `CocosDashboard.exe` 杀掉，再 `git checkout --` 还原。
 
 ## 验证铁律（最高频坑）
 - **`ts.transpileModule(code,{reportDiagnostics:true})` 才是真校验**（esbuild 漏报块内 case/声明）。其 Error 诊断（`;' expected`/`Unexpected token`）**直接导致 Cocos 构建 `Cannot read property 'resolutions' of null`**，绝不忽略。
 - **TS 语法坑 → resolutions of null**：`private a=1,b=2;` 单修饰符逗号分隔多属性非法；`case 'rest': {` 漏 `}` 级联同错。
+- **⚠️ transpile 查不出「漏 import / 未定义标识符」**（2026-07-28 踩坑）：`ITEM_DATA is not defined` 这类运行时 ReferenceError，`ts.transpileModule` 全量 0 错误**漏报**（漏 import 不是语法错）。真正的语义校验靠 **Cocos 构建(内部 tsc)** 或独立 `tsc --noEmit` 的 `Cannot find name`(2304) 诊断。修完漏 import 务必重新构建确认无 `Cannot find name` 残留。
 - **⚠️ `new Node()` 必须 `import { Node } from 'cc'`**（2026-07-23 踩坑）：遗漏时 `Node` 解析为 DOM 的 `Node` 接口 → 运行时 `Failed to construct 'Node': Illegal constructor`，transpile 查不出。所有用 `new Node()` 的 .ts（CraftPage/BigBoxPage/BagPage/各类 UI）都已 import。
 - **⚠️ Cocos 3.x `Node` 无 `insertChild` 方法**（2026-07-24 踩坑，854c9eb）：误写 `parent.insertChild(child, 0)` → 运行时 `TypeError: insertChild is not a function`（transpile 查不出，属 API 不存在非语法错）。正确：`parent.addChild(child); child.setSiblingIndex(0)`（若已 setParent 则只需 setSiblingIndex(0)）。
 - **⚠️ `ScrollView.view` 返回的是 `UITransform` 不是 `Node`**（2026-07-24 踩坑，98e1cdc）：故 `scrollView.view.addChild/insertChild` 全崩（`is not a function`）。要挂子节点须先取 `scrollView.view.node` 再 addChild；`.view` 本身即 UITransform（可直接读 width/anchorX，不必再 getComponent(UITransform)）。注意 UITransform 是 Component，`.getComponent/.removeComponent/.isValid` 能跑通所以 setupFixedView 之前"侥幸没崩"，但语义上仍应取 `.node`。

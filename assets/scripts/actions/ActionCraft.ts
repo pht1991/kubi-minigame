@@ -7,6 +7,7 @@
 import { GameManager } from '../core/GameManager';
 import { ActionExecutor, ActionResult } from './ActionExecutor';
 import { MakeData } from '../data/types';
+import { ITEM_DATA } from '../data/data';
 
 export class ActionCraft {
     private static _instance: ActionCraft;
