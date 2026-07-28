@@ -13,9 +13,10 @@
 ## 构建部署坑
 改 engine 移除模块后微信 devtools 缓存残留旧 wasm 引用报 ENOENT → 清缓存/重导项目即可；`project.config.json` libVersion 被模板覆盖为 "game"，须 `fix-build-config.js` 事后改 3.16.2；删空 `assets/resources/` bundle 后引擎不再加载其 config.json
 - **Web 构建环境坑**：本机沙箱给 `CocosCreator.exe` 注入了 `ELECTRON_RUN_AS_NODE=1`（Electron 退化成 Node → `--project` 报 `bad option: --project`）+ `NODE_OPTIONS=--require=... --use-system-ca`（内部 Node 报 `--use-system-ca is not allowed`）。命令行构建必须 `env -u ELECTRON_RUN_AS_NODE NODE_OPTIONS= CocosCreator.exe --project <prj> --build "platform=web-mobile;debug=false;buildPath=<prj>/build"`。
-- **Web 产物目录**：Cocos 在 buildPath 后再套平台目录，实际产物在 `build/web-mobile/web-mobile/`（非 `build/web-mobile`）。
-- **separateEngine 构建回退**：每次 Cocos 构建都会把 `wechatgame.json` 的 `separateEngine:true` 写回 `false`（引擎拆子包优化丢失）→ 构建后必须 `grep separateEngine` 复核并改回提交。
-- **残留进程污染 profile**：headless 构建遗留 `CocosCreator.exe`+`CocosDashboard.exe` 进程持续重写 `builder/scene/utils.json`（仅时间戳）→ 先 `taskkill /F /IM CocosCreator.exe` + `CocosDashboard.exe` 杀掉，再 `git checkout --` 还原。
+- **产物目录**：Cocos 在 buildPath 后再套平台目录 → web 实际产物在 `build/web-mobile/web-mobile/`（非 `build/web-mobile`）；**wechatgame 是扁平输出**在 `build/wechatgame/`（不套子目录）。
+- **separateEngine 构建回退（已自动化）**：每次 Cocos 构建都会把 `wechatgame.json` 两处 `separateEngine:true` 写回 `false`。已用 `deploy-wechat.bat`/`deploy-web.bat` 在构建前+后**递归强制 true 并提交**（`node -e` 遍历 JSON 所有 `separateEngine` 键，已验证对两处生效）。**必须用这两个脚本构建**即可免手动；若用编辑器 GUI 手动构建，仍需构建后 `grep separateEngine` 复核改回。
+- **残留进程/噪声文件（已自动化）**：`profiles/v2/packages/` 下 `builder.json`/`scene.json`/`utils.json` 是 Cocos 生成噪声（带时间戳），已加入 `.gitignore` 不再污染 `git status`；脚本结束 `taskkill /F /IM CocosCreator.exe` + `CocosDashboard.exe` 杀残留进程。编辑器 GUI 打开时也自动忽略，工作树始终干净。
+- **构建无需开编辑器 GUI**：`deploy-wechat.bat`(微信) / `deploy-web.bat`(浏览器) 都用无头命令行 `CocosCreator.exe --project <prj> --build`，编辑器可全程关闭。脚本顶部 `COCOS` 已配本机路径 `C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe`。
 
 ## 验证铁律（最高频坑）
 - **`ts.transpileModule(code,{reportDiagnostics:true})` 才是真校验**（esbuild 漏报块内 case/声明）。其 Error 诊断（`;' expected`/`Unexpected token`）**直接导致 Cocos 构建 `Cannot read property 'resolutions' of null`**，绝不忽略。
