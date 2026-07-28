@@ -8,10 +8,10 @@ REM   1 - Set COCOS below to your CocosCreator.exe path
 REM   2 - Double-click this script, or run it from a cmd window
 REM   3 - Steps performed:
 REM        step 0   env check plus kill leftover Cocos instances
-REM        step 1   force separateEngine=true before build
+REM        step 1   set separateEngine per SEPARATE_ENGINE flag before build
 REM        step 2   headless build wechatgame into build/wechatgame
 REM        step 3   run fix-build-config.js to fix libVersion and print size
-REM        step 4   force separateEngine=true again after build and commit
+REM        step 4   set separateEngine per SEPARATE_ENGINE flag after build and commit
 REM        step 5   kill leftover Cocos processes
 REM   4 - Open build/wechatgame in WeChat DevTools, fill appid, preview or upload
 REM  Note: editor GUI can stay closed. Full log goes to build-wechat.log.
@@ -19,6 +19,10 @@ REM ============================================================
 
 REM >>> set this to your Cocos Creator exe path <<<
 set "COCOS=C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe"
+
+REM >>> engine separation flag: false = dev (no WeChat engine plugin, easy local debug) <<<
+REM >>> set to true before release to split engine into subpackage (then authorize plugin in MP) <<<
+set "SEPARATE_ENGINE=false"
 
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
@@ -68,8 +72,8 @@ if not exist "%COCOS%" (
 )
 
 REM ---------- step 1 - before build, force separateEngine=true ----------
-echo [1/5] Restoring separateEngine=true before build ...
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine restored '+n+' place(s) to true'):'  separateEngine already true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
+echo [1/5] Setting separateEngine=%SEPARATE_ENGINE% before build ...
+node -e "const fs=require('fs');const p=process.argv[1];const want=process.argv[2]==='true';const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==want){o[k]=want;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine set to '+want+' at '+n+' place(s)'):'  separateEngine already '+want);" "%ROOT%\profiles\v2\packages\wechatgame.json" %SEPARATE_ENGINE%
 
 REM ---------- step 2 - headless build wechatgame, flat output to build/wechatgame ----------
 echo [2/5] Building wechatgame with Cocos Creator (first build compiles engine, please wait) ...
@@ -90,11 +94,11 @@ echo [3/5] Running fix-build-config.js (fix libVersion and package report) ...
 node "%ROOT%\fix-build-config.js"
 
 REM ---------- step 4 - after build, restore separateEngine=true and commit ----------
-echo [4/5] Restoring separateEngine=true after build and committing ...
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine restored '+n+' place(s) to true'):'  separateEngine already true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
+echo [4/5] Setting separateEngine=%SEPARATE_ENGINE% after build and committing ...
+node -e "const fs=require('fs');const p=process.argv[1];const want=process.argv[2]==='true';const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==want){o[k]=want;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine set to '+want+' at '+n+' place(s)'):'  separateEngine already '+want);" "%ROOT%\profiles\v2\packages\wechatgame.json" %SEPARATE_ENGINE%
 cd /d "%ROOT%"
 git add profiles/v2/packages/wechatgame.json
-git -c user.email="bot@workbuddy.local" -c user.name="WorkBuddy" commit -q -m "chore(build): restore separateEngine=true (reverted by Cocos build)" >nul 2>&1 && echo "  wechatgame.json committed" || echo "  (wechatgame.json unchanged, skip commit)"
+git -c user.email="bot@workbuddy.local" -c user.name="WorkBuddy" commit -q -m "chore(build): sync separateEngine=%SEPARATE_ENGINE% (Cocos build may revert it)" >nul 2>&1 && echo "  wechatgame.json committed" || echo "  (wechatgame.json unchanged, skip commit)"
 
 REM ---------- step 5 - clean leftover Cocos processes ----------
 echo [5/5] Cleaning leftover Cocos processes ...
