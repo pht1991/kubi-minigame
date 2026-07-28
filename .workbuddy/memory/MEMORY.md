@@ -56,3 +56,7 @@
 
 ## 场景节点删除铁律
 删前确认非组件/脚本宿主（曾误删 GameManager 节点→全屏空白）；删后父 `_children`/`_components` 须 splice 掉 `{__id__:N}`（勿改 `{__id__:null}`→`_onBatchCreated is not a function`）。.scene 及时提交。
+
+## 推送工作流约定
+- **大改动/问题修复推送后，自动构建微信包**。Git 无 post-push 钩子，落地为 `push-wechat.bat`：先 `git push origin master`，成功后再 `call deploy-wechat.bat __tee__ < nul` 非交互构建（`< nul` 喂结尾 pause 防阻塞）。开发期 SEPARATE_ENGINE=false，产出包不含引擎插件、DevTools 免授权直接调试。
+- AI 执行本项目的「推送」动作时，应顺带跑 `deploy-wechat.bat`（或 `push-wechat.bat`）构建微信包，确保 `build/wechatgame/` 始终为最新代码；`build/` 已被 gitignore，产物不进版本库。
