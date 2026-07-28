@@ -229,7 +229,7 @@ export class GameManager {
 
     /**
      * 背包剩余空格子数（按物品「种类」计容，非堆叠数）。
-     * boxSize['bag'] 为种类上限（BAG_BASE_SIZE=12），堆叠不占新格。
+     * boxSize['bag'] 为种类上限（BAG_BASE_SIZE=16），堆叠不占新格。
      */
     bagFreeGrids(): number {
         const bag = this.boxSaveData['bag'] || {};
@@ -424,6 +424,10 @@ export class GameManager {
         if (!this.boxSaveData.shit) this.boxSaveData.shit = {};
         if (!this.boxSaveData.marshGasTank) this.boxSaveData.marshGasTank = {};
         this.boxSize = data.boxSize || { bag: BAG_BASE_SIZE, bigBox: BIG_BOX_BASE_SIZE };
+        // 老存档保底：基础容量随版本上调（bag 12 -> 16），未扩容过的旧档自动提升到新下限；
+        // 已用扩容道具使存档值高于下限的则保留，不回退。
+        this.boxSize['bag'] = Math.max(this.boxSize['bag'] || 0, BAG_BASE_SIZE);
+        this.boxSize['bigBox'] = Math.max(this.boxSize['bigBox'] || 0, BIG_BOX_BASE_SIZE);
         this.buildingSaveData = data.buildingSaveData;
         this.durableSaveData = data.durableSaveData;
         this.eventSaveData = data.eventSaveData;

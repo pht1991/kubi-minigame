@@ -6,7 +6,7 @@
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { ActionExecutor, ActionResult } from './ActionExecutor';
-import { ITEM_DATA, BIG_BOX_BASE_SIZE } from '../data/data';
+import { ITEM_DATA, BIG_BOX_BASE_SIZE, BAG_BASE_SIZE } from '../data/data';
 import { o } from '../core/utils';
 
 export class ActionItem {
@@ -37,6 +37,14 @@ export class ActionItem {
             this._gm.changeItem(o(itemId, -1), 'bag');
             this._eventBus.emit(GameEvents.UI_REFRESH);
             return { success: true, message: `大箱子容量增加了 ${gain}` };
+        }
+        // 背包扩容道具：消耗 1 个，永久提升背包种类上限
+        if ((item as any).type === 'bagSizeBonus') {
+            const gain = (item as any).value || 1;
+            this._gm.boxSize['bag'] = (this._gm.boxSize['bag'] || BAG_BASE_SIZE) + gain;
+            this._gm.changeItem(o(itemId, -1), 'bag');
+            this._eventBus.emit(GameEvents.UI_REFRESH);
+            return { success: true, message: `背包容量增加了 ${gain}（上限 ${this._gm.boxSize['bag']} 种）` };
         }
         if ((this._gm.boxSaveData['bag'][itemId] || 0) <= 0) {
             return { success: false, message: '没有该物品' };

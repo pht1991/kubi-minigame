@@ -37,7 +37,7 @@ export const COOK_SPEED_MUL = 0.8;
 export const MAX_DISCOVER = 45;//最大探索度 
 
 export const BIG_BOX_BASE_SIZE = 16;
-export const BAG_BASE_SIZE = 12;
+export const BAG_BASE_SIZE = 16;
 export const FULL_DESC_PER_HOUR = 1;
 export const MOIST_DESC_PER_HOUR = 1;
 export const SAN_DESC_PER_HOUR = 3;

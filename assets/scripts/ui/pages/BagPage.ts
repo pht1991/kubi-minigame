@@ -12,7 +12,7 @@ import { Node } from 'cc';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionItem } from '../../actions/ActionItem';
-import { ITEM_DATA, EQUIP_TYPE_DATA, BIG_BOX_BASE_SIZE } from '../../data/data';
+import { ITEM_DATA, EQUIP_TYPE_DATA, BIG_BOX_BASE_SIZE, BAG_BASE_SIZE } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
 import { DialogOption } from '../DialogPanel';
 import { QuantityPanel } from '../QuantityPanel';
@@ -107,7 +107,7 @@ export class BagPage extends BasePage {
     public openBagPanel(): void {
         this.setMsg('');
         this.bagPanel.show(
-            () => `背包 (${Object.keys(this.gm.boxSaveData['bag'] || {}).length})`,
+            () => `背包 (${Object.keys(this.gm.boxSaveData['bag'] || {}).length}/${this.gm.boxSize['bag'] || BAG_BASE_SIZE})`,
             () => this.buildBoxCells('bag'),
             (id) => this.onItemClick(id, 'bag'),
         );
