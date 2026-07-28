@@ -26,12 +26,14 @@ if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 REM ---------- 0 - if double-clicked with no arg, tee output to screen and build-wechat.log ----------
 if "%~1"=="" (
   powershell -NoProfile -ExecutionPolicy Bypass -Command "cmd /c '%~f0' __tee__ 2>&1 | Tee-Object -FilePath '%~dp0build-wechat.log'" 2>nul
-  if errorlevel 1 (
-    call "%~f0" __tee__
+  if not exist "%ROOT%\build\wechatgame\game.js" (
+    echo [WARN] tee logging unavailable or build not produced, running build directly.
+    call :MAIN
   )
-  goto :EOF
+  exit /b
 )
 
+:MAIN
 echo ============================================================
 echo   WeChat minigame headless build (Cocos editor GUI not required)
 echo   Repo: %ROOT%
@@ -109,3 +111,4 @@ echo   Flow finished. Window stays open, press any key to close.
 echo   If output is unclear, open build-wechat.log in this folder for the full log.
 echo ============================================================
 pause
+exit /b

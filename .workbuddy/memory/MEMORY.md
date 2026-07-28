@@ -20,6 +20,7 @@
 - **`.bat` 编码坑（致命，2026-07-28 踩）**：中文 Windows 默认 GBK 代码页读 `.bat`；UTF-8 无 BOM 会让中文行乱码、且**吃掉紧跟中文后的首个 ASCII 字母**→ 报『xxx 不是内部或外部命令』（如 `process`→`rocess`、`build`→`uild`、`echo`→`ho`）。bat 含中文须存 **GBK(ANSI) 或 UTF-8+BOM**；最稳是**bat 全 ASCII（英文）**彻底避坑（node 仍能读 UTF-8 的 .js，中文仅控制台显示乱码、不崩）。`chcp 65001` 只改输出码页、不改 bat 解析码页。
 - **`.bat` REM 注释坑（2026-07-28 踩）**：`REM` 行里若含 `数字.` 编号（如 `REM 0. xxx`）或括号 `(`，cmd 仍会扫描并报 `. was unexpected at this time.` / 括号错，导致脚本在注释行处崩。bat 注释一律用 `step 0 -` 这种无 `digit.`、无括号的写法；独立空行别用 `echo.`/`echo(`（管道环境也报 `. was unexpected`），改用 `rem` 占位最稳。
 - **Cocos `--build` 退出码不可信（2026-07-28 踩）**：`CocosCreator.exe --build` 即便日志打印 `build success` 也可能返回**非零退出码**（实测退出码 36）。不能只靠 `if errorlevel 1` 判失败（会误杀后续 fix-build-config/separateEngine 提交）。改为检查产物 `build/wechatgame/game.js` 是否存在来判定成功（`exist` 则视为成功并 WARN 退出码）。
+- **`.bat` tee 包装双构建坑（2026-07-28 踩）**：双击 bat 用 `powershell ... cmd /c '%~f0' __tee__ | Tee-Object` 把自身重拉一遍做日志；该 PowerShell 管道在本机**即使构建成功也返回非零退出码**。若外层再用 `if errorlevel 1 (call "%~f0" __tee__)` 兜底，会**把整个构建再跑一遍**（用户表现=按回车后又开始构建）。修复：外层兜底改用 `if not exist build/wechatgame/game.js (call :MAIN)` 以产物是否存在判定、且 `:MAIN` 是单例标签；外层 `goto :EOF` 改 `exit /b` 防坠入。结论：**bat 里绝不靠 `errorlevel` 决定要不要重跑耗时构建，一律看产物存在性**。
 - 环境引擎改模块后微信 devtools 缓存旧 wasm 报 ENOENT → 清缓存/重导；删空 `assets/resources/` bundle 后引擎不再加载其 config.json。
 
 ## 验证铁律（高频）
