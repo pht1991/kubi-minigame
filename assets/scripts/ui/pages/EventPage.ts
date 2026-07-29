@@ -24,7 +24,15 @@ export class EventPage extends BasePage {
     /** 构建事件总览网格（openQuestGrid / 触发后刷新共用） */
     private buildQuestPage(): GridPage {
         const cells: GridCellData[] = Object.keys(EVENT_DATA)
-            .filter(id => !this.gm.eventSaveData[id]?.experienced)
+            .filter(id => {
+                if (this.gm.eventSaveData[id]?.experienced) return false; // 已完成则隐藏
+                // 若该事件是某「未完成任务」的连锁下一事件（前置事件未完成），则暂隐藏，待前置完成才解锁
+                const lockedByPrev = Object.keys(EVENT_DATA).some(prevId => {
+                    const prev = (EVENT_DATA as any)[prevId];
+                    return prev && prev.event === id && !this.gm.eventSaveData[prevId]?.experienced;
+                });
+                return !lockedByPrev;
+            })
             .map(id => ({
                 id,
                 name: EVENT_DATA[id].name,

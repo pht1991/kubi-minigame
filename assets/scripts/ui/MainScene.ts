@@ -163,15 +163,7 @@ export class MainScene extends Component {
         this.positionSaveIndicator();
 
         // 接线：仅 SAVE_COMPLETE 静默刷新时间（不显示「保存中」状态，避免每次操作跳动）
-        this._eventBus.on(GameEvents.SAVE_COMPLETE, (savedAt: number, ok: boolean = true) => {
-            let t: string | undefined;
-            if (savedAt && ok) {
-                const d = new Date(savedAt);
-                const p = (n: number) => (n < 10 ? '0' + n : '' + n);
-                t = `${p(d.getHours())}:${p(d.getMinutes())}`;
-            }
-            SaveIndicator.instance?.showSaved(t);
-        });
+        this._eventBus.on(GameEvents.SAVE_COMPLETE, this._onSaveComplete);
 
         // 初始文案：若本地已有存档则显示上次保存时间
         const last = this._saveMgr.localSavedAt;
@@ -235,6 +227,42 @@ export class MainScene extends Component {
     private _toastLayer: Node | null = null;
     private _statusBar: Node | null = null;
 
+    // 事件总线监听器统一存为字段引用，onDestroy 用同一引用 off，避免场景重建时监听器泄漏
+    private _onSaveComplete = (savedAt: number, ok: boolean = true): void => {
+        let t: string | undefined;
+        if (savedAt && ok) {
+            const d = new Date(savedAt);
+            const p = (n: number) => (n < 10 ? '0' + n : '' + n);
+            t = `${p(d.getHours())}:${p(d.getMinutes())}`;
+        }
+        SaveIndicator.instance?.showSaved(t);
+    };
+    private _onPlayerDeath = (): void => this.onPlayerDeath();
+    private _onOperationDone = (payload: { title: string; message: string; modal: boolean }): void => {
+        if (payload.modal) {
+            this._resultModal?.showResult(payload.title || '操作完成', payload.message);
+        } else {
+            Toast.instance?.show(payload.message);
+        }
+        this._saveMgr.save();
+    };
+    private _onHarvestReady = (payload: { title: string; loot: Record<string, number> }): void => {
+        this._harvestModal?.showHarvest(payload.title || '收获', payload.loot);
+        this._saveMgr.save();
+    };
+    private _onSeasonChange = (season: number): void => this.onSeasonChange(season);
+    private _onRobberRaid = (payload: { defended: boolean; items: Record<string, number> }): void => {
+        const names = Object.keys(payload.items)
+            .map(k => `${ITEM_DATA[k]?.name || k}×${payload.items[k]}`)
+            .join(' ');
+        if (payload.defended) {
+            Toast.instance?.show(`防盗陷阱击退了盗贼！获得 ${names}`);
+        } else {
+            Toast.instance?.show(`盗贼趁你不在偷走了：${names}`);
+        }
+        this._saveMgr.save();
+    };
+
     onLoad(): void {
         // 设置适配模式：FIXED_WIDTH 保持设计宽度 750 不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
@@ -256,7 +284,7 @@ export class MainScene extends Component {
         this._saveMgr.startAutoSave(60000);
 
         // 监听玩家死亡
-        this._eventBus.on(GameEvents.PLAYER_DEATH, this.onPlayerDeath.bind(this));
+        this._eventBus.on(GameEvents.PLAYER_DEATH, this._onPlayerDeath);
     }
 
     /** start 在所有组件 onLoad 之后执行，确保 GridComponent 已注册监听 */
@@ -340,20 +368,10 @@ export class MainScene extends Component {
         progressNode.addComponent(ProgressOverlay);
 
         // 订阅耗时动作完成事件：长/需确认 → ResultModal；其余 → Toast(SHRINK)
-        this._eventBus.on(GameEvents.OPERATION_DONE, (payload: { title: string; message: string; modal: boolean }) => {
-            if (payload.modal) {
-                this._resultModal?.showResult(payload.title || '操作完成', payload.message);
-            } else {
-                Toast.instance?.show(payload.message);
-            }
-            this._saveMgr.save(); // 行为反馈时立即存档，确保数据及时落盘
-        });
+        this._eventBus.on(GameEvents.OPERATION_DONE, this._onOperationDone);
 
         // 订阅采集/拾荒收获就绪：弹出「收获」选择弹窗，由玩家自行取舍
-        this._eventBus.on(GameEvents.HARVEST_READY, (payload: { title: string; loot: Record<string, number> }) => {
-            this._harvestModal?.showHarvest(payload.title || '收获', payload.loot);
-            this._saveMgr.save();
-        });
+        this._eventBus.on(GameEvents.HARVEST_READY, this._onHarvestReady);
 
         // 构建页面模块共享上下文（PageContext），并创建各业务域 Page 模块
         // —— 把原本散落在 MainScene 的页面构建逻辑按业务域外抽，MainScene 仅做装配与路由
@@ -430,20 +448,10 @@ export class MainScene extends Component {
         void this.checkCloudOnLaunch();
 
         // 换季提示
-        this._eventBus.on(GameEvents.SEASON_CHANGE, this.onSeasonChange.bind(this));
+        this._eventBus.on(GameEvents.SEASON_CHANGE, this._onSeasonChange);
 
         // 盗贼偷家结算反馈（离开基地期间被洗劫 / 被防盗陷阱击退）
-        this._eventBus.on(GameEvents.ROBBER_RAID, (payload: { defended: boolean; items: Record<string, number> }) => {
-            const names = Object.keys(payload.items)
-                .map(k => `${ITEM_DATA[k]?.name || k}×${payload.items[k]}`)
-                .join(' ');
-            if (payload.defended) {
-                Toast.instance?.show(`防盗陷阱击退了盗贼！获得 ${names}`);
-            } else {
-                Toast.instance?.show(`盗贼趁你不在偷走了：${names}`);
-            }
-            this._saveMgr.save();
-        });
+        this._eventBus.on(GameEvents.ROBBER_RAID, this._onRobberRaid);
     }
 
     /** 换季公告（冬季预警停产，春季恢复） */
@@ -502,7 +510,7 @@ export class MainScene extends Component {
 
     private _fmtCloudTime(t: number): string {
         const d = new Date(t);
-        const p = (n: number) => (n: number) => (n < 10 ? '0' + n : '' + n);
+        const p = (n: number) => (n < 10 ? '0' + n : '' + n);
         return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
     }
 
@@ -1049,6 +1057,11 @@ export class MainScene extends Component {
 
     onDestroy(): void {
         this._saveMgr.stopAutoSave();
-        this._eventBus.off(GameEvents.PLAYER_DEATH, this.onPlayerDeath.bind(this));
+        this._eventBus.off(GameEvents.SAVE_COMPLETE, this._onSaveComplete);
+        this._eventBus.off(GameEvents.PLAYER_DEATH, this._onPlayerDeath);
+        this._eventBus.off(GameEvents.OPERATION_DONE, this._onOperationDone);
+        this._eventBus.off(GameEvents.HARVEST_READY, this._onHarvestReady);
+        this._eventBus.off(GameEvents.SEASON_CHANGE, this._onSeasonChange);
+        this._eventBus.off(GameEvents.ROBBER_RAID, this._onRobberRaid);
     }
 }

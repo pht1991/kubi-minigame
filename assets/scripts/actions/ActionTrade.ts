@@ -125,11 +125,21 @@ export class ActionTrade {
         const give = detail.give;
         const max = detail.max || 100;
 
-        // give==='gold' 视为返金（售卖收益），无库存限制、不收金币
+        // give==='gold' 视为每日返金（售卖收益），无库存/金币消耗，但每日仅可领取一次
         if (give === 'gold') {
+            const rec = this.ensureStock(traderId);
+            const now = this._gm.timeData;
+            (rec as any).claimDay = (rec as any).claimDay ?? -1;
+            if ((rec as any).claimDay === now.day) {
+                return { success: false, message: '今日收益已领取，明天再来' };
+            }
             const r = this._exec.execute({ [give]: max }, {}, 0, { outputBox: 'bag' });
-            if (r.success) this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-            return r.success ? { success: true, message: `获得 ${max} 金币` } : r;
+            if (r.success) {
+                (rec as any).claimDay = now.day;
+                this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+                return { success: true, message: `获得 ${max} 金币` };
+            }
+            return r;
         }
 
         const stock = this.getStock(traderId);
