@@ -18,6 +18,11 @@ import { DialogOption } from '../../ui/DialogPanel';
 export class EventPage extends BasePage {
     /** 公开入口：打开事件总览网格 */
     public openQuestGrid(): void {
+        this.navigator.push(this.buildQuestPage());
+    }
+
+    /** 构建事件总览网格（openQuestGrid / 触发后刷新共用） */
+    private buildQuestPage(): GridPage {
         const cells: GridCellData[] = Object.keys(EVENT_DATA)
             .filter(id => !this.gm.eventSaveData[id]?.experienced)
             .map(id => ({
@@ -28,13 +33,13 @@ export class EventPage extends BasePage {
             }));
         if (cells.length === 0) cells.push({ id: 'none', name: '暂无可触发事件', state: 'disabled' });
 
-        this.navigator.push({
+        return {
             title: '事件',
             breadcrumb: '事件',
             columns: 4,
             cells,
             onCellClick: (index, cell) => this.openEventDetail(cell.id),
-        });
+        };
     }
 
     /** 打开事件详情：弹出专用 NPC 对话面板（主页「事件」入口与地图地点事件共用） */
@@ -61,9 +66,9 @@ export class EventPage extends BasePage {
             onTalk: () => this.showEventTalkDialog(eventId, dialogInfo),
             onTrigger: () => this.doEventTrigger(eventId, dialogInfo),
             onClose: () => {
-                // 触发后刷新事件列表（若当前仍在事件网格）
+                // 关闭详情时刷新事件列表（若当前仍在事件网格）
                 const cur = this.navigator.current;
-                if (cur && cur.title === '事件') this.openQuestGrid();
+                if (cur && cur.title === '事件') this.navigator.replace(this.buildQuestPage());
             },
         });
     }
@@ -106,6 +111,10 @@ export class EventPage extends BasePage {
     private doEventTrigger(eventId: string, dialogInfo: ReturnType<ActionEvent['getDialogInfo']>): void {
         const r = ActionEvent.instance.trigger(eventId);
         this.setMsg(r.message);
+        // 触发后立即刷新底层事件列表（已触发事件移出），无论详情面板是否仍开
+        const cur = this.navigator.current;
+        if (cur && cur.title === '事件') this.navigator.replace(this.buildQuestPage());
+        this.eventBus.emit(GameEvents.UI_REFRESH);
         // 触发后展示 d_2 后续对话
         if (dialogInfo?.dialogAfter.length > 0) {
             this.showEventAfterDialog(eventId, dialogInfo.dialogAfter);

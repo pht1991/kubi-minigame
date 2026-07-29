@@ -119,10 +119,12 @@ export class BagPage extends BasePage {
         if (!itemData) return;
 
         const type = (itemData as any).type as string;
+        const upgrade = (itemData as any).upgrade as string | undefined;
         const canUse = !!(itemData as any).effect || type === 'food' || type === 'cooked'
-            || type === 'bigBoxSizeBonus';
+            || type === 'bigBoxSizeBonus' || type === 'bagSizeBonus'
+            || !!upgrade;   // 指南类/精华类技能升级道具
         const canEquip = !!(itemData as any).equipType || type === 'equip' || type === 'weapon'
-            || type === 'head' || type === 'body' || type === 'foot';
+            || type === 'head' || type === 'body' || type === 'foot' || type === 'neck';
         const isEquipped = Object.values(this.gm.currentEquip).includes(itemId);
         const count = this.gm.boxSaveData[boxType]?.[itemId] || 0;
 
@@ -155,8 +157,8 @@ export class BagPage extends BasePage {
         } else {
             if (canUse) options.push({ label: '使用', data: { action: 'use' } });
             if (canEquip) options.push({ label: '装备', data: { action: 'equip' } });
-            // 存入大箱子：仅在家时可操作（出门不可能往家里存）
-            if (!this.ctx.outdoorPage?.isOutdoors) {
+            // 存入大箱子：仅在家、且当前位于背包（bigBox 走 BigBoxPage 独立路径「取出」）
+            if (!this.ctx.outdoorPage?.isOutdoors && boxType === 'bag') {
                 options.push({ label: '存入大箱子', data: { action: 'store', boxType } });
             }
             options.push({ label: '丢弃', data: { action: 'drop' } });

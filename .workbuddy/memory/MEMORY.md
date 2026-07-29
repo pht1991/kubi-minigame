@@ -52,7 +52,7 @@
 - 作物按游戏时间非实时 tick；陷阱 6h 越久捕获率越高；转生=地牢10层或击败魔王。SKILL_DATA isTalent:true 为天赋；新增 SaveData 字段须同步 types.ts；data.ts barrel re-export。
 - 制造产出键名：`ActionCraft.make` 用 `recipe.get || recipeId`（仅 ALCO 等显式 `get` 才用它）。科研台走独立 `ActionScience.research`（写 `gm.skill[recipeId]`+emit SKILL_CHANGE），**不可丢进 ActionCraft.make**。
 - 进度条：`ActionExecutor.execute(canGet,require,timeNeed,opts)`；`timeNeed>0` 弹条，tween 结束才 advance+应用+emit OPERATION_DONE（异步，结果走事件）。进入地图不弹条；采集改收获弹窗。MainScene 订阅 OPERATION_DONE→Toast/ResultModal。
-- 背包容量：`BAG_BASE_SIZE=16`（种类上限，堆叠不占新格），常量在 data.ts；`ActionItem.use` 已接通 `bagSizeBonus` 分支（消耗 1 个、`boxSize['bag']+=1`、持久化），8 个道具全用上限=24 种；BagPage 标题显示 `背包(N/上限)`。`GameManager` 读档对 `boxSize.bag/bigBox` 做 `max(值,基础值)` 保底，老存档自动升到新下限且不回退已扩容值。
+- 背包容量：`BAG_BASE_SIZE=16`（种类上限，堆叠不占新格），常量在 data.ts；`ActionItem.use` 已接通 `bagSizeBonus` 分支（消耗 1 个、`boxSize['bag']+=1`、持久化），8 个道具全用上限=24 种；BagPage 标题显示 `背包(N/上限)`。`GameManager` 读档对 `boxSize.bag/bigBox` 做 `max(值,基础值)` 保底，老存档自动升到新下限且不回退已扩容值。UI 入口 `BagPage.onItemClick` 的 canUse 已含 `bagSizeBonus` 与 `upgrade`（技能指南 farmUpgrade/strUpgrade… + 精华 magicPotion/strPotion…，永久加技能；`ActionItem.use` 升级分支已去 `isDrink` 限制），canEquip 已含 `neck`（2026-07-29 修）。
 
 ## 场景节点删除铁律
 删前确认非组件/脚本宿主（曾误删 GameManager 节点→全屏空白）；删后父 `_children`/`_components` 须 splice 掉 `{__id__:N}`（勿改 `{__id__:null}`→`_onBatchCreated is not a function`）。.scene 及时提交。

@@ -50,9 +50,9 @@ export class ActionItem {
             return { success: false, message: '没有该物品' };
         }
 
-        // 精华类（isDrink + upgrade）：饮用后永久提升对应技能
+        // 技能升级类（upgrade：指南/黑魔法书/精华均可，无论是否饮品）：永久提升对应技能
         const upgrade = (item as any).upgrade as string | undefined;
-        if (upgrade && (item as any).isDrink) {
+        if (upgrade) {
             const gain = (item as any).value || 1;
             this._gm.skill[upgrade] = (this._gm.getSkillLevel(upgrade)) + gain;
             const r = this._exec.execute({}, o(itemId, 1), 0, { refreshUI: false });
