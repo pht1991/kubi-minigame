@@ -58,5 +58,11 @@
 删前确认非组件/脚本宿主（曾误删 GameManager 节点→全屏空白）；删后父 `_children`/`_components` 须 splice 掉 `{__id__:N}`（勿改 `{__id__:null}`→`_onBatchCreated is not a function`）。.scene 及时提交。
 
 ## 推送工作流约定
-- **大改动/问题修复推送后，自动构建微信包**。Git 无 post-push 钩子，落地为 `push-wechat.bat`：先 `git push origin master`，成功后再 `call deploy-wechat.bat __tee__ < nul` 非交互构建（`< nul` 喂结尾 pause 防阻塞）。开发期 SEPARATE_ENGINE=false，产出包不含引擎插件、DevTools 免授权直接调试。
-- AI 执行本项目的「推送」动作时，应顺带跑 `deploy-wechat.bat`（或 `push-wechat.bat`）构建微信包，确保 `build/wechatgame/` 始终为最新代码；`build/` 已被 gitignore，产物不进版本库。
+- **大改动/问题修复推送后，自动构建微信包 + 浏览器版（两端）**。Git 无 post-push 钩子，落地脚本：
+  - `push-all.bat`（**主用**）：`git push origin master` → `deploy-wechat.bat`（微信包 `build/wechatgame/`）→ `deploy-web.bat`（构建 web-mobile 并推 `gh-pages`）。
+  - `push-wechat.bat`：仅微信包。`push-web.bat`：仅浏览器版。三者均用 `call "%BASE%xxx.bat" __tee__ < nul` 非交互（`< nul` 喂结尾 pause 防阻塞）。
+  - **变量隔离坑**：子脚本（deploy-wechat/deploy-web）会把自身 `ROOT` 末尾反斜杠去掉，且 deploy-wechat 无 `setlocal`，会污染调用方环境 → push 脚本必须用独立 `BASE=%~dp0`（带尾斜杠）调用子脚本，不能用 `ROOT`，否则第二次 `call` 路径拼错（`xxxdeploy-web.bat` 找不到）。
+  - 开发期 SEPARATE_ENGINE=false，微信包不含引擎插件、DevTools 免授权。
+- **AI 执行本项目「推送」动作时，应跑 `push-all.bat`**（两端都构建），确保 `build/wechatgame/` 与 gh-pages 都为最新代码；`build/` 已被 gitignore，产物不进版本库。
+- **web 构建产物路径**：`buildPath=%ROOT%\build` → Cocos 输出到 `build/web-mobile/`（**不嵌套**子目录，即 `build/web-mobile/index.html`，非 `build/web-mobile/web-mobile/`；与微信 `build/wechatgame/` 同规律）。`deploy-web.bat` 的 `WEB_OUT` 须指向 `build/web-mobile`。
+- **gh-pages 部署机制**：`deploy-web.bat` 在 `%ROOT%\..\.web-deploy-tmp` 建临时 git 仓库、`git fetch origin gh-pages`（首次则 orphan）、拷 `build/web-mobile/*`、commit 后 `git push origin gh-pages`。GitHub 仓库需 Settings→Pages 选 gh-pages 分支/(root) 启用（仅需一次）。

@@ -1,71 +1,89 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableDelayedExpansion
 
 REM ============================================================
-REM  超苦逼冒险者 - 浏览器版「无头」构建并发布到 GitHub Pages (gh-pages)
-REM  前置条件：
-REM   1. 本机已安装 Cocos Creator 3.8 LTS
-REM   2. 本机已配置 GitHub SSH key（且公钥已加到 pht1991 账号）
-REM  用法：
-REM   1. 把下面 COCOS 改成你机器上的 CocosCreator.exe 路径
-REM   2. 双击本脚本（或命令行运行）
-REM   3. 首次会创建 gh-pages 分支并推送；之后每次覆盖
-REM   4. 去 GitHub 仓库 Settings -> Pages 选 gh-pages 分支 /(root/) 启用
-REM  说明：全程不依赖 Cocos 编辑器 GUI，编辑器可保持关闭。
+REM  Super Kubi - Browser build and publish to GitHub Pages (gh-pages)
+REM  Usage:
+REM   1 - Set COCOS below to your CocosCreator.exe path
+REM   2 - Double-click this script, or run from a cmd window
+REM   3 - Steps:
+REM        step 0   env check plus kill leftover Cocos instances
+REM        step 1   headless build web-mobile into build/web-mobile/web-mobile
+REM        step 2   prepare gh-pages branch in a temp repo
+REM        step 3   copy build output, commit and push to gh-pages
+REM   4 - Enable gh-pages in GitHub repo Settings - Pages (branch gh-pages / root)
+REM  Note: Full log goes to build-web.log.
 REM ============================================================
 
-REM >>> 改成你机器上的 Cocos Creator 可执行文件路径 <<<
+REM >>> set this to your Cocos Creator exe path <<<
 set "COCOS=C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe"
 
-REM 仓库根目录
-set "ROOT=%CD%"
+set "ROOT=%~dp0"
+if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 
-REM 仓库 SSH 地址（与 git remote 一致）
 set "REPO=git@github.com:pht1991/kubi-minigame.git"
+set "WEB_OUT=%ROOT%\build\web-mobile"
+set "DEPLOY_TMP=%ROOT%\..\.web-deploy-tmp"
 
-REM 构建产物根（Cocos 会在 buildPath 后再套一层平台目录 web-mobile，故实际产物在 build/web-mobile/web-mobile）
-set "BUILD_DIR=build"
+REM ---------- 0 - if double-clicked with no arg, tee output to screen and build-web.log ----------
+if "%~1"=="" (
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "cmd /c '%~f0' __tee__ 2>&1 | Tee-Object -FilePath '%~dp0build-web.log'" 2>nul
+  if not exist "%WEB_OUT%\index.html" (
+    echo [WARN] tee logging unavailable or build not produced, running build directly.
+    call :MAIN
+  )
+  exit /b
+)
 
-REM 临时部署目录（用完即删，不进版本库）
-set "DEPLOY_TMP=%CD%\..\.web-deploy-tmp"
+:MAIN
+echo ============================================================
+echo   Browser build and publish to GitHub Pages
+echo   Repo: %ROOT%
+echo   Log : %ROOT%\build-web.log
+echo ============================================================
+rem
 
-REM ---------- 0. 清掉沙箱/环境可能注入的干扰变量 ----------
+REM ---------- step 0 - clear sandbox-injected env vars else Cocos Node errors ----------
 set "ELECTRON_RUN_AS_NODE="
 set "NODE_OPTIONS="
 
-if not exist "%COCOS%" (
-  echo [错误] 找不到 Cocos Creator: %COCOS%
-  echo 请在脚本顶部 COCOS 变量改成你的实际安装路径
-  pause
-  exit /b 1
-)
-
-REM ---------- 1. 构建前：强制 separateEngine=true（web 构建也会把它回退） ----------
-echo [1/5] 构建前恢复 separateEngine=true ...
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine 已恢复 '+n+' 处为 true'):'  separateEngine 已是 true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
-
-REM ---------- 2. 无头构建 web-mobile ----------
-echo [2/5] 正在用 Cocos Creator 无头构建 web-mobile ...
-"%COCOS%" --project "%ROOT%" --build "platform=web-mobile;debug=false;buildPath=%ROOT%\%BUILD_DIR%"
+REM ---------- step 0b - env check ----------
+where node >nul 2>nul
 if errorlevel 1 (
-  echo [错误] Cocos 构建失败
-  pause
-  exit /b 1
+  echo [ERROR] node.exe not found. Install Node.js and add it to PATH.
+  goto :END
 )
 
-REM ---------- 3. 构建后：再次恢复 separateEngine=true 并提交（防止被构建回退） ----------
-echo [3/5] 构建后恢复 separateEngine=true 并提交 ...
-node -e "const fs=require('fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));let n=0;(function w(o){if(o&&typeof o==='object'){for(const k in o){if(k==='separateEngine'&&o[k]!==true){o[k]=true;n++;}else w(o[k]);}}})(j);fs.writeFileSync(p,JSON.stringify(j,null,2));console.log(n?('  separateEngine 已恢复 '+n+' 处为 true'):'  separateEngine 已是 true');" "%ROOT%\profiles\v2\packages\wechatgame.json"
-cd /d "%ROOT%"
-git add profiles/v2/packages/wechatgame.json
-git -c user.email="bot@workbuddy.local" -c user.name="WorkBuddy" commit -q -m "chore(构建): 恢复 separateEngine=true (被 Cocos 构建回退)" >nul 2>&1 && echo "  已提交 wechatgame.json" || echo "  (wechatgame.json 无变化，跳过提交)"
+REM ---------- step 0c - kill leftover Cocos instances, prevents single-instance from swallowing --build ----------
+echo [0] Killing leftover Cocos instances ...
+taskkill /F /IM CocosCreator.exe >nul 2>&1
+taskkill /F /IM CocosDashboard.exe >nul 2>&1
 
-REM ---------- 4. 准备 gh-pages 分支 ----------
-echo [4/5] 准备 gh-pages 分支 ...
+if not exist "%COCOS%" (
+  echo [ERROR] Cocos Creator not found: %COCOS%
+  echo Please set the COCOS variable at the top of this script to your real install path.
+  goto :END
+)
+
+REM ---------- step 1 - headless build web-mobile ----------
+echo [1/3] Building web-mobile with Cocos Creator (first build compiles engine, please wait) ...
+"%COCOS%" --project "%ROOT%" --build "platform=web-mobile;debug=false;buildPath=%ROOT%\build"
+set BUILD_RC=%errorlevel%
+if %BUILD_RC%==0 goto build_ok
+REM Cocos --build sometimes returns non-zero even on success; verify the artifact instead
+if exist "%WEB_OUT%\index.html" (
+  echo [WARN] Cocos exited with code %BUILD_RC% but index.html exists, treating as success.
+  goto build_ok
+)
+echo [ERROR] Cocos web build failed (exit code %BUILD_RC%, no index.html). See above or build-web.log
+goto :END
+:build_ok
+
+REM ---------- step 2 - prepare gh-pages branch in a temp repo ----------
+echo [2/3] Preparing gh-pages branch ...
 if exist "%DEPLOY_TMP%" rmdir /s /q "%DEPLOY_TMP%"
 mkdir "%DEPLOY_TMP%"
-cd /d "%DEPLOY_TMP%"
+pushd "%DEPLOY_TMP%"
 git init -q
 git remote add origin "%REPO%"
 git fetch origin gh-pages --depth 1 >nul 2>&1
@@ -77,23 +95,29 @@ if errorlevel 1 (
   git rm -rf . >nul 2>&1
 )
 
-REM ---------- 5. 复制产物（实际在 build/web-mobile/web-mobile）并提交推送 ----------
-echo [5/5] 复制产物并推送到 gh-pages ...
-xcopy "%CD%\..\%BUILD_DIR%\web-mobile\web-mobile\*" "%DEPLOY_TMP%\" /E /Y /I >nul
-if not exist "%DEPLOY_TMP%\.nojekyll" echo # disable jekyll > "%DEPLOY_TMP%\.nojekyll"
+REM ---------- step 3 - copy build output, commit, push ----------
+echo [3/3] Copying build output and pushing to gh-pages ...
+xcopy "%WEB_OUT%\*" "%DEPLOY_TMP%\" /E /Y /I >nul
 git add -A
 git commit -q -m "deploy web %date% %time%"
 git push origin gh-pages
 if errorlevel 1 (
-  echo [错误] 推送到 gh-pages 失败，请检查 SSH key / 仓库权限
-  cd /d "%ROOT%"
+  echo [ERROR] push to gh-pages failed, check SSH key or repo permission
+  popd
   rmdir /s /q "%DEPLOY_TMP%"
-  pause
-  exit /b 1
+  goto :END
 )
-cd /d "%ROOT%"
+popd
 rmdir /s /q "%DEPLOY_TMP%"
 echo.
-echo 部署完成！去 GitHub 仓库 Settings - Pages 选 gh-pages 分支 /(root/) 启用。
-echo 浏览器访问： https://pht1991.github.io/kubi-minigame/
+echo Deploy done. Enable gh-pages in GitHub repo Settings - Pages (branch gh-pages / root).
+echo Browser: https://pht1991.github.io/kubi-minigame/
+rem
+
+:END
+echo ============================================================
+echo   Flow finished. Window stays open, press any key to close.
+echo   If output is unclear, open build-web.log in this folder for the full log.
+echo ============================================================
 pause
+exit /b
