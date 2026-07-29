@@ -30,9 +30,9 @@ export class BagPanel extends ModalPanel {
     // 列表布局参数
     private readonly CONTENT_W = 600;
     private readonly MARGIN_X = 16;
-    private readonly ROW_H = 52;           // 每行高度（紧凑列表）
-    private readonly ROW_GAP = 6;         // 行间距
-    private readonly ICON_SIZE = 28;      // 左侧类型色块尺寸
+    private readonly ROW_H = 64;           // 每行高度（舒适列表）
+    private readonly ROW_GAP = 8;         // 行间距
+    private readonly ICON_SIZE = 32;      // 左侧类型色块尺寸
     private readonly TOP_PADDING = 16;
     private readonly BOTTOM_PADDING = 16;
 
@@ -132,10 +132,10 @@ export class BagPanel extends ModalPanel {
 
         // 主名称行
         const nameLbl = new UILabel(cell.name, {
-            size: 16, width: textMaxW, height: 22,
+            size: 17, width: textMaxW, height: 24,
             color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left',
         });
-        nameLbl.pos(textLeft + textMaxW / 2, 7);  // 上半区
+        nameLbl.pos(textLeft + textMaxW / 2, 10);  // 上半区
         row.add(nameLbl);
 
         // 副标签行：类型名 或 耐久度
@@ -147,15 +147,15 @@ export class BagPanel extends ModalPanel {
             const barH = 5;
 
             const track = new UIShape('DT').rect(barW, barH, C.durTrack, 2);
-            track.pos(textLeft + barW / 2, -9);
+            track.pos(textLeft + barW / 2, -12);
             const fillW = Math.max(2, barW * ratio);
             const fColor = ratio > 0.5 ? C.durHigh : ratio > 0.25 ? C.durMid : C.durLow;
             const fill = new UIShape('DF').rect(fillW, barH, fColor, 2);
-            fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, -9);
+            fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, -12);
             const durTxt = new UILabel(`${cur}/${max}`, {
-                size: 10, width: 40, height: 14, color: C.durText, align: 'left',
+                size: 11, width: 40, height: 14, color: C.durText, align: 'left',
             });
-            durTxt.pos(textLeft + barW + 20, -9);
+            durTxt.pos(textLeft + barW + 20, -12);
             row.add(track, fill, durTxt);
         } else if (!isDisabled && item?.desc) {
             // 无耐久时显示简短类型标签（取 desc 前 12 字或类型中文名）
@@ -164,7 +164,7 @@ export class BagPanel extends ModalPanel {
                 size: 12, width: textMaxW, height: 18,
                 color: new Color(140, 130, 115), align: 'left',
             });
-            subLbl.pos(textLeft + textMaxW / 2, -10);  // 下半区
+            subLbl.pos(textLeft + textMaxW / 2, -12);  // 下半区
             row.add(subLbl);
         }
 
@@ -201,7 +201,7 @@ export class BagPanel extends ModalPanel {
         const titleReserve = 110;
         const bottomReserve = 30;
         const minScrollH = 160;
-        const minPanelH = 340;
+        const minPanelH = 380;
         const maxPanelH = 1040;
 
         const scrollH = Math.max(contentTotal, minScrollH);
