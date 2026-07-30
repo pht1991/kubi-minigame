@@ -14,6 +14,7 @@ import { GridPage, GridCellData } from '../../data/types';
 import { EVENT_DATA } from '../../data/data';
 import { ActionEvent } from '../../actions/ActionEvent';
 import { DialogOption } from '../../ui/DialogPanel';
+import { GameEvents } from '../../core/EventBus';
 
 export class EventPage extends BasePage {
     /** 公开入口：打开事件总览网格 */

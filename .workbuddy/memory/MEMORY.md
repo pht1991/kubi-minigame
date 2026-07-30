@@ -1,68 +1,32 @@
 # 项目记忆 · 超苦逼冒险者微信小游戏
-路径：`D:\Projects\demos\front_end\kubi-minigame` ｜ Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 远程：`git@github.com:pht1991/kubi-minigame.git`（SSH，已设 upstream）；原 Gitee `pht-gitee/kubi-minigame` 远程仍保留（`git remote add gitee https://gitee.com/pht-gitee/kubi-minigame.git`）。
+Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 路径 `D:\Projects\demos\front_end\kubi-minigame`
+远程 SSH `git@github.com:pht1991/kubi-minigame.git`（master+gh-pages）｜ 微信 appid `wx0b9a400803b8dbdc` ｜ Cocos `C:\ProgramData\cocos\editors\Creator\3.8.0\CocosCreator.exe`
 
-## 阶段进度
-- 一~三 ✅（搭建+数据迁移 / 11 Action 接 MainScene / UI 网格 3.1~3.12 全建）
-- 四 🔧 适配优化：引擎裁剪+eraseModules+fix-build 已配（libVersion→3.16.2）。已做：天空盒死重剔除、性能分级(PerfTier 低端机30fps)、引擎拆子包(开发期 separateEngine=false 便于本地调试，上架前再切 true)；浏览器版已发布 gh-pages（待 Settings→Pages 启用 Source=gh-pages）。待验证：微信主包体积/真机帧率
-- 五 ❌ 测试上线未开始；浏览器版已先行
-
-## 上架准备提醒（用户明确要求，务必遵守）
-- 用户决策：**开发调试阶段 `separateEngine=false`**（不拆引擎、不在 game.json 声明微信引擎插件，本地 DevTools 免授权直接跑）；**上架前再切回 `true`**（拆引擎子包、须去 MP 后台给 appid 添加 CocosCreator 插件 wx0446ba2621dda60a 并授权）。
-- **触发机制**：对话中出现「上架准备 / 上架 / 发布 / release」等字样时，必须主动提醒用户做四件事：① 把 `deploy-wechat.bat` 顶部 `set "SEPARATE_ENGINE=false"` 改为 `true`；② 同步把 `profiles/v2/packages/wechatgame.json` 两处 `separateEngine` 改 `true`；③ 重新跑 `deploy-wechat.bat` 构建；④ 去 mp.weixin.qq.com → 该 appid → 设置→第三方设置→插件管理→添加插件→搜 CocosCreator/appid wx0446ba2621dda60a→添加，DevTools 清缓存重编译。
-- **当前状态**：开发期，`SEPARATE_ENGINE=false`，构建产物 game.json 已验证无 `plugins` 字段（2026-07-28）。
-
-## 架构（精简）
-- MainScene 抽 13 个 Page（CookPage+Craft/Farm/Trap/Brew/Outdoor/Dungeon/Skill/Event/Build/Menu/Rest/Bag，继承 BasePage 经 PageContext 共享），降至~710行。
-- UIRoot 分层固定顺序：`UILayer_Content`<`StatusBar`<`BottomBar`<`Modal`<`Toast`(最顶)。跨层不靠 setSiblingIndex；仅 modal 内互抢置顶保留。StatusBar/Toast/SaveIndicator/Bag/Dialog/Battle/Trade/Progress/Result/Harvest 挂对应层。
+## 上架准备提醒（必守）
+开发期 `separateEngine=false`（不拆引擎/不声明微信插件/DevTools 免授权）。对话出现「上架/发布/release」须提醒：① `deploy-wechat.bat` 顶部 `SEPARATE_ENGINE=false`→`true`；② `profiles/v2/packages/wechatgame.json` 两处 separateEngine→`true`；③ 重跑 `deploy-wechat.bat`；④ MP 后台给 appid 加 CocosCreator 插件 wx0446ba2621dda60a 并授权，DevTools 清缓存重编译。
 
 ## 构建部署铁律
-- **用 `deploy-wechat.bat` 一条龙即可**：它已内含 `fix-build-config.js`（修 libVersion+包体报告）+ 构建前后按 bat 顶部 `SEPARATE_ENGINE` 标志同步 separateEngine 并提交 + 杀残留进程。**不再需单独跑 fix-build.bat**（fix-build.bat 仅 GUI 手动构建后收尾用）。开发期 `SEPARATE_ENGINE=false`（不声明微信引擎插件、DevTools 免授权）；上架前改为 `true`。
-- **Web 构建环境坑**：沙箱注入 `ELECTRON_RUN_AS_NODE=1`(→`bad option: --project`)+`NODE_OPTIONS=--require=... --use-system-ca`(→`--use-system-ca is not allowed`)。命令行须 `env -u ELECTRON_RUN_AS_NODE NODE_OPTIONS= CocosCreator.exe --project <prj> --build ...`。
-- **产物路径**：web 实际 `build/web-mobile/web-mobile/`；wechatgame 用 `buildPath=build` → `build/wechatgame/`（勿设 `build\wechatgame`，否则再套一层 `wechatgame/wechatgame/`）。
-- **separateEngine 回退**：Cocos 构建会把 `wechatgame.json` 两处 separateEngine 写回 `false`（当目标为 true 时回退）。bat 的 step1/step4 按顶部 `SEPARATE_ENGINE` 标志强制同步该值并提交；若用 GUI 手动构建须自行复核改回。
-- **残留进程/噪声**：`profiles/v2/packages/{builder,scene,utils}.json` 是带时间戳噪声，已 `.gitignore`；脚本结束 `taskkill /F /IM CocosCreator.exe`+`CocosDashboard.exe`。
-- **双击 bat 没反应根因**：Cocos 单实例，残留进程吞 `--build` 参数 → 脚本已在构建前 taskkill 解决。原生 Windows 双击通常正常；若连黑窗都不弹，是 `.bat` 文件关联问题（打开方式→cmd.exe）。
-- **`.bat` 编码坑（致命，2026-07-28 踩）**：中文 Windows 默认 GBK 代码页读 `.bat`；UTF-8 无 BOM 会让中文行乱码、且**吃掉紧跟中文后的首个 ASCII 字母**→ 报『xxx 不是内部或外部命令』（如 `process`→`rocess`、`build`→`uild`、`echo`→`ho`）。bat 含中文须存 **GBK(ANSI) 或 UTF-8+BOM**；最稳是**bat 全 ASCII（英文）**彻底避坑（node 仍能读 UTF-8 的 .js，中文仅控制台显示乱码、不崩）。`chcp 65001` 只改输出码页、不改 bat 解析码页。
-- **`.bat` REM 注释坑（2026-07-28 踩）**：`REM` 行里若含 `数字.` 编号（如 `REM 0. xxx`）或括号 `(`，cmd 仍会扫描并报 `. was unexpected at this time.` / 括号错，导致脚本在注释行处崩。bat 注释一律用 `step 0 -` 这种无 `digit.`、无括号的写法；独立空行别用 `echo.`/`echo(`（管道环境也报 `. was unexpected`），改用 `rem` 占位最稳。
-- **Cocos `--build` 退出码不可信（2026-07-28 踩）**：`CocosCreator.exe --build` 即便日志打印 `build success` 也可能返回**非零退出码**（实测退出码 36）。不能只靠 `if errorlevel 1` 判失败（会误杀后续 fix-build-config/separateEngine 提交）。改为检查产物 `build/wechatgame/game.js` 是否存在来判定成功（`exist` 则视为成功并 WARN 退出码）。
-- **`.bat` tee 包装双构建坑（2026-07-28 踩）**：双击 bat 用 `powershell ... cmd /c '%~f0' __tee__ | Tee-Object` 把自身重拉一遍做日志；该 PowerShell 管道在本机**即使构建成功也返回非零退出码**。若外层再用 `if errorlevel 1 (call "%~f0" __tee__)` 兜底，会**把整个构建再跑一遍**（用户表现=按回车后又开始构建）。修复：外层兜底改用 `if not exist build/wechatgame/game.js (call :MAIN)` 以产物是否存在判定、且 `:MAIN` 是单例标签；外层 `goto :EOF` 改 `exit /b` 防坠入。结论：**bat 里绝不靠 `errorlevel` 决定要不要重跑耗时构建，一律看产物存在性**。
-- 环境引擎改模块后微信 devtools 缓存旧 wasm 报 ENOENT → 清缓存/重导；删空 `assets/resources/` bundle 后引擎不再加载其 config.json。
-- **微信引擎插件未授权（平台坑，2026-07-28 踩）**：Cocos 微信构建在开启 `separateEngine=true`（引擎拆子包）时会**自动**在 `game.json` 声明引擎插件 `"plugins":{"cocos":{"provider":"wx0446ba2621dda60a","path":"cocos"...}}`（本地插件，指向拆出的引擎子包；CocosCreator 官方插件）。DevTools 报「插件未授权使用 添加插件」+ `summer-compiler miss js file __plugin__/wx0446ba2621dda60a/plugin.js` 时，**不是代码 bug、也与 cc/无头构建方式无关**（两者用同一 Cocos、同一 profile，产物 game.json 一致）：去 mp.weixin.qq.com → 该 appid 后台 → 设置 → 第三方设置 → 插件管理 → 添加插件 → 搜 `CocosCreator`/appid `wx0446ba2621dda60a` → 添加；DevTools 里「清缓存→全部清除」后重编译即可。前提：构建 appid 须是真实 appid（非默认测试号，测试号不能加插件）。**为何之前 cc 构建没这报错**：那时 `separateEngine` 未开、game.json 未声明引擎插件，DevTools 不要求授权；阶段四开了 separateEngine 后才声明插件、才需要授权。若不想授权，可在 Cocos 构建面板关「微信小游戏引擎插件」让引擎直打进包（代价：首包/总包变大、失去引擎共享缓存）。
+- `deploy-wechat.bat` 一条龙（内含 fix-build-config.js + separateEngine 同步 + 杀残留），勿单独跑 fix-build.bat。Web 构建须 `env -u ELECTRON_RUN_AS_NODE NODE_OPTIONS= CocosCreator.exe ...`（沙箱注入会崩）。
+- Cocos `--build` 退出码不可信（成功也返非零）→ 判产物 `build/wechatgame/game.js` 存在；bat 内部绝不靠 errorlevel 决定是否重跑耗时构建（PowerShell tee 管道也返非零）→ 一律看产物存在性。
+- `.bat` 全 ASCII 最稳（UTF-8 无 BOM 中文行乱码且吞首字母）；REM 注释禁用 `数字.` 编号与括号；双击无反应→先 taskkill 残留 CocosCreator 单实例。
+- 微信引擎插件未授权（separateEngine=true 自动在 game.json 声明）=平台坑非 bug，去 MP 加 CocosCreator 插件即可。
 
-## 验证铁律（高频）
-- **TS 语法坑→`Cannot read property 'resolutions' of null`**（构建崩）：`private a=1,b=2;` 逗号分隔多属性非法；`case 'x': {` 漏 `}` 级联同错。用 `ts.transpileModule(code,{reportDiagnostics:true})` 真校验（esbuild 漏报块内 case）。
-- **`new Node()` 必须 `import { Node } from 'cc'`**（否则 DOM Node→`Failed to construct 'Node'`）；`Node.insertChild` 不存在 → 用 `addChild`+`setSiblingIndex(0)`；`ScrollView.view` 是 `UITransform` 非 `Node` → 挂子节点取 `.view.node`。
-- **漏 import / 未定义标识符 transpile 查不出**（如 `ITEM_DATA is not defined`）→ 靠 Cocos 构建内部 tsc 或 `tsc --noEmit` 的 `Cannot find name`(2304) 兜底。
-- **子类重写 onLoad/start 必须 `super.xxx()`**（ModalPanel/BasePage 子类漏写→外壳节点 undefined→首次 show 崩）。
+## 验证铁律
+- `new Node()` 须 `import { Node } from 'cc'`；`Node.insertChild` 不存在→`addChild`+`setSiblingIndex(0)`；`ScrollView.view` 是 UITransform→取 `.view.node`。
+- 漏 import/未定义标识符（如 `ITEM_DATA is not defined`）transpile 查不出→靠 `tsc --noEmit`（Cannot find name 2304）或 Cocos 构建内部 tsc 兜底。
+- 子类重写 onLoad/start 必须 `super.xxx()`（漏→外壳 undefined→首次 show 崩）。
+- `private a=1,b=2;` 逗号多属性非法；`case 'x': {` 漏 `}` 级联→`Cannot read property 'resolutions' of null`。
 
-## 渲染/布局铁律（高频）
-- UITransform 无 setPosition（Node 才有）；ScrollView content 须 `anchor=(0.5,0.5) pos=(0,0,0)` 只调 setContentSize。全屏尺寸禁写死 750×1334（用 `view.getVisibleSize()`）。
-- 可点击节点锚点(0.5,0.5)+居中绘制背景（背景 `rect(-w/2,-h/2,w,h)`），否则命中区错开半格。Label 不支持 emoji→用 `[出售]`★→×−；同节点 Graphics+Label 冲突→Label 放子节点。
-- `UILabel.estimateHeight` 按 `\n` 分段估算（末尾+4px 余量）；ScrollView view 背景用节点自身 Graphics（非 UIShape 子节点+setSiblingIndex）。
-- `fitContentArea()` 重算时滚动区高=`availH-HEADER_H(100)-BOTTOM_PAD(16)`，勿与容器同高（否则吞标题）。
+## 架构/UI
+- MainScene 抽 13 Page（继承 BasePage 经 PageContext 共享）；UIRoot 分层 Content<StatusBar<BottomBar<Modal<Toast。
+- 纯代码组件库 `ui/widgets/`：`UINode/UIShape/UILabel(shrink)/UIButton/UISpacer/UIVStack/UIHStack/UIGrid`，经 index.ts barrel `import {...} from '../widgets'`。
+- ModalPanel 基类统一 Dialog/Bag/Trade/Battle：遮罩用 Graphics 绝不用 Sprite；动态页须 `rebuild`；GridCell disabled 点击无反馈→设 normal+onCellClick 校验。
 
-## 弹窗/交互
-- ModalPanel 基类统一 Dialog/Bag/Trade/Battle：Mask 用 GRAPHICS_RECT（背景拆 `_panelBg` 子节点）；**遮罩用 Graphics 绝不用 Sprite**（Sprite.size 未 onLoad 初始化→`.set` 崩）。背包是模态弹窗非导航页；数量选择复用 QuantityPanel；动态页须 `rebuild`；GridCell disabled 点击无反馈→设 normal+onCellClick 校验。
-- 微信广告 SDK 原生视图层覆盖画布之上，由 `_applySafeAreaToScene` 的 `AD_TOP_OFFSET`/`_safeBottom+BANNER_H` 预留。
+## 业务规则
+- 背包容量=BAG_BASE_SIZE(16) 种类上限（堆叠不占格）+8×bagSizeBonus→24。GameManager 读档 `max(值,基础值)` 保底。BagPage 标题 `背包(N/上限)`。
+- 制造产出 `ActionCraft.make` 用 `recipe.get||recipeId`；科研台走独立 `ActionScience.research`（写 gm.skill），不可丢进 ActionCraft。
+- 进度条 `ActionExecutor.execute(canGet,require,timeNeed,opts)`；timeNeed>0 弹条、tween 结束才应用+emit OPERATION_DONE（异步结果走事件）。
+- 新增 SaveData 字段须同步 types.ts；data.ts barrel re-export。
 
-## 纯代码 UI 组件库（ui/widgets/，2026-07-23 建）
-新写/重写 UI 优先用组件库。L0 `UINode`（size/anchor/pos/add/mount）；L1 `UIShape`/`UILabel`(shrink 防截断)/`UIButton`/`UISpacer`；L2 `UIVStack`/`UIHStack`/`UIGrid`（auto layout）。`import {...} from '../widgets'` 经 index.ts barrel。StatusBar 已纯代码 `new Node` 创建。
-
-## 业务/制造规则
-- 作物按游戏时间非实时 tick；陷阱 6h 越久捕获率越高；转生=地牢10层或击败魔王。SKILL_DATA isTalent:true 为天赋；新增 SaveData 字段须同步 types.ts；data.ts barrel re-export。
-- 制造产出键名：`ActionCraft.make` 用 `recipe.get || recipeId`（仅 ALCO 等显式 `get` 才用它）。科研台走独立 `ActionScience.research`（写 `gm.skill[recipeId]`+emit SKILL_CHANGE），**不可丢进 ActionCraft.make**。
-- 进度条：`ActionExecutor.execute(canGet,require,timeNeed,opts)`；`timeNeed>0` 弹条，tween 结束才 advance+应用+emit OPERATION_DONE（异步，结果走事件）。进入地图不弹条；采集改收获弹窗。MainScene 订阅 OPERATION_DONE→Toast/ResultModal。
-- 背包容量：`BAG_BASE_SIZE=16`（种类上限，堆叠不占新格），常量在 data.ts；`ActionItem.use` 已接通 `bagSizeBonus` 分支（消耗 1 个、`boxSize['bag']+=1`、持久化），8 个道具全用上限=24 种；BagPage 标题显示 `背包(N/上限)`。`GameManager` 读档对 `boxSize.bag/bigBox` 做 `max(值,基础值)` 保底，老存档自动升到新下限且不回退已扩容值。UI 入口 `BagPage.onItemClick` 的 canUse 已含 `bagSizeBonus` 与 `upgrade`（技能指南 farmUpgrade/strUpgrade… + 精华 magicPotion/strPotion…，永久加技能；`ActionItem.use` 升级分支已去 `isDrink` 限制），canEquip 已含 `neck`（2026-07-29 修）。
-
-## 场景节点删除铁律
-删前确认非组件/脚本宿主（曾误删 GameManager 节点→全屏空白）；删后父 `_children`/`_components` 须 splice 掉 `{__id__:N}`（勿改 `{__id__:null}`→`_onBatchCreated is not a function`）。.scene 及时提交。
-
-## 推送工作流约定
-- **大改动/问题修复推送后，自动构建微信包 + 浏览器版（两端）**。Git 无 post-push 钩子，落地脚本：
-  - `push-all.bat`（**主用**）：`git push origin master` → `deploy-wechat.bat`（微信包 `build/wechatgame/`）→ `deploy-web.bat`（构建 web-mobile 并推 `gh-pages`）。
-  - `push-wechat.bat`：仅微信包。`push-web.bat`：仅浏览器版。三者均用 `call "%BASE%xxx.bat" __tee__ < nul` 非交互（`< nul` 喂结尾 pause 防阻塞）。
-  - **变量隔离坑**：子脚本（deploy-wechat/deploy-web）会把自身 `ROOT` 末尾反斜杠去掉，且 deploy-wechat 无 `setlocal`，会污染调用方环境 → push 脚本必须用独立 `BASE=%~dp0`（带尾斜杠）调用子脚本，不能用 `ROOT`，否则第二次 `call` 路径拼错（`xxxdeploy-web.bat` 找不到）。
-  - 开发期 SEPARATE_ENGINE=false，微信包不含引擎插件、DevTools 免授权。
-- **AI 执行本项目「推送」动作时，应跑 `push-all.bat`**（两端都构建），确保 `build/wechatgame/` 与 gh-pages 都为最新代码；`build/` 已被 gitignore，产物不进版本库。
-- **web 构建产物路径**：`buildPath=%ROOT%\build` → Cocos 输出到 `build/web-mobile/`（**不嵌套**子目录，即 `build/web-mobile/index.html`，非 `build/web-mobile/web-mobile/`；与微信 `build/wechatgame/` 同规律）。`deploy-web.bat` 的 `WEB_OUT` 须指向 `build/web-mobile`。
-- **gh-pages 部署机制**：`deploy-web.bat` 在 `%ROOT%\..\.web-deploy-tmp` 建临时 git 仓库、`git fetch origin gh-pages`（首次则 orphan）、拷 `build/web-mobile/*`、commit 后 `git push origin gh-pages`。GitHub 仓库需 Settings→Pages 选 gh-pages 分支/(root) 启用（仅需一次）。
+## 推送工作流
+大改动/修复→跑 `push-all.bat`（push master→deploy-wechat→deploy-web 推 gh-pages，两端构建）。子脚本用 `BASE=%~dp0` 隔离（deploy-wechat 无 setlocal 会污染 ROOT）。gh-pages 需 Settings→Pages 启用一次。build/ 已 gitignore。

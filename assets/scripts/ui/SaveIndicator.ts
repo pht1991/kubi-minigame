@@ -6,7 +6,7 @@
  * 每次保存只静默刷新时间，避免闪烁跳动干扰玩家。
  */
 
-import { _decorator, Component, Node, UITransform } from 'cc';
+import { _decorator, Component, Node, UITransform, Graphics } from 'cc';
 import { C } from './theme';
 import { UIShape, UILabel } from './widgets';
 

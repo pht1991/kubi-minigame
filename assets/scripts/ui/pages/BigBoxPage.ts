@@ -13,6 +13,7 @@ import { GridPage, GridCellData } from '../../data/types';
 import { ITEM_DATA, BIG_BOX_BASE_SIZE } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
 import { QuantityPanel } from '../QuantityPanel';
+import { DialogOption } from '../DialogPanel';
 
 export class BigBoxPage extends BasePage {
     /** 公开入口：打开大箱子网格页（导航页，与事件/背包同级） */
