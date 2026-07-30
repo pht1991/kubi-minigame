@@ -28,7 +28,7 @@ export class BagPanel extends ModalPanel {
     private _scrollT: UITransform | null = null;
 
     // 列表布局参数（充分利用 750 设计分辨率屏宽）
-    protected override panelW = 710;       // 覆盖基类默认 640，弹窗更宽
+    protected panelW = 710;                // 覆盖基类默认 640，弹窗更宽
     private readonly CONTENT_W = 680;      // 内容区宽度（≈panelW - 30 左右边距）
     private readonly MARGIN_X = 14;
     private readonly ROW_H = 68;           // 每行高度（舒适列表）
@@ -134,7 +134,7 @@ export class BagPanel extends ModalPanel {
         // 主名称行
         const nameLbl = new UILabel(cell.name, {
             size: 18, width: textMaxW, height: 26,
-            color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left',
+            color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left', shrink: true,
         });
         nameLbl.pos(textLeft + textMaxW / 2, 11);  // 上半区
         row.add(nameLbl);
@@ -154,7 +154,7 @@ export class BagPanel extends ModalPanel {
             const fill = new UIShape('DF').rect(fillW, barH, fColor, 2);
             fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, -13);
             const durTxt = new UILabel(`${cur}/${max}`, {
-                size: 12, width: 44, height: 14, color: C.durText, align: 'left',
+                size: 12, width: 44, height: 14, color: C.durText, align: 'left', shrink: true,
             });
             durTxt.pos(textLeft + barW + 20, -13);
             row.add(track, fill, durTxt);
@@ -163,7 +163,7 @@ export class BagPanel extends ModalPanel {
             const typeLabel = this.getTypeLabel(itemType);
             const subLbl = new UILabel(typeLabel, {
                 size: 13, width: textMaxW, height: 18,
-                color: new Color(140, 130, 115), align: 'left',
+                color: new Color(140, 130, 115), align: 'left', shrink: true,
             });
             subLbl.pos(textLeft + textMaxW / 2, -13);  // 下半区
             row.add(subLbl);
@@ -173,7 +173,7 @@ export class BagPanel extends ModalPanel {
         if (typeof cell.count === 'number') {
             const cnt = new UILabel(`×${cell.count}`, {
                 size: S.font.cellCount, width: 60, height: 26,
-                color: C.cellCount, align: 'right',
+                color: C.cellCount, align: 'right', shrink: true,
             });
             cnt.pos(usableW / 2 - this.MARGIN_X - 30, 0);  // 靠右
             row.add(cnt);
