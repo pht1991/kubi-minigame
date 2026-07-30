@@ -27,12 +27,13 @@ export class BagPanel extends ModalPanel {
     private _scrollNode: Node | null = null;
     private _scrollT: UITransform | null = null;
 
-    // 列表布局参数
-    private readonly CONTENT_W = 600;
-    private readonly MARGIN_X = 16;
-    private readonly ROW_H = 64;           // 每行高度（舒适列表）
-    private readonly ROW_GAP = 8;         // 行间距
-    private readonly ICON_SIZE = 32;      // 左侧类型色块尺寸
+    // 列表布局参数（充分利用 750 设计分辨率屏宽）
+    protected override panelW = 710;       // 覆盖基类默认 640，弹窗更宽
+    private readonly CONTENT_W = 680;      // 内容区宽度（≈panelW - 30 左右边距）
+    private readonly MARGIN_X = 14;
+    private readonly ROW_H = 68;           // 每行高度（舒适列表）
+    private readonly ROW_GAP = 6;         // 行间距
+    private readonly ICON_SIZE = 36;      // 左侧类型色块尺寸
     private readonly TOP_PADDING = 16;
     private readonly BOTTOM_PADDING = 16;
 
@@ -132,10 +133,10 @@ export class BagPanel extends ModalPanel {
 
         // 主名称行
         const nameLbl = new UILabel(cell.name, {
-            size: 17, width: textMaxW, height: 24,
+            size: 18, width: textMaxW, height: 26,
             color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left',
         });
-        nameLbl.pos(textLeft + textMaxW / 2, 10);  // 上半区
+        nameLbl.pos(textLeft + textMaxW / 2, 11);  // 上半区
         row.add(nameLbl);
 
         // 副标签行：类型名 或 耐久度
@@ -147,34 +148,34 @@ export class BagPanel extends ModalPanel {
             const barH = 5;
 
             const track = new UIShape('DT').rect(barW, barH, C.durTrack, 2);
-            track.pos(textLeft + barW / 2, -12);
+            track.pos(textLeft + barW / 2, -13);
             const fillW = Math.max(2, barW * ratio);
             const fColor = ratio > 0.5 ? C.durHigh : ratio > 0.25 ? C.durMid : C.durLow;
             const fill = new UIShape('DF').rect(fillW, barH, fColor, 2);
-            fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, -12);
+            fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, -13);
             const durTxt = new UILabel(`${cur}/${max}`, {
-                size: 11, width: 40, height: 14, color: C.durText, align: 'left',
+                size: 12, width: 44, height: 14, color: C.durText, align: 'left',
             });
-            durTxt.pos(textLeft + barW + 20, -12);
+            durTxt.pos(textLeft + barW + 20, -13);
             row.add(track, fill, durTxt);
         } else if (!isDisabled && item?.desc) {
             // 无耐久时显示简短类型标签（取 desc 前 12 字或类型中文名）
             const typeLabel = this.getTypeLabel(itemType);
             const subLbl = new UILabel(typeLabel, {
-                size: 12, width: textMaxW, height: 18,
+                size: 13, width: textMaxW, height: 18,
                 color: new Color(140, 130, 115), align: 'left',
             });
-            subLbl.pos(textLeft + textMaxW / 2, -12);  // 下半区
+            subLbl.pos(textLeft + textMaxW / 2, -13);  // 下半区
             row.add(subLbl);
         }
 
         // ---- 右侧：数量 ----
         if (typeof cell.count === 'number') {
             const cnt = new UILabel(`×${cell.count}`, {
-                size: S.font.cellCount, width: 56, height: 24,
+                size: S.font.cellCount, width: 60, height: 26,
                 color: C.cellCount, align: 'right',
             });
-            cnt.pos(usableW / 2 - this.MARGIN_X - 28, 0);  // 靠右
+            cnt.pos(usableW / 2 - this.MARGIN_X - 30, 0);  // 靠右
             row.add(cnt);
         }
 
