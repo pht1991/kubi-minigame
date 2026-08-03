@@ -30,3 +30,7 @@ Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 路径 `D:\Projects\demos\front_e
 
 ## 推送工作流
 大改动/修复→跑 `push-all.bat`（push master→deploy-wechat→deploy-web 推 gh-pages，两端构建）。子脚本用 `BASE=%~dp0` 隔离（deploy-wechat 无 setlocal 会污染 ROOT）。gh-pages 需 Settings→Pages 启用一次。build/ 已 gitignore。
+⚠️ deploy-wechat.bat / deploy-web.bat 已加固（2026-08-03）：原来 tee 分支 + `if not exist <artifact>` 守卫会在产物已存在/tee 失败时跳过 `call :MAIN`，漏掉 fix-build-config（libVersion 仍是模板默认 `"game"`，真机基础库不认）。现改为：构建用 `start "" /B` 异步启动 + 轮询产物（game.js / index.html）最多 900s，产物一出现即继续后处理并强杀残留 Cocos；`fix-build-config.js`（[3/5]）**始终执行**；入口 `__tee__/auto` 跳过 `pause`（push-all 调用不再卡在等按键）；deploy-web 推送加 `GIT_SSH_COMMAND` 超时防无限挂。验证要点：跑完查 `build/wechatgame/project.config.json` 的 `libVersion` 须为 `"3.16.2"`。Cocos 单实例僵尸锁仍可能拖慢首编译，跑前先 taskkill CocosCreator。
+⚠️ 后台 Git Bash 跑 `.bat` 时 stdin 被重定向会导致：① Cocos 报 `Input redirection is not supported`；② `timeout /t 5` 不真等→bat 误超时提前退、[3/5] 漏跑。已把 wait 循环改 `ping -n 6 127.0.0.1 >nul`，且 Cocos 启动行加 `<nul`；**后台可靠调用须经 `< nul` 包裹**：用 `run-wechat-build.bat`（= `call deploy-wechat.bat __tee__ < nul`）或 `push-all.bat` 内部。双击 .bat（console）无此问题。
+- 更正：`deploy-wechat.bat` 结尾已是 `exit /b`（无裸 exit），push-all 链路本身正确；若只补推 web 且本地 `build/web-mobile` 含最新代码（grep `measuredHeight` 验证），可直接 orphan 分支 `git push origin gh-pages --force`（在 `../.web-deploy-*` 临时仓，记得加 `.nojekyll` 防 Jekyll 破坏）。
+- 清理 deploy 临时目录（`../.web-deploy-tmp` 等）：**勿在 WorkBuddy Bash 手动 `rm -rf`/`find -delete`**——会被 safe-delete 拦截或遇 `.git` 只读 ACL 报 Permission denied；交给 `deploy-web.bat` 开头原生 `rmdir /s /q` 自动清即可（目录在仓库外、无害）。
