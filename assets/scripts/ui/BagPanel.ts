@@ -41,10 +41,6 @@ export class BagPanel extends ModalPanel {
     private readonly SUB_SIZE = 16;                  // 副标签/耐久
     private readonly COUNT_SIZE = S.font.body;       // 数量 = 主页数值 20
 
-    // 行高——不固定，随内容动态计算
-    private readonly ROW_H_SINGLE = 50;   // 仅名称行（nameH + pad）
-    private readonly ROW_H_DUAL = 66;     // 名称 + 副标签/耐久（nameH + subH + pad）
-
     // 类型 → 色块颜色映射（暖棕色调色板内）
     private static readonly TYPE_COLORS: Record<string, Color> = {
         weapon:  new Color(0xD8, 0x5A, 0x30),   // 暖橙（武器）
@@ -97,19 +93,13 @@ export class BagPanel extends ModalPanel {
 
         const cells = this._getCells ? this._getCells() : [];
 
-        // 逐行计算动态高度
-        const rowHeights: number[] = [];
+        // 先构建所有行（内部按内容换行算出各自真实高度）
+        const rows = cells.map(c => this.buildListRow(c));
+
+        // 累加总高度
         let totalH = this.TOP_PADDING + this.BOTTOM_PADDING;
-        for (const cell of cells) {
-            const hasDur = !!(cell.durability && cell.durability.max > 0);
-            const item = ITEM_DATA[cell.id];
-            const itemType = (item as any)?.type as string || '';
-            const hasSub = hasDur || (!!(item?.desc) && cell.state !== 'disabled');
-            const rh = hasSub ? this.ROW_H_DUAL : this.ROW_H_SINGLE;
-            rowHeights.push(rh);
-            totalH += rh;
-        }
-        totalH += (cells.length - 1) * this.ROW_GAP;
+        for (const r of rows) totalH += r.height;
+        totalH += (rows.length - 1) * this.ROW_GAP;
 
         const actualScrollH = this.updateLayout(totalH);
 
@@ -118,19 +108,18 @@ export class BagPanel extends ModalPanel {
 
         // 垂直堆叠各行（每行用各自动态高度）
         let y = -this.TOP_PADDING;
-        for (let i = 0; i < cells.length; i++) {
-            const rh = rowHeights[i];
-            const row = this.buildListRow(cells[i], rh);
-            row.pos(0, y - rh / 2, 0);
-            this._contentNode!.addChild(row.node);
-            y -= rh + this.ROW_GAP;
+        for (const r of rows) {
+            r.row.pos(0, y - r.height / 2, 0);
+            this._contentNode!.addChild(r.row.node);
+            y -= r.height + this.ROW_GAP;
         }
 
         if (this._contentNode) this._contentNode.setPosition(0, 0, 0);
     }
 
-    /** 构建一行物品列表项：[色块图标] 名称+副标题 [+耐久] [数量]；rowH 由调用方动态传入 */
-    private buildListRow(cell: GridCellData, rowH: number): UIShape {
+    /** 构建一行物品列表项：[色块图标] 名称+副标题 [+耐久] [数量]
+     *  名称/副标签自动换行（不缩放字体），行高按换行后真实内容撑开。 */
+    private buildListRow(cell: GridCellData): { row: UIShape; height: number } {
         const isDisabled = cell.state === 'disabled';
         const item = ITEM_DATA[cell.id];
         const itemType = (item as any)?.type as string || '';
@@ -138,6 +127,34 @@ export class BagPanel extends ModalPanel {
         const hasSub = hasDur || (!!(item?.desc) && !isDisabled);
 
         const usableW = this.CONTENT_W - 2 * this.MARGIN_X;
+        const textLeft = -usableW / 2 + this.MARGIN_X + this.ICON_SIZE + 10;
+        const textMaxW = usableW - this.ICON_SIZE - 10 - 60;  // 右侧留 60px 给数量
+
+        // 名称（自动换行，不缩放字号）
+        const nameLbl = new UILabel(cell.name, {
+            size: this.NAME_SIZE, width: textMaxW, align: 'left',
+            color: isDisabled ? C.cellTextDisabled : C.cellText, wrap: true,
+        });
+        const nameH = nameLbl.measuredHeight;
+
+        // 副标签（耐久条固定高度 / 类型标签换行自适应）
+        let subH = 0;
+        let subLbl: UILabel | null = null;
+        if (hasDur) {
+            subH = 24;   // 耐久条 + 数字，占一行
+        } else if (!isDisabled && item?.desc) {
+            subLbl = new UILabel(this.getTypeLabel(itemType), {
+                size: this.SUB_SIZE, width: textMaxW, align: 'left',
+                color: new Color(140, 130, 115), wrap: true,
+            });
+            subH = subLbl.measuredHeight;
+        }
+
+        // 行高 = 内容高度 + 上下 padding，至少容纳图标
+        const pad = 8;
+        const contentH = nameH + (hasSub ? subH + 6 : 0);
+        const rowH = Math.max(this.ICON_SIZE + 12, contentH + pad * 2);
+
         const row = new UIShape(`Row_${cell.id}`).rect(
             usableW, rowH,
             isDisabled ? C.cellBgDisabled : C.cellBg, 6,
@@ -150,54 +167,42 @@ export class BagPanel extends ModalPanel {
         icon.pos(-usableW / 2 + this.MARGIN_X + this.ICON_SIZE / 2 + 2, 0);
         row.add(icon);
 
-        // ---- 中部：名称 + 副标签 ----
-        const textLeft = -usableW / 2 + this.MARGIN_X + this.ICON_SIZE + 10;
-        const textMaxW = usableW - this.ICON_SIZE - 10 - 60;  // 右侧留 60px 给数量
-
-        // 主名称行（字号同主页状态栏数值 S.font.body=20）
-        const nameLbl = new UILabel(cell.name, {
-            size: this.NAME_SIZE, width: textMaxW, height: Math.round(this.NAME_SIZE * 1.4),
-            color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left',
-        });
-        const nameY = hasSub ? rowH * 0.18 : 0;   // 有副标签时偏上，单行居中
+        // 名称定位（单行居中，双行偏上）
+        const nameY = hasSub ? (rowH / 2 - pad - nameH / 2) : 0;
         nameLbl.pos(textLeft + textMaxW / 2, nameY);
         row.add(nameLbl);
 
-        // 副标签行：耐久条 或 类型标签
-        if (hasDur) {
-            const cur = Math.max(0, cell.durability!.cur);
-            const max = cell.durability!.max;
-            const ratio = Math.min(1, cur / max);
-            const barW = Math.min(80, textMaxW * 0.45);
-            const barH = 6;
-
-            const subY = -rowH * 0.22;
-            const track = new UIShape('DT').rect(barW, barH, C.durTrack, 2);
-            track.pos(textLeft + barW / 2, subY);
-            const fillW = Math.max(2, barW * ratio);
-            const fColor = ratio > 0.5 ? C.durHigh : ratio > 0.25 ? C.durMid : C.durLow;
-            const fill = new UIShape('DF').rect(fillW, barH, fColor, 2);
-            fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, subY);
-            const durTxt = new UILabel(`${cur}/${max}`, {
-                size: this.SUB_SIZE, width: 50, height: 20, color: C.durText, align: 'left',
-            });
-            durTxt.pos(textLeft + barW + 22, subY);
-            row.add(track, fill, durTxt);
-        } else if (!isDisabled && item?.desc) {
-            const typeLabel = this.getTypeLabel(itemType);
-            const subLbl = new UILabel(typeLabel, {
-                size: this.SUB_SIZE, width: textMaxW, height: 20,
-                color: new Color(140, 130, 115), align: 'left',
-            });
-            subLbl.pos(textLeft + textMaxW / 2, -rowH * 0.22);  // 下半区
-            row.add(subLbl);
+        // 副标签定位（偏下）
+        if (hasSub) {
+            const subY = -rowH / 2 + pad + subH / 2;
+            if (hasDur) {
+                const cur = Math.max(0, cell.durability!.cur);
+                const max = cell.durability!.max;
+                const ratio = Math.min(1, cur / max);
+                const barW = Math.min(80, textMaxW * 0.45);
+                const barH = 6;
+                const track = new UIShape('DT').rect(barW, barH, C.durTrack, 2);
+                track.pos(textLeft + barW / 2, subY);
+                const fillW = Math.max(2, barW * ratio);
+                const fColor = ratio > 0.5 ? C.durHigh : ratio > 0.25 ? C.durMid : C.durLow;
+                const fill = new UIShape('DF').rect(fillW, barH, fColor, 2);
+                fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, subY);
+                const durTxt = new UILabel(`${cur}/${max}`, {
+                    size: this.SUB_SIZE, width: 50, height: 20, color: C.durText, align: 'left',
+                });
+                durTxt.pos(textLeft + barW + 22, subY);
+                row.add(track, fill, durTxt);
+            } else if (subLbl) {
+                subLbl.pos(textLeft + textMaxW / 2, subY);
+                row.add(subLbl);
+            }
         }
 
-        // ---- 右侧：数量（字号同主页）----
+        // ---- 右侧：数量（字号同主页，不换行不缩放）----
         if (typeof cell.count === 'number') {
             const cnt = new UILabel(`×${cell.count}`, {
-                size: this.COUNT_SIZE, width: 64, height: Math.round(this.COUNT_SIZE * 1.4),
-                color: C.cellCount, align: 'right',
+                size: this.COUNT_SIZE, width: 64, align: 'right',
+                color: C.cellCount,
             });
             cnt.pos(usableW / 2 - this.MARGIN_X - 30, 0);  // 靠右居中
             row.add(cnt);
@@ -207,7 +212,7 @@ export class BagPanel extends ModalPanel {
         if (!isDisabled && cell.id !== 'empty' && cell.id !== 'msg') {
             row.onTap(() => { if (this._onSelect) this._onSelect(cell.id); });
         }
-        return row;
+        return { row, height: rowH };
     }
 
     /** 取类型中文短标签（用于副标题显示） */

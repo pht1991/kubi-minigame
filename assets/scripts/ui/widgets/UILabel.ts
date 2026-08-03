@@ -21,6 +21,8 @@ export interface LabelOpts {
     lineHeight?: number;
     /** 溢出策略：true=SHRINK（文字过长自动缩字，不截断）；默认 false=CLAMP */
     shrink?: boolean;
+    /** 自动换行（不缩放字体），高度随换行行数撑开；需配合 width */
+    wrap?: boolean;
 }
 
 export class UILabel extends UINode {
@@ -28,6 +30,7 @@ export class UILabel extends UINode {
     private _text = '';
     private _size = 20;
     private _wrapW = 0;
+    private _measuredH = 0;
 
     constructor(text = '', opts: LabelOpts = {}) {
         super('Label');
@@ -43,6 +46,7 @@ export class UILabel extends UINode {
         this._wrapW = opts.width ?? 0;
 
         const lh = opts.lineHeight ?? Math.ceil(this._size * 1.5);
+        const isWrap = !!opts.wrap;
         Object.assign(this._label, {
             string: text,
             fontSize: this._size,
@@ -51,23 +55,25 @@ export class UILabel extends UINode {
                 : opts.align === 'right' ? Label.HorizontalAlign.RIGHT
                 : Label.HorizontalAlign.CENTER,
             verticalAlign: Label.VerticalAlign.CENTER,
-            enableWrapText: !!opts.width,
+            enableWrapText: !!opts.width || isWrap,
             overflow: opts.shrink ? Label.Overflow.SHRINK : Label.Overflow.CLAMP,
             lineHeight: lh,
             isBold: !!opts.bold,
         });
 
-        const h = opts.height ?? this.estimateHeight();
+        // 自动换行：用估算的换行后高度（按宽度算行数），不缩放字体
+        const h = (isWrap && opts.width) ? this.estimateHeight() : (opts.height ?? this.estimateHeight());
+        this._measuredH = h;
         const w = opts.width ?? Math.ceil(this._text.length * this._size * 0.6);
         this.size(w, h);
         lNode.getComponent(UITransform)!.setContentSize(this._wrapW || w, h);
     }
 
-    /** 按当前文本估算高度（用于未显式给定 height 时） */
+    /** 按当前文本估算高度（用于未显式给定 height 或 wrap 时） */
     private estimateHeight(): number {
         const lh = Math.ceil(this._size * 1.5);
         if (!this._wrapW) return lh + 4;
-        const charsPerLine = Math.max(1, Math.floor(this._wrapW / (this._size * 0.6)));
+        const charsPerLine = Math.max(1, Math.floor(this._wrapW / (this._size * 0.9)));
         // 按 \n 分段后再逐段估算换行数（否则 "生命\n100" 被算成 1 行）
         const segments = this._text.split('\n');
         let totalLines = 0;
@@ -81,11 +87,15 @@ export class UILabel extends UINode {
         this._text = t;
         this._label.string = t;
         const h = this.estimateHeight();
+        this._measuredH = h;
         this.height(h);
         const lt = this._label.node.getComponent(UITransform);
         if (lt) lt.setContentSize(this._wrapW || this._w, h);
         return this;
     }
+
+    /** 当前文本实际占用高度（换行后估算），供外部布局自适应撑开 */
+    get measuredHeight(): number { return this._measuredH; }
 
     setColor(c: Color): this { this._label.color = c; return this; }
     get label(): Label { return this._label; }
