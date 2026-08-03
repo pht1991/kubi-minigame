@@ -157,7 +157,7 @@ export class BagPanel extends ModalPanel {
         // 主名称行（字号同主页状态栏数值 S.font.body=20）
         const nameLbl = new UILabel(cell.name, {
             size: this.NAME_SIZE, width: textMaxW, height: Math.round(this.NAME_SIZE * 1.4),
-            color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left', shrink: true,
+            color: isDisabled ? C.cellTextDisabled : C.cellText, align: 'left',
         });
         const nameY = hasSub ? rowH * 0.18 : 0;   // 有副标签时偏上，单行居中
         nameLbl.pos(textLeft + textMaxW / 2, nameY);
@@ -179,7 +179,7 @@ export class BagPanel extends ModalPanel {
             const fill = new UIShape('DF').rect(fillW, barH, fColor, 2);
             fill.pos(textLeft + barW / 2 - barW / 2 + fillW / 2, subY);
             const durTxt = new UILabel(`${cur}/${max}`, {
-                size: this.SUB_SIZE, width: 50, height: 20, color: C.durText, align: 'left', shrink: true,
+                size: this.SUB_SIZE, width: 50, height: 20, color: C.durText, align: 'left',
             });
             durTxt.pos(textLeft + barW + 22, subY);
             row.add(track, fill, durTxt);
@@ -187,7 +187,7 @@ export class BagPanel extends ModalPanel {
             const typeLabel = this.getTypeLabel(itemType);
             const subLbl = new UILabel(typeLabel, {
                 size: this.SUB_SIZE, width: textMaxW, height: 20,
-                color: new Color(140, 130, 115), align: 'left', shrink: true,
+                color: new Color(140, 130, 115), align: 'left',
             });
             subLbl.pos(textLeft + textMaxW / 2, -rowH * 0.22);  // 下半区
             row.add(subLbl);
@@ -197,7 +197,7 @@ export class BagPanel extends ModalPanel {
         if (typeof cell.count === 'number') {
             const cnt = new UILabel(`×${cell.count}`, {
                 size: this.COUNT_SIZE, width: 64, height: Math.round(this.COUNT_SIZE * 1.4),
-                color: C.cellCount, align: 'right', shrink: true,
+                color: C.cellCount, align: 'right',
             });
             cnt.pos(usableW / 2 - this.MARGIN_X - 30, 0);  // 靠右居中
             row.add(cnt);
