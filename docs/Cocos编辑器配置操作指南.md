@@ -120,59 +120,11 @@ Canvas                          ← 自动生成
 
 ---
 
-## 第二步：创建 GridCell 预制体
+## 第二步：GridCell 节点结构（纯代码构建，无需预制体）
 
-### 2.1 创建格子节点
+> **架构变更（2026-08）**：GridCell 节点结构（NameLabel / CountLabel / Badge / CooldownMask / NewBadge）由 `GridCell.onLoad()` 在运行时以代码形式构建，**不再依赖 prefab**。彻底规避之前 prefab 默认值（`enableWrapText=true` + `width=40`）与对象池复用叠加导致的「主页 3 字中文被强制换行成竖排」问题。
 
-1. 层级管理器右键 →「创建」→「空节点」
-2. 命名为 `GridCell`
-3. 添加 UITransform 组件，尺寸 **160 × 160**
-
-### 2.2 添加子节点
-
-在 GridCell 下创建以下子节点：
-
-```
-GridCell
-├── Border (Sprite)       ← 格子边框背景
-├── Icon (Sprite)         ← 物品图标（可选）
-├── NameLabel (Label)     ← 名称文字
-├── CountLabel (Label)    ← 数量角标
-├── Badge (Node)          ← 新内容红点
-│   └── Bg (Sprite)       ← 红点圆形
-└── CooldownMask (Node)   ← 冷却遮罩
-    └── Bg (Sprite)       ← 半透明灰色
-```
-
-### 2.3 子节点属性
-
-| 节点 | 尺寸 | 位置 | 其他 |
-|------|------|------|------|
-| Border | 160×160 | 居中 (0,0) | Sprite 颜色 #FFFFFF，透明度 30 |
-| Icon | 80×80 | 上方 (0,30) | - |
-| NameLabel | 140×30 | 下方 (0,-50) | 字号 20，居中对齐 |
-| CountLabel | 40×20 | 右上 (60,60) | 字号 16，右对齐 |
-| Badge | 16×16 | 右上 (65,65) | Sprite 颜色红色 |
-| CooldownMask | 160×160 | 居中 (0,0) | 默认隐藏 |
-
-### 2.4 挂载脚本并保存为预制体
-
-1. 选中 GridCell 节点
-2. 在右侧「属性检查器」底部 →「添加组件」→「自定义脚本」→ 选择 `GridCell`
-3. 将以下 @property 槽位绑定到对应子节点：
-
-| 脚本属性 | 拖入节点 |
-|----------|----------|
-| nameLabel | NameLabel |
-| countLabel | CountLabel |
-| iconSprite | Icon |
-| borderSprite | Border |
-| badgeNode | Badge |
-| cooldownMask | CooldownMask |
-
-4. 将 GridCell 节点从层级管理器**拖入**资源管理器的 `assets/prefabs/GridCell` 文件夹
-5. 命名为 `GridCell`（生成 GridCell.prefab）
-6. 删除场景中的 GridCell 节点（预制体已保存）
+如果在编辑器中需要查看格子结构，可临时在场景挂 `GridCell` 组件到空节点上，运行时即可观察自动构建的子节点树。**不要**再把 GridCell 拖成 prefab 重复构建。
 
 ---
 
@@ -209,7 +161,7 @@ GridCell
 |----------|----------|------|
 | titleLabel | TitleLabel | - |
 | breadcrumbLabel | BreadcrumbLabel | - |
-| cellPrefab | GridCell.prefab | 从资源管理器拖入预制体 |
+| cellPrefab | （已废弃）GridCell 现在为纯代码节点结构，无需 prefab，详见下方说明 |
 | contentNode | content | ScrollView 下的 content 节点 |
 | backButton | BackButton | - |
 | scrollView | ScrollView | ScrollView 节点本身 |
@@ -300,15 +252,8 @@ GridCell
 
 汇总所有需要绑定的引用，方便对照检查：
 
-### GridCell 预制体（6 项）
-| # | 组件 | 属性 | 节点 |
-|---|------|------|------|
-| 1 | GridCell | nameLabel | NameLabel |
-| 2 | GridCell | countLabel | CountLabel |
-| 3 | GridCell | iconSprite | Icon |
-| 4 | GridCell | borderSprite | Border |
-| 5 | GridCell | badgeNode | Badge |
-| 6 | GridCell | cooldownMask | CooldownMask |
+### GridCell 组件
+纯代码构建，无需任何绑定。运行时由 `GridCell.onLoad()` 自动建出 NameLabel / CountLabel / Badge / CooldownMask / NewBadge 等子节点。
 
 ### StatusBar 节点（12 项）
 | # | 组件 | 属性 | 节点 |
@@ -331,7 +276,7 @@ GridCell
 |---|------|------|---------|
 | 1 | GridComponent | titleLabel | TitleLabel |
 | 2 | GridComponent | breadcrumbLabel | BreadcrumbLabel |
-| 3 | GridComponent | cellPrefab | GridCell.prefab |
+| 3 | GridComponent | cellPrefab | （已废弃）纯代码，无 prefab |
 | 4 | GridComponent | contentNode | content |
 | 5 | GridComponent | backButton | BackButton |
 | 6 | GridComponent | scrollView | ScrollView |

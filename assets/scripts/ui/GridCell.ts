@@ -1,68 +1,208 @@
 /**
- * GridCell.ts - 网格格子组件
- * 绑定到 GridCell 预制体，显示单个格子内容
+ * GridCell.ts - 网格格子组件（纯代码构建，无 prefab 依赖）
+ *
+ * 设计要点：
+ * - 所有视觉节点在 onLoad() 中以代码形式构建，彻底杜绝 prefab 默认值残留。
+ *   （之前因 NameLabel prefab width=40 + enableWrapText=true + 对象池复用，加上
+ *    Label 内部 assembler 会按 string 设置时的属性缓存布局，导致主页 3 字中文
+ *    被按字符强制换行成竖排）
+ * - 不依赖外部 prefab 实例化，GridComponent 用 `new Node() + addComponent(GridCell)`
+ *   即可生成；assets/prefabs/GridCell/ 可删除，整条链与 prefab 无关
+ * - nameLabel/countLabel/badgeNode/cooldownMask/newBadge 子节点只在首次 onLoad 建好，
+ *   refresh 只改属性、不重建——对象池复用安全
+ * - refresh() 严格按「布局属性 → 尺寸 → string」顺序设置，确保 Label 按当前配置 relayout
  */
 
-import { _decorator, Component, Node, Label, Sprite, UIOpacity, Vec3, tween, Color, UITransform, Graphics, Widget } from 'cc';
+import { _decorator, Component, Node, Label, UIOpacity, Vec3, tween, Color, UITransform, Graphics } from 'cc';
 import { GridCellData } from '../data/types';
 import { C } from './theme';
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 @ccclass('GridCell')
 export class GridCell extends Component {
-    @property(Label)
-    nameLabel: Label | null = null;
-
-    @property(Label)
-    countLabel: Label | null = null;
-
-    @property(Sprite)
-    iconSprite: Sprite | null = null;
-
-    @property(Sprite)
-    borderSprite: Sprite | null = null;
-
-    @property(Node)
-    badgeNode: Node | null = null;
-
-    @property(Node)
-    newBadgeNode: Node | null = null;
-
-    @property(Node)
-    cooldownMask: Node | null = null;
+    // 子节点引用（onLoad 中创建）
+    private _nameLabel: Label | null = null;
+    private _nameTf: UITransform | null = null;
+    private _countLabel: Label | null = null;
+    private _badgeNode: Node | null = null;
+    private _cooldownMask: Node | null = null;
+    private _newBadge: Node | null = null;
+    private _bgGfx: Graphics | null = null;
 
     private _data: GridCellData | null = null;
     private _onClick: ((cell: GridCell) => void) | null = null;
     private _onLongPress: ((cell: GridCell) => void) | null = null;
     private _longPressTimer: any = null;
-    /** 红色「新」badge（运行时动态创建，避免依赖 prefab 配置） */
-    private _newBadge: Node | null = null;
+    private _built = false;
 
-    /** 设置格子数据 */
+    onLoad(): void {
+        if (this._built) return;
+        this._built = true;
+        this.buildNodes();
+    }
+
+    /** 构建子节点树（仅首次 onLoad 调用，对象池复用时不再调用） */
+    private buildNodes(): void {
+        const root = this.node;
+
+        // root UITransform（若未存在则补一个 160×160 占位，GridComponent.renderCells
+        // 会在挂载前调 setContentSize 覆盖）
+        let rootTf = root.getComponent(UITransform);
+        if (!rootTf) {
+            rootTf = root.addComponent(UITransform);
+            rootTf.setContentSize(160, 160);
+            rootTf.setAnchorPoint(0.5, 0.5);
+        }
+
+        // 背景 Graphics（叠在 root 自身节点，子节点 Label 覆盖在上）
+        this._bgGfx = root.addComponent(Graphics);
+
+        // ── NameLabel（格子名字，3 字以内）──
+        const nameNode = new Node('NameLabel');
+        nameNode.layer = root.layer;
+        nameNode.setParent(root);
+        this._nameTf = nameNode.addComponent(UITransform);
+        this._nameTf.setAnchorPoint(0.5, 0.5);
+        this._nameTf.setContentSize(140, 50.4);
+        nameNode.setPosition(0, -5, 0);
+        this._nameLabel = nameNode.addComponent(Label);
+        this._nameLabel.fontSize = 22;
+        this._nameLabel.lineHeight = 28;
+        this._nameLabel.overflow = Label.Overflow.NONE;
+        this._nameLabel.enableWrapText = false;
+        this._nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        this._nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
+
+        // ── CountLabel（右上角堆叠数 ×N）──
+        const countNode = new Node('CountLabel');
+        countNode.layer = root.layer;
+        countNode.setParent(root);
+        const ctf = countNode.addComponent(UITransform);
+        ctf.setAnchorPoint(0.5, 0.5);
+        ctf.setContentSize(40, 22);
+        countNode.setPosition(60, 60, 0);
+        this._countLabel = countNode.addComponent(Label);
+        this._countLabel.fontSize = 17;
+        this._countLabel.lineHeight = 20;
+        this._countLabel.overflow = Label.Overflow.NONE;
+        this._countLabel.enableWrapText = false;
+        this._countLabel.horizontalAlign = Label.HorizontalAlign.RIGHT;
+        this._countLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        this._countLabel.color = C.cellCount;
+
+        // ── Badge（红圆点「可操作」指示）──
+        this._badgeNode = this.makeDot('Badge', 16, 65, 65, new Color(255, 0, 0, 255));
+
+        // ── CooldownMask（灰色半透覆盖）──
+        this._cooldownMask = this.makeOverlay('CooldownMask', new Color(187, 187, 187, 100));
+
+        // ── NewBadge（红色「新」角标，默认隐藏）──
+        this._newBadge = this.makeNewBadge();
+    }
+
+    /** 创建圆点（红点/状态点） */
+    private makeDot(name: string, size: number, x: number, y: number, color: Color): Node {
+        const node = new Node(name);
+        node.layer = this.node.layer;
+        node.setParent(this.node);
+        const tf = node.addComponent(UITransform);
+        tf.setContentSize(size, size);
+        tf.setAnchorPoint(0.5, 0.5);
+        node.setPosition(x, y, 0);
+        const gfx = node.addComponent(Graphics);
+        gfx.fillColor = color;
+        gfx.circle(0, 0, size / 2);
+        gfx.fill();
+        return node;
+    }
+
+    /** 创建全尺寸半透覆盖层（覆盖整个格子用于冷却/禁用状态） */
+    private makeOverlay(name: string, color: Color): Node {
+        const node = new Node(name);
+        node.layer = this.node.layer;
+        node.setParent(this.node);
+        const tf = node.addComponent(UITransform);
+        const rootTf = this.node.getComponent(UITransform);
+        const w = rootTf ? rootTf.width : 160;
+        const h = rootTf ? rootTf.height : 160;
+        tf.setContentSize(w, h);
+        tf.setAnchorPoint(0.5, 0.5);
+        node.setPosition(0, 0, 0);
+        const gfx = node.addComponent(Graphics);
+        gfx.fillColor = color;
+        gfx.rect(-w / 2, -h / 2, w, h);
+        gfx.fill();
+        return node;
+    }
+
+    /** 创建右上角「新」角标（红底圆角白字「�"新」） */
+    private makeNewBadge(): Node {
+        const node = new Node('NewBadge');
+        node.layer = this.node.layer;
+        node.setParent(this.node);
+        const tf = node.addComponent(UITransform);
+        tf.setContentSize(48, 28);
+        tf.setAnchorPoint(1, 1);
+        const rootTf = this.node.getComponent(UITransform);
+        const w = rootTf ? rootTf.width : 160;
+        const h = rootTf ? rootTf.height : 160;
+        node.setPosition(w / 2 - 8, h / 2 - 8, 0);
+
+        const gfx = node.addComponent(Graphics);
+        gfx.fillColor = C.danger;
+        gfx.roundRect(-24, -14, 48, 28, 7);
+        gfx.fill();
+
+        // 白字「�"新」
+        const lblNode = new Node('L');
+        lblNode.layer = this.node.layer;
+        lblNode.setParent(node);
+        const ltf = lblNode.addComponent(UITransform);
+        ltf.setContentSize(48, 28);
+        ltf.setAnchorPoint(0.5, 0.5);
+        lblNode.setPosition(0, 0, 0);
+        const lbl = lblNode.addComponent(Label);
+        lbl.string = '新';
+        lbl.fontSize = 17;
+        lbl.color = C.white;
+        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lbl.verticalAlign = Label.VerticalAlign.CENTER;
+        lbl.overflow = Label.Overflow.CLAMP;
+
+        node.active = false; // 默认隐藏
+        return node;
+    }
+
+    // ═══ 公开 API（保持与原版接口兼容）═══
+
     setData(data: GridCellData): void {
         this._data = data;
         this.refresh();
     }
 
-    /** 获取格子数据 */
-    get data(): GridCellData | null {
-        return this._data;
-    }
+    get data(): GridCellData | null { return this._data; }
 
-    /** 设置点击回调 */
     setOnClick(callback: (cell: GridCell) => void): void {
         this._onClick = callback;
     }
 
-    /** 设置长按回调 */
     setOnLongPress(callback: (cell: GridCell) => void): void {
         this._onLongPress = callback;
     }
 
-    /** 刷新显示 */
+    /**
+     * 刷新显示
+     *
+     * 顺序要点（关键，避免 Label assembler 缓存旧布局）：
+     *   1. 设置布局属性（overflow/wrap/lineHeight/align）
+     *   2. 设置 UITransform 尺寸（nameTf.setContentSize）
+     *   3. 最后才赋值 string（强制按当前属性 relayout）
+     */
     refresh(): void {
         if (!this._data) return;
+        if (!this._built) this.buildNodes(); // 极端兜底（对象池复用未触发 onLoad）
+
         const d = this._data;
         const isList = d.type === 'list';
 
@@ -75,7 +215,6 @@ export class GridCell extends Component {
         };
         const bgColor = bgColors[d.state] || bgColors.normal;
 
-        // ── 描边色 ──
         const outlineColors: Record<string, Color> = {
             normal:   C.cellStroke,
             selected: C.cellSelectedStroke,
@@ -84,173 +223,83 @@ export class GridCell extends Component {
         };
         const outlineColor = outlineColors[d.state] || outlineColors.normal;
 
-        // ── 文字色（全部不透明，确保可读性） ──
         const textColor = d.state === 'disabled' ? C.cellTextDisabled : C.cellText;
 
-        // 绘制矩形背景 + 描边（Cocos 3.8 Graphics 不支持 roundRect，使用 rect 替代）
         this.drawCellBg(bgColor, outlineColor);
 
-        // borderSprite 作为备用底衬（容错，避免获取失败中断 refresh）
-        if (this.borderSprite) {
-            try {
-                if (!this.borderSprite.spriteFrame) {
-                    // 无法可靠获取白色纹理，依赖 Graphics 绘制即可
-                }
-                if (this.borderSprite.spriteFrame) {
-                    this.borderSprite.color = bgColor;
-                }
-            } catch (e) {
-                // 忽略，Graphics 已绘制背景
-            }
-        }
-
-        // ---- 文字设置 ----
-        if (this.nameLabel) {
-            // 列表模式先做长度截断防溢出（CLAMP+换行对超长文本仍可能溢出）
-            // noTruncate 标志位区分：方形网格的 list 行需截断，长条富文本行（地图详情等）不截断
+        // ── 名字 ──
+        if (this._nameLabel && this._nameTf) {
             let displayName = d.name;
             if (isList && !d.noTruncate) {
                 displayName = this.truncateForList(displayName);
             }
-            this.nameLabel.string = displayName;
-            this.nameLabel.color = textColor;
-            // 列表类型：左对齐 + 较小字号 + 自动换行
+
+            // 步骤 1：先改布局属性
             if (isList) {
-                // 用硬编码常量（与 GridComponent 的 effCellW=660 / effCellH=120 保持一致）
                 const LIST_W = 660;
                 const LIST_H = 120;
-                this.nameLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
-                this.nameLabel.verticalAlign = Label.VerticalAlign.TOP;
-                this.nameLabel.fontSize = 20;
-                this.nameLabel.overflow = Label.Overflow.CLAMP; // CLAMP 模式下对齐生效
-                this.nameLabel.enableWrapText = true;          // 启用自动换行
-                this.nameLabel.lineHeight = 26;                // 行高稍大于字号
-
-                // 把 nameLabel 区域撑满格子（留内边距），锚点居中、位置归零
-                const nameTf = this.nameLabel.node.getComponent(UITransform);
-                if (nameTf) {
-                    nameTf.setAnchorPoint(0.5, 0.5);
-                    nameTf.setContentSize(LIST_W - 24, LIST_H - 20); // 636 × 100
-                }
-                // 注意：setPosition 是 Node 的方法，UITransform 没有该方法，必须挂在 node 上
-                this.nameLabel.node.setPosition(0, 0, 0);
+                this._nameLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+                this._nameLabel.verticalAlign = Label.VerticalAlign.TOP;
+                this._nameLabel.fontSize = 20;
+                this._nameLabel.lineHeight = 26;
+                this._nameLabel.overflow = Label.Overflow.CLAMP;
+                this._nameLabel.enableWrapText = true;
+                // 步骤 2：再改 UITransform 尺寸
+                this._nameTf.setAnchorPoint(0.5, 0.5);
+                this._nameTf.setContentSize(LIST_W - 24, LIST_H - 20);
+                this._nameLabel.node.setPosition(0, 0, 0);
             } else {
-                // 默认居中（还原 Widget + 恢复 prefab 原始布局）
-                const widget = this.nameLabel.node.getComponent(Widget);
-                if (widget) widget.enabled = false;
-                this.nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
-                this.nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
-                this.nameLabel.fontSize = 22;
-                // 显式重置溢出/换行/行高：对象池复用时上一轮 list 模式可能把
-                // overflow 设为 CLAMP、prefab 默认 enableWrapText=true；两者叠加
-                // 会让 nameLabel 在 40px 宽度下把 3 字中文（22×3≈66px）按字符换行成竖排。
-                this.nameLabel.lineHeight = 28;
-                this.nameLabel.overflow = Label.Overflow.NONE;
-                this.nameLabel.enableWrapText = false;
-                const nt = this.nameLabel.node.getComponent(UITransform);
-                if (nt) {
-                    nt.setAnchorPoint(0.5, 0.5);
-                    // 修正：prefab 写死 40×50.4 太窄，3 字中文就装不下。格子 160 宽，
-                    // 留 10px 内边距，给到 140 足以横排 4–6 字。
-                    nt.setContentSize(140, 50.4);
-                }
-                this.nameLabel.node.setPosition(0, -5, 0); // 恢复 prefab 原始位置
+                this._nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+                this._nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
+                this._nameLabel.fontSize = 22;
+                this._nameLabel.lineHeight = 28;
+                this._nameLabel.overflow = Label.Overflow.NONE;
+                this._nameLabel.enableWrapText = false;
+                this._nameTf.setAnchorPoint(0.5, 0.5);
+                this._nameTf.setContentSize(140, 50.4);
+                this._nameLabel.node.setPosition(0, -5, 0);
             }
+            this._nameLabel.color = textColor;
+            // 步骤 3：最后才赋值 string（Label 按当前属性重新布局）
+            this._nameLabel.string = displayName;
         }
 
-        // 列表模式下隐藏 countLabel/badge/cooldownMask（信息已在 name 里展示）
+        // ── count/badge/cooldown 显隐 ──
         if (isList) {
-            if (this.countLabel) this.countLabel.node.active = false;
-            if (this.badgeNode) this.badgeNode.active = false;
-            if (this.cooldownMask) this.cooldownMask.active = false;
+            if (this._countLabel) this._countLabel.node.active = false;
+            if (this._badgeNode) this._badgeNode.active = false;
+            if (this._cooldownMask) this._cooldownMask.active = false;
         } else {
-            if (this.countLabel) {
-                this.countLabel.string = d.count != null && d.count > 1 ? `×${d.count}` : '';
-                this.countLabel.node.active = d.count != null && d.count > 1;
-                if (d.count != null && d.count > 1) {
-                    this.countLabel.color = C.cellCount;
-                }
+            if (this._countLabel) {
+                const show = d.count != null && d.count > 1;
+                this._countLabel.string = show ? `×${d.count}` : '';
+                this._countLabel.node.active = show;
             }
-            if (this.badgeNode) {
-                this.badgeNode.active = !!d.badge;
-            }
-            if (this.cooldownMask) {
-                this.cooldownMask.active = d.state === 'cooldown';
-            }
+            if (this._badgeNode) this._badgeNode.active = !!d.badge;
+            if (this._cooldownMask) this._cooldownMask.active = d.state === 'cooldown';
         }
 
-        // 红色「新」badge（地图未探索地点等）：默认隐藏，按需显示
-        if (this._newBadge) this._newBadge.active = false;
-        if (d.isNew) {
-            const badge = this.ensureNewBadge();
-            if (badge) badge.active = true;
-        }
+        // ── NewBadge（isNew 才显示） ──
+        if (this._newBadge) this._newBadge.active = !!d.isNew;
 
         this.applyState(d.state || 'normal');
     }
 
-    /** 懒创建红色「新」badge（右上角，红底白字「新」） */
-    private ensureNewBadge(): Node | null {
-        if (this._newBadge) return this._newBadge;
-        const w = this.node.getComponent(UITransform)?.width || 160;
-        const h = this.node.getComponent(UITransform)?.height || 160;
-
-        const node = new Node('NewBadge');
-        node.layer = this.node.layer;
-        const tf = node.addComponent(UITransform);
-        tf.setContentSize(48, 28);
-        tf.setAnchorPoint(1, 1);                  // 右上角锚点
-        node.setPosition(w / 2 - 8, h / 2 - 8, 0); // 贴右上角内缩
-
-        // 红底圆角
-        const g = node.addComponent(Graphics);
-        g.fillColor = C.danger;
-        g.roundRect(-24, -14, 48, 28, 7);
-        g.fill();
-
-        // 「新」白字（居中）
-        const lblNode = new Node('NewLbl');
-        lblNode.parent = node;
-        const ltf = lblNode.addComponent(UITransform);
-        ltf.setContentSize(48, 28);
-        ltf.setAnchorPoint(0.5, 0.5);
-        const lbl = lblNode.addComponent(Label);
-        lbl.string = '新';
-        lbl.fontSize = 17;
-        lbl.color = C.white;
-        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-        lbl.verticalAlign = Label.VerticalAlign.CENTER;
-        lbl.overflow = Label.Overflow.CLAMP;
-
-        this.node.addChild(node);
-        node.setSiblingIndex(this.node.children.length - 1);
-        this._newBadge = node;
-        return node;
-    }
-
-    /** 用 Graphics 绘制矩形背景 + 描边（Cocos 3.8 不支持 roundRect） */
+    /** 用 Graphics 绘制矩形背景 + 描边 */
     private drawCellBg(bgColor: Color, outlineColor: Color): void {
-        let gfx = this.node.getComponent(Graphics);
-        if (!gfx) {
-            gfx = this.node.addComponent(Graphics);
-        }
-
+        if (!this._bgGfx) return;
         const w = this.node.getComponent(UITransform)?.width || 160;
         const h = this.node.getComponent(UITransform)?.height || 160;
         const lw = 2;
 
-        gfx.clear();
-
-        // 填充
-        gfx.fillColor = bgColor;
-        gfx.rect(-w / 2, -h / 2, w, h);
-        gfx.fill();
-
-        // 描边
-        gfx.strokeColor = outlineColor;
-        gfx.lineWidth = lw;
-        gfx.rect(-w / 2, -h / 2, w, h);
-        gfx.stroke();
+        this._bgGfx.clear();
+        this._bgGfx.fillColor = bgColor;
+        this._bgGfx.rect(-w / 2, -h / 2, w, h);
+        this._bgGfx.fill();
+        this._bgGfx.strokeColor = outlineColor;
+        this._bgGfx.lineWidth = lw;
+        this._bgGfx.rect(-w / 2, -h / 2, w, h);
+        this._bgGfx.stroke();
     }
 
     /**
@@ -261,40 +310,29 @@ export class GridCell extends Component {
      */
     private truncateForList(text: string): string {
         if (!text) return text;
-        // 计算文本显示宽度（中文=2，英文/数字/符号=1）
         let w = 0;
         for (let i = 0; i < text.length; i++) {
             const c = text.charCodeAt(i);
             w += (c > 0x4e00 && c < 0x9fff) || (c > 0xff00 && c < 0xffef) ? 2 : 1;
         }
-        const MAX_W = 110; // 阈值（约 4 行，覆盖常见 3 行列表内容如建造/背包详情）
+        const MAX_W = 110;
         if (w <= MAX_W) return text;
-        // 从末尾截断到阈值范围内，追加省略号
         let cut = 0;
         w = 0;
         for (let i = 0; i < text.length; i++) {
             const c = text.charCodeAt(i);
             const cw = (c > 0x4e00 && c < 0x9fff) || (c > 0xff00 && c < 0xffef) ? 2 : 1;
-            if (w + cw + 1 > MAX_W - 2) break; // -2 为 "…" 的宽度
+            if (w + cw + 1 > MAX_W - 2) break;
             w += cw;
             cut = i + 1;
         }
         return text.slice(0, cut) + '…';
     }
 
-    /** 应用状态样式（禁用状态不再降低整体透明度，避免文字看不清） */
+    /** 应用状态样式 */
     private applyState(state: string): void {
         const opacity = this.node.getComponent(UIOpacity) || this.node.addComponent(UIOpacity);
-        switch (state) {
-            case 'disabled':
-                opacity.opacity = 255; // 保持完全不透明，颜色差异已足够区分
-                break;
-            case 'selected':
-                opacity.opacity = 255;
-                break;
-            default:
-                opacity.opacity = 255;
-        }
+        opacity.opacity = 255;
     }
 
     /** 点击动画反馈 */
@@ -306,7 +344,7 @@ export class GridCell extends Component {
             .start();
     }
 
-    // ===== 触摸事件（由 GridComponent 统一绑定，这里提供接口）=====
+    // ═══ 触摸事件（由 GridComponent 统一绑定，这里提供接口）═══
 
     /** 处理点击（由父容器调用） */
     handleClick(): void {
@@ -337,7 +375,7 @@ export class GridCell extends Component {
         }
     }
 
-    /** 销毁时清理长按计时器，避免节点已销毁仍回调 handleLongPress（低危内存/逻辑泄漏） */
+    /** 销毁时清理长按计时器，避免节点已销毁仍回调 handleLongPress */
     onDestroy(): void {
         this.cancelLongPressDetect();
     }

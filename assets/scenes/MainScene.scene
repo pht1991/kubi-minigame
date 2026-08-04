@@ -1326,10 +1326,6 @@
     "breadcrumbLabel": {
       "__id__": 9
     },
-    "cellPrefab": {
-      "__uuid__": "dbe6b8fa-6728-4a5a-a836-1e9471ab17b1",
-      "__expectedType__": "cc.Prefab"
-    },
     "contentNode": {
       "__id__": 27
     },

@@ -3,7 +3,7 @@
  * 核心组件：接收 GridPage 数据，动态生成/复用 GridCell，处理触摸事件
  */
 
-import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Color, Widget, Graphics } from 'cc';
+import { _decorator, Component, Node, Label, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Color, Widget, Graphics } from 'cc';
 import { UIShape, UILabel } from './widgets';
 import { GridPage, GridCellData } from '../data/types';
 import { GridCell } from './GridCell';
@@ -20,9 +20,6 @@ export class GridComponent extends Component {
 
     @property(Label)
     breadcrumbLabel: Label | null = null;
-
-    @property(Prefab)
-    cellPrefab: Prefab | null = null;
 
     @property(Node)
     contentNode: Node | null = null;
@@ -88,6 +85,20 @@ export class GridComponent extends Component {
     private _upgradeBtnNode: Node | null = null;
     private _upgradeShape: UIShape | null = null;
     private _upgradeLabel: UILabel | null = null;
+
+    /**
+     * 纯代码创建格子节点（替代旧 prefab instantiate 路径）
+     *
+     * 优势：彻底脱离 prefab 默认值（之前因 prefab 的 NameLabel width=40 +
+     * enableWrapText=true 与对象池复用叠加，导致主页 3 字中文被强制换行成竖排）。
+     * 节点结构由 GridCell.onLoad() 内部按需构建，状态可预测。
+     */
+    private createCellNode(): Node {
+        const node = new Node('Cell');
+        node.addComponent(UITransform);
+        node.addComponent(GridCell);
+        return node;
+    }
 
     onLoad(): void {
         // 监听刷新：UI_REFRESH（通用）+ SKILL_CHANGE（科研/事件授技解锁配方）+ EVENT_TRIGGER（事件完成解锁配方）
@@ -253,7 +264,7 @@ export class GridComponent extends Component {
         // 清除旧格子（只销毁追踪到的节点，不破坏 contentNode 结构）
         this.clearCells();
 
-        if (!this.contentNode || !this.cellPrefab) {
+        if (!this.contentNode) {
             return;
         }
 
@@ -295,7 +306,7 @@ export class GridComponent extends Component {
             // 复用对象池节点（无则新建），避免每次全量重建
             const node = this._cellPool.length > 0
                 ? this._cellPool.pop()!
-                : instantiate(this.cellPrefab);
+                : this.createCellNode();
             node.active = true;
             node.setParent(this.contentNode);
             // 清除上一轮可能残留的触摸监听，防止重复绑定叠加
@@ -484,13 +495,11 @@ export class GridComponent extends Component {
         fbg.node.setParent(this._footerNode);
         fbg.node.setPosition(0, 0, 0);
 
-        // 逐格创建页脚格子（复用 cellPrefab）
-        if (!this.cellPrefab) return;
-
+        // 逐格创建页脚格子（纯代码工厂，与正文格子一致）
         const halfFH = totalFooterH / 2;
         for (let i = 0; i < footerCells.length; i++) {
             const fd = footerCells[i];
-            const fnode = instantiate(this.cellPrefab);
+            const fnode = this.createCellNode();
             fnode.setParent(this._footerNode);
 
             let fcTf = fnode.getComponent(UITransform);
