@@ -10,20 +10,17 @@
  *   - 底部「背包」= 打开背包界面，玩家自行维护已放入的物品
  *   - 底部「完成」= 关闭弹窗；若有遗留未拾取项，Toast 提示（留在原地）
  *
- * 设计意图：拾取成功后材料即从收获列表移除（不再有「放回」逻辑），玩家如需整理
- * 已得物品，自行点「背包」按钮进入背包界面维护。
+ * 行用 ModalRow 公共组件，列表用 ModalScrollList（固定 panelH，不随内容 resize）。
  */
 
-import { Label, UITransform } from 'cc';
 import { ModalPanel } from './ModalPanel';
 import { C, Btn } from './theme';
-import { UIVStack, UIHStack, UILabel, UIButton, UIShape } from './widgets';
+import { UIHStack, UIButton, ModalRow, ModalScrollList } from './widgets';
 import { Toast } from './Toast';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { ITEM_DATA } from '../data/data';
 
-const ROW_H = 88;
 const ROW_GAP = 10;
 
 export class HarvestModal extends ModalPanel {
@@ -39,6 +36,8 @@ export class HarvestModal extends ModalPanel {
     /** 点击「背包」按钮时回调（由 MainScene 注入，打开背包界面） */
     public onOpenBag?: () => void;
 
+    private _list!: ModalScrollList;
+
     protected render(): void {
         this.clearContent();
         const cap = this._gm().boxSize['bag'] || 12;
@@ -51,26 +50,35 @@ export class HarvestModal extends ModalPanel {
             { anchorY: 1, align: 'center' },
         );
 
-        // 收获列表（可滚动；外壳沿用 mkScroll，行改 widgets 声明式）
+        // 收获列表（可滚动；行用 ModalRow，setRows 自动装载 + 自适应 content 高度）
         const listW = this.panelW - 56;
-        const viewH = 540;
-        const scroll = this.mkScroll(this._content!, 0, -56, listW, viewH);
         const ids = Object.keys(this._loot);
+        const rows: ModalRow[] = [];
         if (ids.length === 0) {
-            // 全部拾取完毕：提示可点背包整理
-            const tip = new UILabel('已全部拾取，可点「背包」整理物品',
-                { size: 22, width: listW - 40, color: C.sub, align: 'center' });
-            tip.mount(scroll.content).pos(0, -viewH / 2, 0);
+            rows.push(new ModalRow({
+                width: listW, name: '已全部拾取，可点「背包」整理物品',
+                align: 'center', bg: C.optionBg, stroke: C.optionStroke,
+            }));
         } else {
-            // 行列表：VStack 自动排布，挂进 ScrollView content
-            const list = new UIVStack().gap(ROW_GAP).align('center').fixedWidth(listW);
-            for (const id of ids) list.add(this.buildRow(id, listW, ROW_H));
-            list.mount(scroll.content);
-            list.pos(0, -list.h / 2, 0);   // content anchor(0.5,1)，栈顶贴容器顶
-            const contentH = Math.max(viewH, list.h);
-            const ct = scroll.content.getComponent(UITransform);
-            if (ct) ct.setContentSize(listW, contentH);
+            for (const id of ids) {
+                const name = ITEM_DATA[id]?.name || id;
+                const qty = this._loot[id];
+                rows.push(new ModalRow({
+                    width: listW, name, align: 'left',
+                    meta: `×${qty}`, metaColor: C.sub,
+                    subText: '点击拾取', subColor: C.accent2, subSize: 18,
+                    bg: C.optionBg, stroke: C.optionStroke, radius: 12,
+                    onTap: () => this.take(id),
+                }));
+            }
         }
+        // 列表每次 render 在 clearContent 之后重建（避免操作已销毁节点）
+        this._list = this.createScrollList({
+            parent: this._content!, x: 0, y: -56,
+            width: listW, viewH: 540, gap: ROW_GAP,
+            autoResizePanel: false, repositionScroll: false, align: 'center',
+        });
+        this._list.setRows(rows);
 
         // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)——HStack 自动排布
         const btnW = (listW - 2 * 12) / 3;
@@ -79,33 +87,7 @@ export class HarvestModal extends ModalPanel {
             .add(new UIButton('全部拾取', Btn.primary, () => this.takeAll(), btnW, 60))
             .add(new UIButton('完成', Btn.confirm, () => this.finish(), btnW, 60));
         btnRow.mount(this._content!);
-        btnRow.pos(0, -(viewH + 56 + 30), 0);
-    }
-
-    /** 构建单行（材料 + 数量 + 「点击拾取」提示），点击即放入背包 */
-    private buildRow(id: string, w: number, h: number): UIShape {
-        const name = ITEM_DATA[id]?.name || id;
-        const qty = this._loot[id];
-
-        const row = new UIShape('row').rect(w, h, C.optionBg, 12, C.optionStroke, 2);
-
-        // 名称（左侧，垂直居中）
-        const nameLbl = new UILabel(name, { size: 24, width: w * 0.62, height: h, color: C.body, align: 'left' });
-        nameLbl.pos(-w / 2 + 18 + nameLbl.w / 2, 0);
-
-        // 数量（右上，右对齐）
-        const rightEdge = w / 2 - 18;
-        const qtyLbl = new UILabel(`×${qty}`, { size: 24, width: w * 0.3, height: h, color: C.sub, align: 'right' });
-        qtyLbl.pos(rightEdge - qtyLbl.w / 2, 0);
-        qtyLbl.label.horizontalAlign = Label.HorizontalAlign.RIGHT;
-
-        // 「点击拾取」提示（右下）
-        const tagLbl = new UILabel('点击拾取', { size: 18, width: w * 0.34, height: 26, color: C.accent2, align: 'right' });
-        tagLbl.pos(rightEdge - tagLbl.w / 2, -h * 0.24);
-        tagLbl.label.horizontalAlign = Label.HorizontalAlign.RIGHT;
-
-        row.add(nameLbl, qtyLbl, tagLbl).onTap(() => this.take(id));
-        return row;
+        btnRow.pos(0, -(540 + 56 + 30), 0);
     }
 
     /** 尝试把某物品放入背包：已有种类(堆叠)或背包有空格即可；否则失败 */

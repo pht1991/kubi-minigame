@@ -6,16 +6,15 @@
  *   - Tab:   y=148      （金币购买 / 以物易货）
  *   - Body:  y=225+     （动态内容区：特殊商人领取 / 购买入口 / 易货列表）
  *
- * 数量选择复用公共 QuantityPanel 弹窗：
- *   - 金币购买 → 点击后弹出 QuantityPanel（±1/全部/确定 + 预览）
- *   - 以物易物 → 选物品后弹出 QuantityPanel（同上）
+ * 数量选择复用公共 QuantityPanel 弹窗。
+ *
+ * 本次优化：易货行用 ModalRow、列表用 ModalScrollList、Tab 用 ModalTab，
+ * 去掉原手绘 Graphics 选中态与重复的 UIShape+UILabel 行构建。
  */
 
-import {
-    Node, Label, UITransform, Color, Graphics,
-} from 'cc';
 import { ModalPanel, C } from './ModalPanel';
-import { UIVStack, UILabel, UIShape } from './widgets';
+import { Color, Label, Node } from 'cc';
+import { ModalRow, ModalTab, ModalScrollList } from './widgets';
 import { ITEM_DATA, TRADE_DATA } from '../data/data';
 import { ActionTrade } from '../actions/ActionTrade';
 import { GameManager } from '../core/GameManager';
@@ -38,8 +37,6 @@ export class TradePanel extends ModalPanel {
     private _mode: 'gold' | 'barter' = 'gold';
 
     private _onTrade: ((msg: string) => void) | null = null;
-    private _tG: { n: Node; g: Graphics; l: Label } | null = null;
-    private _tB: { n: Node; g: Graphics; l: Label } | null = null;
 
     /** 懒创建的数量选择弹窗（与 TradePanel 同级挂 modalLayer） */
     private _qtyPanel: QuantityPanel | null = null;
@@ -70,27 +67,28 @@ export class TradePanel extends ModalPanel {
     protected render(): void {
         if (!this._content) return;
         this.clearContent();
-        this._tG = null; this._tB = null;
 
         const stock = ActionTrade.instance.getStock(this._tid);
 
         // ════ Zone 1: Header (y=0 ~ 130) ════
         if (this._isGold) {
-            this._tx(0, `[回收] \u4efb\u610f\u7269\u54c1 \u2192 \u91d1\u5e01`, 26, C.title, true);
-            this._tx(36, `\u6536\u76ca\uff1a\u91d1\u5e01 \u00d7${stock.available}\uff08\u968f\u65f6\u53ef\u9886\u53d6\uff09`, 21, C.body);
+            this._tx(0, `[回收] 任意物品 → 金币`, 26, C.title, true);
+            this._tx(36, `收益：金币 ×${stock.available}（随时可领取）`, 21, C.body);
         } else {
-            this._tx(0, `[\u51fa\u552e] ${this._gName}`, 26, C.title, true);
-            this._tx(36, `\u5355\u4ef7\uff1a${this._price} \u91d1\u5e01 / \u4e2a`, 21, C.body);
-            const st = stock.soldOut ? `\u5df2\u552e\u7b4c\uff0c${stock.restockHours}h \u540e\u8865\u8d27` : `\u5e93\u5b58\uff1a\u5269\u4f59 ${stock.available}/${stock.max}`;
+            this._tx(0, `[出售] ${this._gName}`, 26, C.title, true);
+            this._tx(36, `单价：${this._price} 金币 / 个`, 21, C.body);
+            const st = stock.soldOut ? `已售罄，${stock.restockHours}h 后补货` : `库存：剩余 ${stock.available}/${stock.max}`;
             this._tx(68, st, 21, stock.soldOut ? C.warn : C.sub);
         }
 
         // ════ Zone 2: Tab (y=148) ════
         if (!this._isGold) {
             const ty = 148, tw = 300, th = 54, gap = 14;
-            this._tG = this._tabN(-gap / 2 - tw / 2, ty, tw, th, '\u91d1\u5e01\u8d2d\u4e70', () => this._sw('gold'));
-            this._tB = this._tabN(gap / 2 + tw / 2, ty, tw, th, '\u4ee5\u7269\u6613\u8d27', () => this._sw('barter'));
-            this._rstab();
+            const g = new ModalTab('金币购买', tw, th, () => this._sw('gold'));
+            const b = new ModalTab('以物易货', tw, th, () => this._sw('barter'));
+            g.node.setParent(this._content); g.node.setPosition(-gap / 2 - tw / 2, -ty, 0);
+            b.node.setParent(this._content); b.node.setPosition(gap / 2 + tw / 2, -ty, 0);
+            g.setActive(this._mode === 'gold'); b.setActive(this._mode === 'barter');
         }
 
         // ════ Zone 3: Body ════
@@ -106,23 +104,11 @@ export class TradePanel extends ModalPanel {
         this._mode = m;
         this.render();
     }
-    private _rstab(): void {
-        if (this._tG) this._styT(this._tG, this._mode === 'gold');
-        if (this._tB) this._styT(this._tB, this._mode === 'barter');
-    }
-    private _styT(t: { n: Node; g: Graphics; l: Label }, on: boolean): void {
-        t.g.clear(); t.g.fillColor = on ? C.tabOn : C.tabOff;
-        const w = 300, h = 54;
-        t.g.roundRect(-w / 2, -h / 2, w, h, 12); t.g.fill();
-        t.g.lineWidth = 2; t.g.strokeColor = on ? C.accent : C.panelBorder;
-        t.g.roundRect(-w / 2, -h / 2, w, h, 12); t.g.stroke();
-        t.l.color = on ? C.white : C.body;
-    }
 
     // ════ Body: 金币特殊商人（直接领取）═════
     private _bGoldSpec(by: number): void {
-        this._tx(by, `\u53ef\u9886\u53d6\uff1a\u91d1\u5e01 \u00d7${ActionTrade.instance.getStock(this._tid).available}`, 23, C.body);
-        this._btn(by + 48, 340, 84, '\u9886\u53d6\u6536\u76ca', C.accent2, () => this._do());
+        this._tx(by, `可领取：金币 ×${ActionTrade.instance.getStock(this._tid).available}`, 23, C.body);
+        this._btn(by + 48, 340, 84, '领取收益', C.accent2, () => this._do());
     }
 
     // ════ Body: 金币购买（入口 → 弹出数量弹窗）═════
@@ -132,31 +118,31 @@ export class TradePanel extends ModalPanel {
         const mbg = this._price > 0 ? Math.floor(gold / this._price) : 0;
         const mqty = Math.max(0, Math.min(stock.available, mbg));
 
-        this._tx(by, `\u6301\u6709 ${gold} \u91d1 | \u5355\u4ef7 ${this._price} | \u6700\u591a ${mqty} \u4e2a`, 19, C.sub);
+        this._tx(by, `持有 ${gold} 金 | 单价 ${this._price} | 最多 ${mqty} 个`, 19, C.sub);
 
         if (mqty <= 0) {
-            const r = stock.soldOut ? '\u5546\u4eba\u8d27\u7269\u5df2\u552e\u7b4c' : '\u91d1\u5e01\u4e0d\u8db3';
+            const r = stock.soldOut ? '商人货物已售罄' : '金币不足';
             this._tx(by + 34, r, 23, C.warn, true);
             return;
         }
 
         // 「选择数量」按钮 → 弹出 QuantityPanel
-        this._btn(by + 50, 400, 84, '\u9009\u62e9\u6570\u91cf', C.accent, () => {
+        this._btn(by + 50, 400, 84, '选择数量', C.accent, () => {
             const opts: QtyOptions = {
-                infoLines: [`\u6301\u6709 ${gold} \u91d1 | \u5355\u4ef7 ${this._price} | \u6700\u591a ${mqty} \u4e2a`],
-                confirmLabel: '\u786e\u8ba4\u8d2d\u4e70',
+                infoLines: [`持有 ${gold} 金 | 单价 ${this._price} | 最多 ${mqty} 个`],
+                confirmLabel: '确认购买',
                 getPreview: (q) => [
-                    `\u82b1\u8d39\uff1a${this._price * q} \u91d1`,
-                    `\u2192 \u83b7\u5f97\uff1a${this._gName} \u00d7${q}`,
+                    `花费：${this._price * q} 金`,
+                    `→ 获得：${this._gName} ×${q}`,
                 ],
             };
-            this._getQty().show(`\u8d2d\u4e70\uff1a${this._gName}`, mqty, (q) => this._doWithQty(q, 'gold'), opts);
+            this._getQty().show(`购买：${this._gName}`, mqty, (q) => this._doWithQty(q, 'gold'), opts);
         });
     }
 
     // ════ Body: 易货列表（选物品 → 弹出数量弹窗）═════
     private _bBarterList(by: number): void {
-        this._tx(by, '\u9009\u62e9\u8981\u4ea4\u6362\u7684\u7269\u54c1', 22, C.title, true);
+        this._tx(by, '选择要交换的物品', 22, C.title, true);
 
         const bag = GameManager.instance.boxSaveData['bag'] || {};
         const items = Object.keys(bag)
@@ -164,47 +150,46 @@ export class TradePanel extends ModalPanel {
             .sort((a, b) => (bag[b] || 0) - (bag[a] || 0));
 
         if (items.length === 0) {
-            this._tx(by + 34, '\u80cc\u5305\u91cc\u6ca1\u6709\u53ef\u7528\u4e8e\u4ea4\u6362\u7684\u7269\u54c1', 21, C.warn);
+            this._tx(by + 34, '背包里没有可用于交换的物品', 21, C.warn);
             return;
         }
 
-        const lh = 480, rh = 76;
-        const { content: cnt } = this.mkScroll(this._content!, 0, -(by + 34), PW - 48, lh);
-        cnt.getComponent(UITransform)!.setContentSize(PW - 48, Math.max(lh, items.length * rh + 16));
-
-        // 易货行：widgets 声明式（UIShape 行底 + UILabel），VStack 自动排布
-        const rowW = PW - 68, rowH = rh - 6;
-        const list = new UIVStack().gap(6).align('center').fixedWidth(rowW).padding(6, 0, 0, 0);
-        for (const id of items) {
+        const rowW = PW - 68;
+        const rows = items.map(id => {
             const q = bag[id] || 0, nm = ITEM_DATA[id]?.name || id;
             const out = ActionTrade.instance.previewBarter(this._tid, id, q);
-            const row = new UIShape(`r_${id}`).rect(rowW, rowH, C.white, 10, C.panelBorder, 1.5);
-            const lbl = new UILabel(
-                out >= 1 ? `${nm} \u00d7${q}  \u2192 \u6362 ${this._gName} \u00d7${out}` : `${nm} \u00d7${q}  (\u4ef7\u503c\u4e0d\u8db3)`,
-                { size: 19, width: rowW - 24, height: rowH, color: out >= 1 ? C.body : C.disabled, align: 'left' },
-            );
-            row.add(lbl);
-            row.onTap(() => {
-                // 弹出数量选择弹窗（复用 QuantityPanel）
-                const opts: QtyOptions = {
-                    infoLines: [`\u6301\u6709 ${q} \u4e2a`],
-                    confirmLabel: '\u786e\u8ba4\u6613\u8d27',
-                    getPreview: (qty) => {
-                        const r = ActionTrade.instance.previewBarter(this._tid, id, qty);
-                        return r >= 1
-                            ? [`\u7ed9\uff1a${nm} \u00d7${qty}`, `\u2192 \u6362\uff1a${this._gName} \u00d7${r}`]
-                            : [`\u7ed9\uff1a${nm} \u00d7${qty}`, `\u2192 \u4ef7\u503c\u4e0d\u8db3`];
-                    },
-                };
-                this._getQty().show(`\u4ea4\u6362\u7269\uff1a${nm}`, q, (qty) => this._doWithOffer(id, qty), opts);
+            return new ModalRow({
+                width: rowW,
+                name: out >= 1 ? `${nm} ×${q}  → 换 ${this._gName} ×${out}` : `${nm} ×${q}  (价值不足)`,
+                align: 'left',
+                bg: C.white, stroke: C.panelBorder, radius: 10,
+                disabled: out < 1,
+                onTap: () => {
+                    const opts: QtyOptions = {
+                        infoLines: [`持有 ${q} 个`],
+                        confirmLabel: '确认易货',
+                        getPreview: (qty) => {
+                            const r = ActionTrade.instance.previewBarter(this._tid, id, qty);
+                            return r >= 1
+                                ? [`给：${nm} ×${qty}`, `→ 换：${this._gName} ×${r}`]
+                                : [`给：${nm} ×${qty}`, `→ 价值不足`];
+                        },
+                    };
+                    this._getQty().show(`交换物：${nm}`, q, (qty) => this._doWithOffer(id, qty), opts);
+                },
             });
-            list.add(row);
-        }
-        list.mount(cnt);
-        list.pos(0, -list.h / 2, 0);
+        });
+
+        // 列表用 ModalScrollList（固定面板，不随内容 resize）
+        const list = this.createScrollList({
+            parent: this._content!, x: 0, y: -(by + 34),
+            width: PW - 48, viewH: 480, gap: 6, padT: 6,
+            autoResizePanel: false, repositionScroll: false, align: 'center',
+        });
+        list.setRows(rows);
 
         const mp = Math.round(ActionTrade.instance.getBarterMargin() * 100);
-        this._tx(by + lh + 44, `\u63d0\u793a\uff1a\u6613\u8d27 >> \u5356\u8d27\u6362\u91d1\u5e01\u518d\u4e70 (${mp}%\u5dee\u4ef7)`, 15, C.sub);
+        this._tx(by + 480 + 44, `提示：易货 >> 卖货换金币再买 (${mp}%差价)`, 15, C.sub);
     }
 
     // ════ 执行交易（带数量的版本）═════
@@ -232,12 +217,7 @@ export class TradePanel extends ModalPanel {
     private _tx(y: number, text: string, sz: number, clr: Color, bold = false): Label {
         return this.mkText(this._content!, 0, -y, PW - 48, Math.ceil(sz * 2.2) + 8, text, sz, clr, { bold, align: 'left' });
     }
-    private _btn(y: number, w: number, h: number, text: string, bg: Color, cb: () => void): { n: Node; l: Label; g: Graphics } {
-        const r = this.mkButton(this._content!, 0, -y, w, h, text, bg, cb);
-        return { n: r.node, l: r.label, g: r.gfx };
-    }
-    private _tabN(x: number, y: number, w: number, h: number, text: string, cb: () => void): { n: Node; g: Graphics; l: Label } {
-        const r = this.mkTab(this._content!, x, -y, w, h, text, cb);
-        return { n: r.node, g: r.gfx, l: r.label };
+    private _btn(y: number, w: number, h: number, text: string, bg: Color, cb: () => void): void {
+        this.mkButton(this._content!, 0, -y, w, h, text, bg, cb);
     }
 }

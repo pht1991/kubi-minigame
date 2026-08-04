@@ -18,7 +18,7 @@ import { _decorator, Color, view } from 'cc';
 import { ModalPanel } from './ModalPanel';
 import { C, S, BtnStyle } from './theme';
 import { ITEM_DATA } from '../data/data';
-import { UIVStack, UIHStack, UILabel, UIButton, UIShape } from './widgets';
+import { UIVStack, UIHStack, UILabel, UIButton, UIShape, ModalInfoRow } from './widgets';
 
 const { ccclass } = _decorator;
 
@@ -127,18 +127,18 @@ export class EventDetailPanel extends ModalPanel {
         // ── 2. 需求行 ──
         if (Object.keys(p.want).length > 0) {
             const wantStr = Object.entries(p.want).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
-            stack.add(this._infoRow(cw, '需求', wantStr, p.canTrigger ? C.body : C.warn));
+            stack.add(new ModalInfoRow(cw, '需求', wantStr, { valueColor: p.canTrigger ? C.body : C.warn }));
         }
 
         // ── 3. 奖励行 ──
         if (p.reward) {
             const getStr = Object.entries(p.reward).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
-            stack.add(this._infoRow(cw, '奖励', getStr, C.accent2));
+            stack.add(new ModalInfoRow(cw, '奖励', getStr, { valueColor: C.accent2 }));
         }
 
         // ── 4. 已完成标记 ──
         if (p.experienced) {
-            stack.add(this._infoRow(cw, '', '(已完成)', C.sub));
+            stack.add(new ModalInfoRow(cw, '', '(已完成)', { valueColor: C.sub }));
         }
 
         // ── 5. 底部按钮区 ──
@@ -175,19 +175,5 @@ export class EventDetailPanel extends ModalPanel {
         }
     }
 
-    /** 构建一行「标签: 内容」信息条（UIShape 行底 + 标签/内容 UILabel 手动内嵌） */
-    private _infoRow(cw: number, label: string, value: string, valueColor: Color): UIShape {
-        const rowH = 44;
-        const row = new UIShape('InfoRow').rect(cw, rowH, LABEL_BG, 6);
-        if (label) {
-            const tag = new UILabel(label, { size: S.font.sub, color: LABEL_TEXT, bold: true });
-            tag.pos(-cw / 2 + 16 + tag.w / 2, 0);
-            row.add(tag);
-        }
-        const valW = cw - (label ? 96 : 32);
-        const val = new UILabel(value, { size: S.font.body, width: valW, height: rowH, color: valueColor, align: 'left' });
-        val.pos(-cw / 2 + (label ? 80 : 16) + valW / 2, 0);
-        row.add(val);
-        return row;
-    }
+    /** 构建一行「标签: 内容」信息条（已抽为公共组件 ModalInfoRow） */
 }

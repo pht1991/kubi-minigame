@@ -129,7 +129,7 @@ function headerPreset(ctx: CellLayoutContext): Omit<ResolvedCellLayout, 'kind'> 
  * 估算横条高度：按 name 估算行数 × 行高 + 上下内边距，取与 barH 的较大值。
  * 解决多行文本（建造列表 名称\n需求\n描述、技能长描述等）被固定 120 高 CLAMP 裁切的问题。
  */
-function estimateBarHeight(name: string, ctx: CellLayoutContext, fs: number, lh: number): number {
+export function estimateBarHeight(name: string, ctx: CellLayoutContext, fs: number, lh: number): number {
     const padX = 24;
     const padY = 16;
     const availW = Math.max(120, ctx.barWidth - padX);

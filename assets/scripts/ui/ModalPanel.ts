@@ -21,6 +21,8 @@ import {
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment, view,
 } from 'cc';
 import { C, S, Btn, BtnStyle } from './theme';
+import { UIButton } from './widgets';
+import { ModalScrollList, ModalScrollListOpts } from './widgets/ModalScrollList';
 import { GameManager } from '../core/GameManager';
 import { EventBus } from '../core/EventBus';
 import type { DialogPanel } from './DialogPanel';
@@ -318,42 +320,42 @@ export abstract class ModalPanel extends Component {
     }
 
     /**
-     * 按钮：节点上 Graphics 画背景 + Label 放【子节点】（避免与 Graphics 同节点冲突）。
-     * 自带 TOUCH_END stopPropagation，cb 内自行处理关闭逻辑。
-     * bg 为纯色背景；边框/文字走统一主题（C.btnBorder）。特殊按钮请用 mkBtn(样式预设)。
+     * 按钮：复用公共组件 UIButton（背景 UIShape + 文字 UILabel，自带 stopPropagation），
+     * 返回 BtnRef 兼容结构供旧调用方（TradePanel 等）继续用 .node/.label/.gfx。
      */
     protected mkButton(parent: Node, x: number, y: number, w: number, h: number, text: string, bg: Color, cb: () => void): BtnRef {
-        const n = new Node('Btn');
-        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 0.5);
-        n.setPosition(x, y, 0); n.setParent(parent);
-        const g = n.addComponent(Graphics);
-        this.mkRect(g, -w / 2, -h / 2, w, h, S.btnRadius, bg, C.btnBorder, S.btnBorderW);
-        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, Math.min(S.font.button, h * 0.43), C.white, true);
-        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
-        return { node: n, label: lbl, gfx: g };
+        const style: BtnStyle = { bg, border: C.btnBorder, borderW: S.btnBorderW, text: C.white, radius: S.btnRadius, fontSize: Math.min(S.font.button, h * 0.43) };
+        const btn = new UIButton(text, style, cb, w, h);
+        btn.node.setPosition(x, y, 0); btn.node.setParent(parent);
+        return { node: btn.node, label: btn.label.label, gfx: btn.bgGfx };
     }
 
     /** 按钮（预设样式版）：传入 Btn.* 预设，或 {...Btn.primary, bg: 自定} 覆盖个别字段 */
     protected mkBtn(parent: Node, x: number, y: number, w: number, h: number, text: string, style: BtnStyle, cb: () => void): BtnRef {
-        const n = new Node('Btn');
-        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 0.5);
-        n.setPosition(x, y, 0); n.setParent(parent);
-        const g = n.addComponent(Graphics);
-        this.mkRect(g, -w / 2, -h / 2, w, h, style.radius, style.bg, style.border, style.borderW);
-        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, style.fontSize ?? Math.min(S.font.button, h * 0.43), style.text, true);
-        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
-        return { node: n, label: lbl, gfx: g };
+        const btn = new UIButton(text, style, cb, w, h);
+        btn.node.setPosition(x, y, 0); btn.node.setParent(parent);
+        return { node: btn.node, label: btn.label.label, gfx: btn.bgGfx };
     }
 
-    /** Tab 按钮：结构同上（Graphics + 子节点 Label），样式由调用方用 gfx 自绘（见 TradePanel 用法） */
+    /** Tab 按钮：复用 UIButton；如需选中态切换请用专用 ModalTab 组件（见 TradePanel 用法） */
     protected mkTab(parent: Node, x: number, y: number, w: number, h: number, text: string, cb: () => void): BtnRef {
-        const n = new Node('Tab');
-        const nt = n.addComponent(UITransform); nt.setContentSize(w, h); nt.setAnchorPoint(0.5, 0.5);
-        n.setPosition(x, y, 0); n.setParent(parent);
-        const g = n.addComponent(Graphics);
-        const lbl = this.mkCenter(n, 0, 0, w - 12, h, text, Math.min(23, h * 0.43), C.body, true);
-        n.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; cb(); });
-        return { node: n, label: lbl, gfx: g };
+        const style: BtnStyle = { bg: C.white, border: C.btnBorder, borderW: 2, text: C.body, radius: 12, fontSize: 23 };
+        const btn = new UIButton(text, style, cb, w, h);
+        btn.node.setPosition(x, y, 0); btn.node.setParent(parent);
+        return { node: btn.node, label: btn.label.label, gfx: btn.bgGfx };
+    }
+
+    /**
+     * 可滚动列表区工厂：创建 mkScroll + 返回 ModalScrollList 控制器。
+     * render 时调用 controller.setRows(rows) 即可自动装载 + 自适应高度（去重 updateLayout 数学）。
+     */
+    protected createScrollList(o: { parent: Node; x?: number; y?: number } & ModalScrollListOpts): ModalScrollList {
+        const s = this.mkScroll(o.parent, o.x ?? 0, o.y ?? 0, o.width, o.viewH ?? 600);
+        return new ModalScrollList(
+            { view: s.view, content: s.content, sv: s.sv },
+            (h) => this.resizePanel(h),
+            o,
+        );
     }
 
     /** 带圆角的滚动视图（含 RECT Mask + ScrollView）。返回 view / content / sv */

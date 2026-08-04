@@ -16,3 +16,11 @@ export { UIButton } from './UIButton';
 export { UISpacer } from './UISpacer';
 export { UIVStack, UIHStack, UIGrid } from './UILayout';
 export type { AlignX, AlignY } from './UILayout';
+// 弹窗公共组件（复用本库原子组件）
+export { ModalRow } from './ModalRow';
+export type { ModalRowOpts } from './ModalRow';
+export { ModalInfoRow } from './ModalInfoRow';
+export type { ModalInfoRowOpts } from './ModalInfoRow';
+export { ModalTab } from './ModalTab';
+export { ModalScrollList } from './ModalScrollList';
+export type { ModalScrollListOpts } from './ModalScrollList';

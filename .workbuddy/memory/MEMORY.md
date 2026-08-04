@@ -17,6 +17,7 @@ Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 路径 `D:\Projects\demos\front_e
 - **本地 tsc 类型壳（拿真实信号）**：项目 `node_modules/cc` 默认不存在→`import {..} from 'cc'` 全部 `Cannot find module 'cc'` 级联成 170+ 假错。在 `node_modules/cc/` 建 `package.json({"types":"index.d.ts"})` + `index.d.ts`（`/// <reference path="C:/ProgramData/cocos/editors/Creator/3.8.0/resources/resources/3d/engine/bin/.declarations/cc.d.ts" />`）即可消除级联，只看真实类型错误。`node_modules` 已 gitignore 不会被提交。注意：data.ts/data_item.ts/SaveManager/CloudSaveProvider 的 `wx` 全局与数据类型的 TS2339/2367、`ModalPanel` ScrollView `elasticBounceTime`、DialogPanel/BagPanel/QuantityPanel `show` 签名 TS2416、BasePage `noTruncate` 缺 DialogOption 字段等均为**存量**（Cocos 转译不校验类型，照常构建成功），非本轮引入。
 - 子类重写 onLoad/start 必须 `super.xxx()`（漏→外壳 undefined→首次 show 崩）。
 - `private a=1,b=2;` 逗号多属性非法；`case 'x': {` 漏 `}` 级联→`Cannot read property 'resolutions' of null`。
+- **严禁 `from './'` 裸目录导入（2026-08-04 双端构建炸雷）**：tsc 会绕过解析到同目录 `index.ts` 而**漏检**，但 Cocos 的 rollup/mod-lo 打包器**不支持目录导入**，真机构建必报 `不支持目录导入` / `UnsupportedDirectoryImportError`，且 `build/wechatgame`、`build/web-mobile` 产物目录**根本不生成**（push-all 的 `git push` 只推已提交状态、改动未提交则 master/gh-pages 不被污染，但仍浪费整轮 900s×2 轮询）。组件间互相引用一律写**显式文件路径**：`UIVStack` 定义在 `UILayout.ts`（index.ts 从它 re-export，无独立 `UIVStack.ts`）→ `from './UILayout'`；莫写 `from './'` 或 `from './UIVStack'`。铁律：新组件若需引用同目录其它组件，**逐文件显式 import**，永远不要 `from './'`。
 
 ## 架构/UI
 - MainScene 抽 13 Page（继承 BasePage 经 PageContext 共享）；UIRoot 分层 Content<StatusBar<BottomBar<Modal<Toast。

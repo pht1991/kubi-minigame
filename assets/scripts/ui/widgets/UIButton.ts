@@ -6,7 +6,7 @@
  * 点击自带 stopPropagation，避免穿透到遮罩/面板。
  */
 
-import { Color, NodeEventType, EventTouch } from 'cc';
+import { Color, NodeEventType, EventTouch, Graphics } from 'cc';
 import { UINode } from './UINode';
 import { UIShape } from './UIShape';
 import { UILabel } from './UILabel';
@@ -41,6 +41,9 @@ export class UIButton extends UINode {
 
     /** 暴露文字标签（供外部动态改文字，如底栏「出门/回家」切换） */
     get label(): UILabel { return this._label; }
+
+    /** 暴露背景 Graphics（供按钮助手返回 BtnRef.gfx 兼容结构） */
+    get bgGfx(): Graphics { return this._bg.gfx; }
 
     setEnabled(b: boolean): this {
         this._enabled = b;
