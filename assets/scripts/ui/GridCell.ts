@@ -354,8 +354,14 @@ export class GridCell extends Component {
         if (this._badgeNode) this._badgeNode.active = !isBar && !!d.badge;
         if (this._cooldownMask) this.setCooldownMask(this._cooldownMask, d.state === 'cooldown');
 
-        // ── NewBadge（isNew 才显示） ──
-        if (this._newBadge) this._newBadge.active = !!d.isNew;
+        // ── NewBadge（isNew 才显示；位置随格子尺寸更新，修复 bar 模式角标偏离的 bug） ──
+        if (this._newBadge) {
+            const nbTf = this.node.getComponent(UITransform);
+            const nbW = nbTf ? nbTf.width : 160;
+            const nbH = nbTf ? nbTf.height : 160;
+            this._newBadge.setPosition(nbW / 2 - 8, nbH / 2 - 8, 0);
+            this._newBadge.active = !!d.isNew;
+        }
 
         this.applyState(d.state || 'normal');
     }
