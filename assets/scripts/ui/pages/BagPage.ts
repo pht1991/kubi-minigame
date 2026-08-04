@@ -89,11 +89,12 @@ export class BagPage extends BasePage {
             }
             return {
                 id: itemId,
-                name: isEquipped ? `${baseName}\n[已装备]` : baseName,
+                name: baseName,
                 count: box[itemId],
                 state: 'normal' as const,
                 data: itemId,
                 durability,
+                isEquipped,
             };
         });
         // 空箱子/背包不渲染占位 cell，内容区自然留白

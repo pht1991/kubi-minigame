@@ -288,6 +288,8 @@ export interface GridCellData {
     noTruncate?: boolean;
     /** 背包耐久度（工具/武器类）：cur 当前耐久 / max 满耐久，用于格子底部绘制耐久条 */
     durability?: { cur: number; max: number };
+    /** 是否已装备（背包视图：装备中的物品在 subText 渲染 [已装备] badge，不再把 \n[已装备] 塞到 name 里造成 3 行布局） */
+    isEquipped?: boolean;
 }
 
 /** 网格页定义 */

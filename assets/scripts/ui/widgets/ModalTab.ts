@@ -22,7 +22,9 @@ export class ModalTab extends UINode {
 
         this._lbl = new UILabel(text, {
             size: opts?.fontSize ?? 23, color: C.body, align: 'center', bold: true,
+            width: w - 16,    // 关键：传 width 让 UILabel contentSize 覆盖按钮内宽，文字完整渲染（否则按字估宽 ~chars*size*0.6 被 CLAMP 居中裁掉两侧 → "金币购买" 只剩 "币购"）
         });
+        this._lbl.pos(0, 0);
         this.add(this._lbl);
 
         this.onTap(onTap);

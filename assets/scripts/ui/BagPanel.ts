@@ -92,12 +92,17 @@ export class BagPanel extends ModalPanel {
             const item = ITEM_DATA[cell.id];
             const itemType = (item as any)?.type as string || '';
             const hasDur = !!(cell.durability && cell.durability.max > 0);
+            const isEquipped = !!cell.isEquipped;
 
-            // 副行：耐久 / 类型标签（禁用态不显示）
+            // 副行：[已装备] badge（可选）+ 耐久 / 类型标签。disabled 不显示。
+            // 拼接顺序：[已装备] · 耐久 cur/max   或   [已装备] · 类型
             let subText: string | undefined;
             if (!isDisabled) {
-                if (hasDur) subText = `耐久 ${Math.max(0, cell.durability!.cur)}/${cell.durability!.max}`;
-                else if (item?.desc) subText = this.getTypeLabel(itemType);
+                const parts: string[] = [];
+                if (isEquipped) parts.push('[已装备]');
+                if (hasDur) parts.push(`耐久 ${Math.max(0, cell.durability!.cur)}/${cell.durability!.max}`);
+                else if (item?.desc) parts.push(this.getTypeLabel(itemType));
+                if (parts.length > 0) subText = parts.join(' · ');
             }
 
             const id = cell.id;
