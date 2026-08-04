@@ -109,11 +109,12 @@ export class ModalRow extends UINode {
 
         // 右端元信息
         if (o.meta) {
+            const metaW = 70;
             const meta = new UILabel(o.meta, {
-                size: o.metaSize ?? S.font.body, width: 64, align: 'right',
-                color: o.metaColor ?? C.cellCount,
+                size: o.metaSize ?? S.font.body, width: metaW, height: 30,
+                color: o.metaColor ?? C.cellCount, align: 'right',
             });
-            meta.pos(w / 2 - 24, 0);
+            meta.pos(w / 2 - 12 - metaW / 2, 0);  // 右边 = w/2 - 12（行内 12px padding）
             this.add(meta);
         }
 

@@ -141,8 +141,8 @@ export class BagPanel extends ModalPanel {
         const map: Record<string, string> = {
             weapon: '武器', equip: '装备', head: '头部', body: '身体',
             foot: '足部', neck: '颈部', tool: '工具', food: '食物',
-            cooked: '熟食', mat: '材料', material: '材料', quest: '任务道具',
-            special: '特殊', art: '艺术品',
+            cooked: '熟食', mat: '材料', met: '材料', material: '材料',
+            quest: '任务道具', special: '特殊', art: '艺术品',
         };
         return map[type] || type || '';
     }
