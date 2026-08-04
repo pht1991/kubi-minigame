@@ -15,6 +15,7 @@
 
 import { _decorator, Component, Node, Label, UIOpacity, Vec3, tween, Color, UITransform, Graphics } from 'cc';
 import { GridCellData } from '../data/types';
+import type { ResolvedCellLayout } from './cellLayout';
 import { C } from './theme';
 
 const { ccclass } = _decorator;
@@ -31,6 +32,8 @@ export class GridCell extends Component {
     private _bgGfx: Graphics | null = null;
 
     private _data: GridCellData | null = null;
+    /** 由 GridComponent 在渲染时按每格解析后下发的最终布局（含像素宽高） */
+    private _layout: ResolvedCellLayout | null = null;
     private _onClick: ((cell: GridCell) => void) | null = null;
     private _onLongPress: ((cell: GridCell) => void) | null = null;
     private _longPressTimer: any = null;
@@ -176,6 +179,11 @@ export class GridCell extends Component {
 
     // ═══ 公开 API（保持与原版接口兼容）═══
 
+    /** 下发解析后的布局（须在 setData 之前调用，refresh 会按它排版） */
+    setLayout(layout: ResolvedCellLayout): void {
+        this._layout = layout;
+    }
+
     setData(data: GridCellData): void {
         this._data = data;
         this.refresh();
@@ -204,7 +212,11 @@ export class GridCell extends Component {
         if (!this._built) this.buildNodes(); // 极端兜底（对象池复用未触发 onLoad）
 
         const d = this._data;
-        const isList = d.type === 'list';
+        // 形态优先取 GridComponent 下发的解析布局；缺失时回退到 type 推导（兼容旧路径）
+        const L = this._layout
+            ?? { kind: d.type === 'list' ? 'bar' : 'tile', span: 1, width: 160, height: 160,
+                 fontSize: 22, lineHeight: 28, align: 'center', wrap: false, noTruncate: !!d.noTruncate };
+        const isBar = L.kind === 'bar';
 
         // ── 背景色（按状态分层，统一取自主题） ──
         const bgColors: Record<string, Color> = {
@@ -228,44 +240,45 @@ export class GridCell extends Component {
         this.drawCellBg(bgColor, outlineColor);
 
         // ── 名字 ──
+        // 名字框尺寸单一像素来源：节点自身的 UITransform（由 GridComponent 按 L.width/height 设定）
         if (this._nameLabel && this._nameTf) {
+            const cellTf = this.node.getComponent(UITransform);
+            const cellW = cellTf ? cellTf.width : (L.width || 160);
+            const cellH = cellTf ? cellTf.height : (L.height || 160);
+
             let displayName = d.name;
-            if (isList && !d.noTruncate) {
+            if (isBar && !L.noTruncate) {
                 displayName = this.truncateForList(displayName);
             }
 
-            // 步骤 1：先改布局属性
-            if (isList) {
-                const LIST_W = 660;
-                const LIST_H = 120;
+            // 步骤 1：先改布局属性（字号/行高/对齐/溢出）
+            this._nameLabel.fontSize = L.fontSize;
+            this._nameLabel.lineHeight = L.lineHeight;
+            const pad = isBar ? 12 : 8;
+            if (isBar) {
                 this._nameLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
                 this._nameLabel.verticalAlign = Label.VerticalAlign.TOP;
-                this._nameLabel.fontSize = 20;
-                this._nameLabel.lineHeight = 26;
                 this._nameLabel.overflow = Label.Overflow.CLAMP;
                 this._nameLabel.enableWrapText = true;
-                // 步骤 2：再改 UITransform 尺寸
-                this._nameTf.setAnchorPoint(0.5, 0.5);
-                this._nameTf.setContentSize(LIST_W - 24, LIST_H - 20);
-                this._nameLabel.node.setPosition(0, 0, 0);
             } else {
                 this._nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
                 this._nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
-                this._nameLabel.fontSize = 22;
-                this._nameLabel.lineHeight = 28;
                 this._nameLabel.overflow = Label.Overflow.NONE;
                 this._nameLabel.enableWrapText = false;
-                this._nameTf.setAnchorPoint(0.5, 0.5);
-                this._nameTf.setContentSize(140, 50.4);
-                this._nameLabel.node.setPosition(0, -5, 0);
             }
+
+            // 步骤 2：再改 UITransform 尺寸（名字框 = 格子内缩 pad）
+            this._nameTf.setAnchorPoint(0.5, 0.5);
+            this._nameTf.setContentSize(cellW - pad * 2, cellH - pad * 2);
+            this._nameLabel.node.setPosition(0, 0, 0);
+
             this._nameLabel.color = textColor;
             // 步骤 3：最后才赋值 string（Label 按当前属性重新布局）
             this._nameLabel.string = displayName;
         }
 
-        // ── count/badge/cooldown 显隐 ──
-        if (isList) {
+        // ── count/badge/cooldown 显隐（仅方格显示角标，横条隐藏） ──
+        if (isBar) {
             if (this._countLabel) this._countLabel.node.active = false;
             if (this._badgeNode) this._badgeNode.active = false;
             if (this._cooldownMask) this._cooldownMask.active = false;

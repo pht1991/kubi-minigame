@@ -1341,9 +1341,7 @@
     "bottomPadding": 16,
     "cellWidth": 160,
     "cellHeight": 160,
-    "listRowHeight": 80,
-    "listPaddingX": 16,
-    "listLineHeight": 24,
+    "barHeight": 120,
     "_id": "8enMCL+15JkJs7RrJjz4ph"
   },
   {

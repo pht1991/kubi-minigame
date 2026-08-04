@@ -7,6 +7,7 @@ import { _decorator, Component, Node, Label, ScrollView, Vec3, UITransform, Spri
 import { UIShape, UILabel } from './widgets';
 import { GridPage, GridCellData } from '../data/types';
 import { GridCell } from './GridCell';
+import { resolveCellLayout, CellLayoutContext } from './cellLayout';
 import { GridNavigator } from '../core/GridNavigator';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { C } from './theme';
@@ -52,17 +53,13 @@ export class GridComponent extends Component {
     @property
     cellHeight: number = 160;
 
-    /** 列表行默认高度（type='list' 时的最小行高，实际高度按文字行数自适应） */
+    /** 横条（layout='bar'）默认行高 */
     @property
-    listRowHeight: number = 80;
+    barHeight: number = 120;
 
-    /** 列表行左右内边距（距 content 边缘） */
+    /** 横条满宽（独立于 columns：纯列表页恒满宽，不受 columns=1 影响） */
     @property
-    listPaddingX: number = 16;
-
-    /** 列表模式每行文字高度估算（用于动态计算格子高度） */
-    @property
-    listLineHeight: number = 24;
+    barWidth: number = 660;
 
     private get _navigator(): GridNavigator { return GridNavigator.instance; }
     private get _eventBus(): EventBus { return EventBus.instance; }
@@ -259,7 +256,7 @@ export class GridComponent extends Component {
         this.renderFooter(page);
     }
 
-    /** 渲染格子列表 */
+    /** 渲染格子列表（逐格流式布局，支持方格 + 横条同页混排） */
     private renderCells(cells: GridCellData[], onClick?: (index: number, cell: GridCellData) => void): void {
         // 清除旧格子（只销毁追踪到的节点，不破坏 contentNode 结构）
         this.clearCells();
@@ -272,36 +269,58 @@ export class GridComponent extends Component {
         const labels = this.contentNode.getComponents(Label);
         for (const lbl of labels) { if (lbl.isValid) lbl.destroy(); }
 
-        // 检测是否为列表模式 → 用局部变量调整参数（不污染实例属性）
-        const isListMode = cells.some(c => c.type === 'list');
-        const effColumns = isListMode ? 1 : this.columns;
-        const effCellW = isListMode ? 660 : this.cellWidth;   // 列表满宽
-        const effCellH = isListMode ? 120 : this.cellHeight;   // 列表行高足够容纳3-4行文字
+        // 页面级布局上下文
+        const columns = this.columns;
+        const tileW = this.cellWidth;
+        const tileH = this.cellHeight;
+        const spacing = this.cellSpacing;
+        const tileGridW = columns * tileW + (columns - 1) * spacing;
+        // content 内宽取「方格网格宽」与「横条满宽」的较大者，确保列表页横条不被裁切
+        const contentInnerW = Math.max(tileGridW, this.barWidth);
+        const ctx: CellLayoutContext = { columns, tileW, tileH, spacing, contentInnerW, barWidth: this.barWidth, barH: this.barHeight };
 
-        // ---- 统一走网格布局引擎 ----
-        const totalRows = Math.ceil(cells.length / effColumns);
-        const contentHeight = Math.max(
-            this.topPadding + totalRows * effCellH + (totalRows - 1) * this.cellSpacing + this.bottomPadding,
-            500
-        );
-        const contentWidth = effColumns * (effCellW + this.cellSpacing) + 32;
+        // 解析每格布局
+        const items = cells.map(c => ({ data: c, L: resolveCellLayout(c, ctx) }));
 
-        // 设置 content 容器 —— 只设置尺寸
-        // 锚点和位置由编辑器配置管理（anchor=(0.5,0.5), position=(0,0)），
-        // 符合 Cocos ScrollView 的标准预期，滚动边界计算才能正确。
-        // 绝不修改 anchor 或 position——ScrollView 引擎依赖这些值做滚动计算。
+        // ── 第一遍：流式定位，算出每格的占位宽度/高度/中心 x / 顶部 y（从 content 顶向下计） ──
+        const edgePad = 16;
+        const halfInner = contentInnerW / 2;
+        let topY = this.topPadding;
+        let rowH = 0;
+        let rowUsedW = 0;
+        let xCursor = -halfInner;
+        const flow: { L: typeof items[number]['L']; w: number; h: number; cx: number; topY: number }[] = [];
+        for (const it of items) {
+            const w = it.L.width;
+            const h = it.L.height;
+            const isFullRow = w >= contentInnerW - 1;            // 整行宽（横条）→ 必须独占一行
+            const fitsInRow = xCursor + w <= halfInner + 0.5;    // 右边界不超出内容区内宽
+            if (rowUsedW > 0 && (isFullRow || !fitsInRow)) {
+                // 换行
+                topY += rowH + spacing;
+                rowUsedW = 0;
+                rowH = 0;
+                xCursor = -halfInner;
+            }
+            const cx = xCursor + w / 2;
+            flow.push({ L: it.L, w, h, cx, topY });
+            xCursor += w + spacing;
+            rowUsedW += w + spacing;
+            rowH = Math.max(rowH, h);
+        }
+        const contentHeight = Math.max(topY + rowH + this.bottomPadding, 500);
+        const contentWidth = contentInnerW + edgePad * 2;
+
+        // 设置 content 容器 —— 只设置尺寸（锚点/位置由场景编辑器管理，绝不改）
         let contentTransform = this.contentNode.getComponent(UITransform);
         if (!contentTransform) {
             contentTransform = this.contentNode.addComponent(UITransform);
         }
         contentTransform.setContentSize(contentWidth, contentHeight);
 
-        // ---- 逐格创建 ----
-        // 子节点定位公式适配 content 的编辑器锚点 (0.5, 0.5)：
-        //   anchor(0.5,0.5) 表示 y=0 在 content 中心
-        //   正 y 向上（靠近 content 顶部），负 y 向下（靠近底部）
-        const halfH = contentHeight / 2;
-        for (let i = 0; i < cells.length; i++) {
+        // ── 第二遍：创建/复用节点、设尺寸、按 content 锚点(0.5,0.5) 定位 ──
+        for (let i = 0; i < flow.length; i++) {
+            const f = flow[i];
             const cellData = cells[i];
             // 复用对象池节点（无则新建），避免每次全量重建
             const node = this._cellPool.length > 0
@@ -318,18 +337,17 @@ export class GridComponent extends Component {
             if (!cellTransform) {
                 cellTransform = node.addComponent(UITransform);
             }
-            // 【关键】强制设置尺寸（不依赖 prefab 初始值）
-            cellTransform.setContentSize(effCellW, effCellH);
+            // 【关键】按解析布局强制设置尺寸（不依赖任何默认值）
+            cellTransform.setContentSize(f.w, f.h);
 
-            // 定位公式（content 锚点 0.5,0.5 → y=0 在中心，正数向上/顶部方向）
-            const row = Math.floor(i / effColumns);
-            const col = i % effColumns;
-            const x = (col - (effColumns - 1) / 2) * (effCellW + this.cellSpacing);
-            const y = halfH - this.topPadding - effCellH / 2 - row * (effCellH + this.cellSpacing);
-            node.setPosition(new Vec3(x, y, 0));
+            // content 锚点 (0.5,0.5)：y=0 在中心，正数向上/顶部方向
+            // 该格中心 = contentHeight/2 - (顶部 y + 自身半高)
+            const localY = contentHeight / 2 - (f.topY + f.h / 2);
+            node.setPosition(new Vec3(f.cx, localY, 0));
 
             const cell = node.getComponent(GridCell) || node.addComponent(GridCell);
             cell.cancelLongPressDetect();
+            cell.setLayout(f.L);
             cell.setData(cellData);
             cell.setOnClick((clickedCell) => {
                 if (onClick) {
@@ -344,8 +362,6 @@ export class GridComponent extends Component {
             this._cells.push(cell);
         }
         // 标记：下一帧 lateUpdate（LayoutSystem 刷新 content 尺寸后）滚到顶部。
-        // 必须在 content 尺寸更新之后、且等 LayoutSystem 把尺寸传播到 ScrollView 边界后再滚，
-        // 否则 scrollToTop 会基于旧边界计算出错偏移（长页偏底空白、短页只露1条）。
         this._needScrollTop = true;
     }
 
@@ -495,12 +511,23 @@ export class GridComponent extends Component {
         fbg.node.setParent(this._footerNode);
         fbg.node.setPosition(0, 0, 0);
 
-        // 逐格创建页脚格子（纯代码工厂，与正文格子一致）
+        // 逐格创建页脚格子（纯代码工厂，与正文格子一致；页脚统一走横条布局）
+        const fctx: CellLayoutContext = {
+            columns: 1,
+            tileW: footerW - 32,
+            tileH: rowH,
+            spacing: gap,
+            contentInnerW: footerW - 32,
+            barWidth: footerW - 32,
+            barH: rowH,
+        };
         const halfFH = totalFooterH / 2;
         for (let i = 0; i < footerCells.length; i++) {
             const fd = footerCells[i];
             const fnode = this.createCellNode();
             fnode.setParent(this._footerNode);
+
+            const fL = resolveCellLayout(fd, fctx, { defaultKind: 'bar' });
 
             let fcTf = fnode.getComponent(UITransform);
             if (!fcTf) fcTf = fnode.addComponent(UITransform);
@@ -511,6 +538,7 @@ export class GridComponent extends Component {
             fnode.setPosition(0, fy, 0);
 
             const fcell = fnode.getComponent(GridCell) || fnode.addComponent(GridCell);
+            fcell.setLayout(fL);
             fcell.setData(fd);
             fcell.setOnClick((clickedCell) => {
                 if (page.onFooterClick) {

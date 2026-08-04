@@ -269,8 +269,16 @@ export interface GridCellData {
     icon?: string;
     count?: number;
     state?: 'normal' | 'selected' | 'disabled' | 'cooldown';
-    /** 格子类型：默认 normal（正方形），list 为列表行（满宽自适应高度） */
+    /**
+     * 格子类型（旧字段，保留兼容）：默认 normal（方格），list 为列表行（满宽横条）。
+     * 新代码优先读 layout；layout 未填时由 type 推导（list→bar，其它→tile）。
+     */
     type?: 'normal' | 'list';
+    /**
+     * 布局描述（新字段）：'tile' | 'bar' 预设名，或覆盖对象 Partial<CellLayoutStyle>。
+     * 不填则回退到 type 推导。详见 ui/cellLayout.ts。
+     */
+    layout?: 'tile' | 'bar' | Partial<import('../ui/cellLayout').CellLayoutStyle>;
     badge?: boolean;
     /** 是否显示「新」红色 badge（地图未探索地点等），与 badge 互斥展示 */
     isNew?: boolean;
