@@ -29,6 +29,8 @@ export class GridCell extends Component {
     private _badgeNode: Node | null = null;
     private _cooldownMask: Node | null = null;
     private _newBadge: Node | null = null;
+    private _iconNode: Node | null = null;
+    private _iconLabel: Label | null = null;
     private _bgGfx: Graphics | null = null;
 
     private _data: GridCellData | null = null;
@@ -102,6 +104,43 @@ export class GridCell extends Component {
 
         // ── NewBadge（红色「新」角标，默认隐藏）──
         this._newBadge = this.makeNewBadge();
+
+        // ── Icon（彩色圆角块 + 居中文字，仅 layout.iconPos 指定时显示）──
+        this._iconNode = this.makeIcon('Icon');
+    }
+
+    /** 创建图标块（圆角彩色底 + 居中文字，默认隐藏；文字取 data.icon 或 name 首字） */
+    private makeIcon(name: string): Node {
+        const node = new Node(name);
+        node.layer = this.node.layer;
+        node.setParent(this.node);
+        const tf = node.addComponent(UITransform);
+        tf.setAnchorPoint(0.5, 0.5);
+        tf.setContentSize(60, 60);
+        node.setPosition(0, 0, 0);
+
+        const gfx = node.addComponent(Graphics);
+        gfx.fillColor = C.cellIconBg;
+        gfx.roundRect(-30, -30, 60, 60, 12);
+        gfx.fill();
+
+        const lblNode = new Node('L');
+        lblNode.layer = this.node.layer;
+        lblNode.setParent(node);
+        const ltf = lblNode.addComponent(UITransform);
+        ltf.setAnchorPoint(0.5, 0.5);
+        ltf.setContentSize(60, 60);
+        lblNode.setPosition(0, 0, 0);
+        const lbl = lblNode.addComponent(Label);
+        lbl.fontSize = 28;
+        lbl.color = C.cellIconText;
+        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lbl.verticalAlign = Label.VerticalAlign.CENTER;
+        lbl.overflow = Label.Overflow.CLAMP;
+        this._iconLabel = lbl;
+
+        node.active = false; // 默认隐藏
+        return node;
     }
 
     /** 创建圆点（红点/状态点） */
@@ -215,8 +254,10 @@ export class GridCell extends Component {
         // 形态优先取 GridComponent 下发的解析布局；缺失时回退到 type 推导（兼容旧路径）
         const L = this._layout
             ?? { kind: d.type === 'list' ? 'bar' : 'tile', span: 1, width: 160, height: 160,
-                 fontSize: 22, lineHeight: 28, align: 'center', wrap: false, noTruncate: !!d.noTruncate };
+                 fontSize: 22, lineHeight: 28, align: 'center', wrap: false, noTruncate: !!d.noTruncate, iconPos: 'none' };
         const isBar = L.kind === 'bar';
+        const isHeader = L.kind === 'header';
+        const isTile = !isBar && !isHeader;
 
         // ── 背景色（按状态分层，统一取自主题） ──
         const bgColors: Record<string, Color> = {
@@ -256,46 +297,85 @@ export class GridCell extends Component {
             this._nameLabel.lineHeight = L.lineHeight;
             const pad = isBar ? 12 : 8;
             if (isBar) {
+                // 横条：左对齐 + 顶 + 可换行 + 裁切（高度已按文本自适应，不会裁切内容）
                 this._nameLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
                 this._nameLabel.verticalAlign = Label.VerticalAlign.TOP;
                 this._nameLabel.overflow = Label.Overflow.CLAMP;
                 this._nameLabel.enableWrapText = true;
             } else {
+                // 方格 / 标题：居中单行
                 this._nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
                 this._nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
                 this._nameLabel.overflow = Label.Overflow.NONE;
                 this._nameLabel.enableWrapText = false;
             }
 
+            // 图标（仅方格 + iconPos top）：名字框缩小并下移，图标块置于上方
+            const showIcon = isTile && L.iconPos === 'top';
+            let nameW = cellW - pad * 2;
+            let nameH = cellH - pad * 2;
+            let nameY = 0;
+            if (showIcon && this._iconNode) {
+                const iconSize = 60;
+                const reserved = iconSize + 6;
+                nameH = Math.max(20, cellH - reserved - pad * 2);
+                nameY = -(reserved) / 2;
+                if (this._iconLabel) this._iconLabel.string = d.icon || (d.name ? d.name.charAt(0) : '');
+                this._iconNode.setPosition(0, cellH / 2 - iconSize / 2 - 6, 0);
+                this._iconNode.active = true;
+            } else if (this._iconNode) {
+                this._iconNode.active = false;
+            }
+
             // 步骤 2：再改 UITransform 尺寸（名字框 = 格子内缩 pad）
             this._nameTf.setAnchorPoint(0.5, 0.5);
-            this._nameTf.setContentSize(cellW - pad * 2, cellH - pad * 2);
-            this._nameLabel.node.setPosition(0, 0, 0);
+            this._nameTf.setContentSize(nameW, nameH);
+            this._nameLabel.node.setPosition(0, nameY, 0);
 
             this._nameLabel.color = textColor;
             // 步骤 3：最后才赋值 string（Label 按当前属性重新布局）
             this._nameLabel.string = displayName;
         }
 
-        // ── count/badge/cooldown 显隐（仅方格显示角标，横条隐藏） ──
-        if (isBar) {
-            if (this._countLabel) this._countLabel.node.active = false;
-            if (this._badgeNode) this._badgeNode.active = false;
-            if (this._cooldownMask) this._cooldownMask.active = false;
-        } else {
-            if (this._countLabel) {
-                const show = d.count != null && d.count > 1;
-                this._countLabel.string = show ? `×${d.count}` : '';
-                this._countLabel.node.active = show;
+        // ── count / badge / cooldown 显隐 ──
+        // 方格：右上角角标；横条：数量显示在右侧中部（修复列表模式隐藏数量的回归）
+        if (this._countLabel) {
+            const show = d.count != null && d.count > 1;
+            this._countLabel.string = show ? `×${d.count}` : '';
+            if (isBar) {
+                const cellTf = this.node.getComponent(UITransform);
+                const cellW = cellTf ? cellTf.width : (L.width || 160);
+                this._countLabel.node.setPosition(cellW / 2 - 22, 0, 0);
+            } else {
+                this._countLabel.node.setPosition(60, 60, 0);
             }
-            if (this._badgeNode) this._badgeNode.active = !!d.badge;
-            if (this._cooldownMask) this._cooldownMask.active = d.state === 'cooldown';
+            this._countLabel.node.active = show;
         }
+        if (this._badgeNode) this._badgeNode.active = !isBar && !!d.badge;
+        if (this._cooldownMask) this.setCooldownMask(this._cooldownMask, d.state === 'cooldown');
 
         // ── NewBadge（isNew 才显示） ──
         if (this._newBadge) this._newBadge.active = !!d.isNew;
 
         this.applyState(d.state || 'normal');
+    }
+
+    /** 设置冷却遮罩：按当前格子尺寸重绘（解决 bar 模式尺寸变化后遮罩不跟随） */
+    private setCooldownMask(node: Node, on: boolean): void {
+        node.active = on;
+        if (!on) return;
+        const rootTf = this.node.getComponent(UITransform);
+        const w = rootTf ? rootTf.width : 160;
+        const h = rootTf ? rootTf.height : 160;
+        const tf = node.getComponent(UITransform);
+        if (tf) tf.setContentSize(w, h);
+        const g = node.getComponent(Graphics);
+        if (g) {
+            g.clear();
+            g.fillColor = new Color(187, 187, 187, 100);
+            g.rect(-w / 2, -h / 2, w, h);
+            g.fill();
+        }
     }
 
     /** 用 Graphics 绘制矩形背景 + 描边 */

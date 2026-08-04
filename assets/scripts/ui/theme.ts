@@ -69,6 +69,8 @@ export const C = {
     cellText:        new Color(74, 55, 40, 255),
     cellTextDisabled:new Color(90, 85, 80, 255),
     cellCount:       new Color(150, 110, 70, 255),
+    cellIconBg:      new Color(196, 158, 110, 255),  // 图标块底色（暖棕）
+    cellIconText:    new Color(255, 250, 240, 255),  // 图标文字（米白）
 
     // ── 耐久进度条 ──
     durTrack: new Color(214, 204, 192, 255),

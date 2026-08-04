@@ -28,7 +28,7 @@ export class TrapPage extends BasePage {
         const cells: GridCellData[] = [];
 
         // 已放置的陷阱
-        cells.push({ id: 'slot_label', name: `── 已放置 (${slots.length}/${trapData?.size || 2}) ──`, state: 'disabled', type: 'list', noTruncate: true });
+        cells.push({ id: 'slot_label', name: `── 已放置 (${slots.length}/${trapData?.size || 2}) ──`, state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
         for (let i = 0; i < slots.length; i++) {
             const s = slots[i];
             if (s.canCheck) {
@@ -43,7 +43,7 @@ export class TrapPage extends BasePage {
 
         // 可放置的陷阱列表
         if (slots.length < (trapData?.size || 2)) {
-            cells.push({ id: 'place_label', name: '── 可放置 ──', state: 'disabled', type: 'list', noTruncate: true });
+            cells.push({ id: 'place_label', name: '── 可放置 ──', state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
             for (const trapId in TRAP_DATA) {
                 const trap = TRAP_DATA[trapId];
                 // 科技前置门禁（如 antiRogue 需「防盗术」），未解锁则置灰并提示

@@ -29,7 +29,7 @@ export class BrewPage extends BasePage {
         const cells: GridCellData[] = [];
 
         cells.push({ id: 'start', name: '[开始酿造]', state: 'normal', type: 'list', noTruncate: true });
-        cells.push({ id: 'slot_label', name: `── 酿造中 (${slots.length}/${ActionBrew.MAX_SLOTS}) ──`, state: 'disabled', type: 'list', noTruncate: true });
+        cells.push({ id: 'slot_label', name: `── 酿造中 (${slots.length}/${ActionBrew.MAX_SLOTS}) ──`, state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
         if (slots.length === 0) {
             cells.push({ id: 'empty', name: '暂无酿造', state: 'disabled', type: 'list', noTruncate: true });
         }

@@ -26,19 +26,19 @@ export class BuildPage extends BasePage {
         const cells: GridCellData[] = [];
 
         // 1. 已建设施动态入口（建了什么出现什么）
-        const facilityMap: Record<string, { label: string; id: string }> = {
-            makeTable:  { label: '制造台', id: 'home_craft' },
-            alchemyTable: { label: '炼金台', id: 'home_alchemy' },
-            magicTable:  { label: '秘术台', id: 'home_magic' },
-            scienceTable:{ label: '科研台', id: 'home_science' },
-            cooker:     { label: '炊具箱', id: 'home_cook' },
-            farm:       { label: '农田',   id: 'home_farm' },
-            alco:       { label: '酿酒桶', id: 'home_alco' },
-            trap:       { label: '陷阱',   id: 'home_trap' },
-            bigBox:     { label: '大箱子', id: 'home_box' },
-            well:       { label: '水井',   id: 'home_well' },
-            toilet:     { label: '厕所',   id: 'home_toilet' },
-            sleepPlace: { label: '床铺',   id: 'home_sleep' },
+        const facilityMap: Record<string, { label: string; id: string; icon: string }> = {
+            makeTable:  { label: '制造台', id: 'home_craft', icon: '制' },
+            alchemyTable: { label: '炼金台', id: 'home_alchemy', icon: '炼' },
+            magicTable:  { label: '秘术台', id: 'home_magic', icon: '秘' },
+            scienceTable:{ label: '科研台', id: 'home_science', icon: '科' },
+            cooker:     { label: '炊具箱', id: 'home_cook', icon: '炊' },
+            farm:       { label: '农田',   id: 'home_farm', icon: '农' },
+            alco:       { label: '酿酒桶', id: 'home_alco', icon: '酿' },
+            trap:       { label: '陷阱',   id: 'home_trap', icon: '陷' },
+            bigBox:     { label: '大箱子', id: 'home_box', icon: '箱' },
+            well:       { label: '水井',   id: 'home_well', icon: '井' },
+            toilet:     { label: '厕所',   id: 'home_toilet', icon: '厕' },
+            sleepPlace: { label: '床铺',   id: 'home_sleep', icon: '床' },
         };
         for (const [key, info] of Object.entries(facilityMap)) {
             if (this.gm.buildingSaveData[key]?.own) {
@@ -49,6 +49,8 @@ export class BuildPage extends BasePage {
                     name: hint ? `${info.label} !` : info.label,
                     state: 'normal',
                     data: key,
+                    icon: info.icon,
+                    layout: { iconPos: 'top' },
                 });
             }
         }
