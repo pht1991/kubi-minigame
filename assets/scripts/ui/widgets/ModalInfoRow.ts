@@ -33,10 +33,13 @@ export class ModalInfoRow extends UINode {
         this.add(bg);
 
         if (label) {
+            // 汉字方块字宽 ≈ fontSize，按此算标签宽度避免 overflow=CLAMP 裁切（不留白、不超出 valW 即可）
+            const labelW = label.length * (S.font.sub) + 4;
             const tag = new UILabel(label, {
-                size: S.font.sub, color: o?.labelColor ?? new Color(100, 80, 60, 255), bold: true,
+                size: S.font.sub, width: labelW,
+                color: o?.labelColor ?? new Color(100, 80, 60, 255), bold: true,
             });
-            tag.pos(-cw / 2 + 16 + tag.w / 2, 0);
+            tag.pos(-cw / 2 + 16 + labelW / 2, 0);
             this.add(tag);
         }
 

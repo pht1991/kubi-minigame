@@ -1,11 +1,10 @@
 /**
- * ModalRow.ts - 弹窗列表行公共组件（复用现有 widget 库 + CellLayout 算法）
+ * ModalRow.ts - 弹窗列表行公共组件（复用现有 widget 库）
  *
- * 统一「圆角底 + 可选左色块 + 左主文字(可换行变高) + 右元信息 + 可选副行 + 禁用态 + 可点击」
+ * 统一「圆角底 + 可选左色块 + 左主文字 + 右元信息 + 可选副行 + 禁用态 + 可点击」
  * 替换 DialogPanel 选项行 / BagPanel 物品行 / TradePanel 易货行 / HarvestModal 收获行 中重复的
  * UIShape+UILabel+onTap 手写逻辑。
  *
- * 行高复用 CellLayout.estimateBarHeight（与 GridCell bar 同源算法），消除 DialogPanel.estimateOptionHeight 重复估算。
  * ⚠️ 不实例化 GridCell：弹窗是「单列可滚、每次 render 重建」语境，与页面网格的对象池/常驻生命周期不同。
  */
 
@@ -13,7 +12,6 @@ import { Color } from 'cc';
 import { UINode } from './UINode';
 import { UIShape } from './UIShape';
 import { UILabel } from './UILabel';
-import { estimateBarHeight, CellLayoutContext } from '../cellLayout';
 import { C, S } from '../theme';
 
 export interface ModalRowOpts {
@@ -55,16 +53,13 @@ export class ModalRow extends UINode {
         const iconSz = o.leftIconSize ?? 40;
         const minH = iconSz + 12;
 
-        // 复用 CellLayout 横条行高估算（构造最小 CellLayoutContext 喂入）
-        const ctx: CellLayoutContext = {
-            columns: 1, tileW: w, tileH: minH, spacing: 0,
-            contentInnerW: w, barWidth: w, barH: minH,
-        };
-        const nameH = estimateBarHeight(o.name, ctx, fs, lh) - padY * 2; // 仅文字高
-
+        // 文字块总高（name + sub + spacing），不加 padY（padY 在下方 rowH 统一加）
         const subH = o.subText ? Math.ceil((o.subSize ?? 16) * 1.5) + 4 : 0;
         const hasSub = subH > 0;
-        const rowH = Math.max(minH, nameH + (hasSub ? subH + 6 : 0) + padY * 2);
+        const nameBlockH = lh;                                  // name 文字单行高（lh=fs*1.5）
+        const textBlockH = nameBlockH + subH + (hasSub ? 6 : 0); // name + sub + 间距
+        // 行高 = max(icon 最小高, 文字块 + 上下内边距)
+        const rowH = Math.max(minH, textBlockH + padY * 2);
 
         const bg = new UIShape('Bg').rect(
             w, rowH,
@@ -87,10 +82,10 @@ export class ModalRow extends UINode {
         const textMaxW = w - (textLeft + w / 2) - rightPad;
 
         // 主文字（名称单行居中 / 双行偏上）
-        const nameY = hasSub ? (rowH / 2 - padY - nameH / 2) : 0;
+        const nameY = hasSub ? (rowH / 2 - padY - nameBlockH / 2) : 0;
         const nameC = o.nameColor ?? (o.disabled ? C.cellTextDisabled : C.cellText);
         const name = new UILabel(o.name, {
-            size: fs, width: textMaxW, height: nameH,
+            size: fs, width: textMaxW, height: nameBlockH,
             color: nameC, align: o.align ?? 'left', wrap: true,
         });
         name.pos(textLeft + textMaxW / 2, nameY);
