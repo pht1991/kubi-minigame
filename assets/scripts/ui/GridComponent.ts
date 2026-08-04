@@ -70,6 +70,10 @@ export class GridComponent extends Component {
     private get _navigator(): GridNavigator { return GridNavigator.instance; }
     private get _eventBus(): EventBus { return EventBus.instance; }
     private _cells: GridCell[] = [];
+    /** 格子节点对象池（渲染时复用，避免每次全量 destroy+instantiate 的 GC 抖动） */
+    private _cellPool: Node[] = [];
+    /** 刷新节流标记：短时间内多次 UI_REFRESH 合并为一次渲染 */
+    private _refreshScheduled = false;
     /** 标记：本帧渲染了新的格子，需要在 lateUpdate（LayoutSystem 刷新后）滚到顶部 */
     private _needScrollTop: boolean = false;
     /** 标记：view 背景已初始化（防止重复 addComponent 触发警告） */
@@ -188,16 +192,23 @@ export class GridComponent extends Component {
         this._eventBus.off(GameEvents.UI_REFRESH, this._onRefresh);
         this._eventBus.off(GameEvents.SKILL_CHANGE, this._onRefresh);
         this._eventBus.off(GameEvents.EVENT_TRIGGER, this._onRefresh);
+        this.unscheduleAllCallbacks();
         this.clearFooter();
+        // 释放对象池节点，避免泄漏
+        for (const n of this._cellPool) { if (n && n.isValid) n.destroy(); }
+        this._cellPool = [];
         if (this._upgradeBtnNode) { this._upgradeBtnNode.destroy(); this._upgradeBtnNode = null; }
     }
 
-    /** UI 刷新回调 */
+    /** UI 刷新回调（节流：短时间内多次 UI_REFRESH 合并为一次渲染，避免长列表全量重建抖动） */
     private onUIRefresh(): void {
-        const page = this._navigator.current;
-        if (page) {
-            this.renderPage(page);
-        }
+        if (this._refreshScheduled) return;
+        this._refreshScheduled = true;
+        this.scheduleOnce(() => {
+            this._refreshScheduled = false;
+            const page = this._navigator.current;
+            if (page) this.renderPage(page);
+        }, 0.05);
     }
 
     /** 渲染网格页 */
@@ -281,8 +292,16 @@ export class GridComponent extends Component {
         const halfH = contentHeight / 2;
         for (let i = 0; i < cells.length; i++) {
             const cellData = cells[i];
-            const node = instantiate(this.cellPrefab);
+            // 复用对象池节点（无则新建），避免每次全量重建
+            const node = this._cellPool.length > 0
+                ? this._cellPool.pop()!
+                : instantiate(this.cellPrefab);
+            node.active = true;
             node.setParent(this.contentNode);
+            // 清除上一轮可能残留的触摸监听，防止重复绑定叠加
+            node.off(Node.EventType.TOUCH_START);
+            node.off(Node.EventType.TOUCH_END);
+            node.off(Node.EventType.TOUCH_CANCEL);
 
             let cellTransform = node.getComponent(UITransform);
             if (!cellTransform) {
@@ -299,6 +318,7 @@ export class GridComponent extends Component {
             node.setPosition(new Vec3(x, y, 0));
 
             const cell = node.getComponent(GridCell) || node.addComponent(GridCell);
+            cell.cancelLongPressDetect();
             cell.setData(cellData);
             cell.setOnClick((clickedCell) => {
                 if (onClick) {
@@ -529,15 +549,18 @@ export class GridComponent extends Component {
 
     /** 清除所有格子（双重保险：追踪列表 + 扫描残留） */
     private clearCells(): void {
-        // 第一遍：销毁追踪到的动态格子节点
+        // 第一遍：将追踪到的动态格子节点回收到对象池（不销毁，下次渲染复用）
         for (const cell of this._cells) {
             if (cell && cell.node && cell.node.isValid) {
-                cell.node.destroy();
+                const node = cell.node;
+                node.removeFromParent();
+                node.active = false;
+                this._cellPool.push(node);
             }
         }
         this._cells = [];
 
-        // 清除页脚格子
+        // 清除页脚格子（数量少，仍走销毁）
         for (const cell of this._footerCells) {
             if (cell && cell.node && cell.node.isValid) {
                 cell.node.destroy();
@@ -545,12 +568,12 @@ export class GridComponent extends Component {
         }
         this._footerCells = [];
 
-        // 第二遍：安全网——扫描 contentNode 上所有带 GridCell 组件的子节点
-        // 防止任何异常路径导致节点创建了但没进入 _cells[] 追踪数组
+        // 第二遍：安全网——扫描 contentNode 上残留的 GridCell 子节点（仅销毁非池化节点）
         if (this.contentNode && this.contentNode.isValid) {
             const children = [...this.contentNode.children]; // 快照，避免迭代时修改
             for (const child of children) {
                 if (child && child.isValid && child.getComponent(GridCell)) {
+                    child.removeFromParent();
                     child.destroy();
                 }
             }

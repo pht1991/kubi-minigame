@@ -328,4 +328,9 @@ export class GridCell extends Component {
             this._longPressTimer = null;
         }
     }
+
+    /** 销毁时清理长按计时器，避免节点已销毁仍回调 handleLongPress（低危内存/逻辑泄漏） */
+    onDestroy(): void {
+        this.cancelLongPressDetect();
+    }
 }

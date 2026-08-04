@@ -82,28 +82,13 @@ export class ActionCombat {
         const mst = MST_DATA[mstId];
         if (!mst) return false;
 
-        // 怪物血量
-        let mstHp = mst.maxHp;
-        if (mst.hpMul) mstHp = Math.ceil(mstHp * mst.hpMul * (1 + this._gm.maouLevel));
-
-        // 前缀怪物修正
-        let prefixName = '';
-        let prefixPlayerDmgMul = 1;
-        let prefixMagicResist = 0;
-        let mstDmg = mst.damage;
-        if (prefix && PREFIX_DATA[prefix]) {
-            const p = PREFIX_DATA[prefix];
-            prefixName = p.name || '';
-            const buff = (p as any).buff ?? 0.4;
-            switch (prefix) {
-                case 'atk':   mstDmg *= (1 + buff); break;                 // 残暴：伤害↑
-                case 'fat':   mstHp *= (1 + buff); break;                   // 肥胖：HP↑
-                case 'def':   prefixPlayerDmgMul = 1 / (1 + buff); break;   // 坚硬：玩家伤害↓
-                case 'magic': prefixMagicResist = buff; break;              // 抗魔：魔法抵抗
-                case 'agile': mstDmg *= (1 + buff * 0.5); break;            // 狡猾：略强
-                default: break;
-            }
-        }
+        // 怪物血量 + 前缀怪物修正（与 ActionDungeon.battle 共用同一套公式）
+        const pf = ActionCombat.applyPrefix(prefix, mst);
+        let mstHp = pf.mstHp;
+        let mstDmg = pf.mstDmg;
+        let prefixName = pf.prefixName;
+        let prefixPlayerDmgMul = pf.prefixPlayerDmgMul;
+        let prefixMagicResist = pf.prefixMagicResist;
 
         // 命中率（基于武器射程 vs 怪物射程）
         const weaponId = this._gm.currentEquip['hand'];
@@ -120,7 +105,7 @@ export class ActionCombat {
             mstHp,
             mstMaxHp: mstHp,
             mstDmg,
-            playerAtk: this.calcPlayerAtk(),
+            playerAtk: ActionCombat.calcPlayerAtk(this._gm),
             playerMaxHp: curHp,
             playerCurHp: curHp,
             pHit,
@@ -142,12 +127,12 @@ export class ActionCombat {
     }
 
     /** 计算玩家当前攻击力（武器基础值 + 轮回加成 + 技能 + 装备倍率） */
-    private calcPlayerAtk(): number {
-        const weaponId = this._gm.currentEquip['hand'];
+    static calcPlayerAtk(gm: GameManager): number {
+        const weaponId = gm.currentEquip['hand'];
         const weapon = weaponId ? ITEM_DATA[weaponId] : undefined;
         let dmg = weapon?.damage ?? weapon?.attack ?? 5;
-        if (weapon?.reiToDmg) dmg += weapon.reiToDmg * this._gm.maouLevel;
-        const skill = this._gm.skill;
+        if (weapon?.reiToDmg) dmg += weapon.reiToDmg * gm.maouLevel;
+        const skill = gm.skill;
         dmg *= 1 + (skill.melee || 0) * 0.15 + (skill.fighter || 0) * 1;
         if (weapon?.type === 'magic' || weapon?.type === 'staff' || weapon?.weaponType === 'magic') {
             dmg *= 1 + (skill.magic || 0) * 0.15;
@@ -156,64 +141,91 @@ export class ActionCombat {
         if (wm === 'melee' && weapon?.meleeMul) dmg *= (1 + weapon.meleeMul);
         else if (wm === 'magic' && weapon?.magicMul) dmg *= (1 + weapon.magicMul);
         else if (wm === 'shoot' && weapon?.shootMul) dmg *= (1 + weapon.shootMul);
-        if (weapon?.reiToAtk) dmg *= (1 + weapon.reiToAtk * this._gm.maouLevel);
+        if (weapon?.reiToAtk) dmg *= (1 + weapon.reiToAtk * gm.maouLevel);
         // 火之阵营：攻击 +5%
-        if (this._gm.camp === 'fire') dmg *= 1.05;
+        if (gm.camp === 'fire') dmg *= 1.05;
         return Math.max(1, Math.round(dmg));
     }
 
     /** 计算玩家受到伤害的减免系数（防具 dmgMul + 轮回防御 + 防御技能） */
-    private calcDamageReduce(): number {
+    static calcDamageReduce(gm: GameManager): number {
         let reduce = 1;
-        const skill = this._gm.skill;
+        const skill = gm.skill;
         reduce *= Math.pow(0.9, skill.def || 0);
         for (const slot of ['body', 'head', 'foot', 'neck'] as const) {
-            const id = this._gm.currentEquip[slot];
+            const id = gm.currentEquip[slot];
             if (!id) continue;
             const it = ITEM_DATA[id];
             if (!it) continue;
             if (it.dmgMul) reduce *= it.dmgMul;
-            if (it.reiToDef) reduce *= Math.max(0, 1 - it.reiToDef * this._gm.maouLevel);
+            if (it.reiToDef) reduce *= Math.max(0, 1 - it.reiToDef * gm.maouLevel);
         }
         return reduce;
     }
 
-    /** 战斗中使用武器 → 消耗耐久，归零则损坏卸下 */
-    private decayWeapon(): void {
-        const id = this._gm.currentEquip['hand'];
+    /**
+     * 前缀怪物修正（与 ActionDungeon.battle 共用，统一战斗公式）
+     * atk→怪物伤害↑、fat→怪物HP↑、def→玩家伤害↓、magic→魔法抵抗、agile→怪物略强
+     */
+    static applyPrefix(prefix: string | undefined, mst: any): { mstHp: number; mstDmg: number; prefixName: string; prefixPlayerDmgMul: number; prefixMagicResist: number } {
+        let mstHp = mst.maxHp;
+        if (mst.hpMul) mstHp = Math.ceil(mstHp * mst.hpMul * (1 + GameManager.instance.maouLevel));
+        let mstDmg = mst.damage;
+        let prefixName = '';
+        let prefixPlayerDmgMul = 1;
+        let prefixMagicResist = 0;
+        if (prefix && PREFIX_DATA[prefix]) {
+            const p = PREFIX_DATA[prefix];
+            prefixName = p.name || '';
+            const buff = (p as any).buff ?? 0.4;
+            switch (prefix) {
+                case 'atk':   mstDmg *= (1 + buff); break;                 // 残暴：伤害↑
+                case 'fat':   mstHp *= (1 + buff); break;                   // 肥胖：HP↑
+                case 'def':   prefixPlayerDmgMul = 1 / (1 + buff); break;   // 坚硬：玩家伤害↓
+                case 'magic': prefixMagicResist = buff; break;              // 抗魔：魔法抵抗
+                case 'agile': mstDmg *= (1 + buff * 0.5); break;            // 狡猾：略强
+                default: break;
+            }
+        }
+        return { mstHp, mstDmg, prefixName, prefixPlayerDmgMul, prefixMagicResist };
+    }
+
+    /** 战斗中使用武器 → 消耗耐久，归零则损坏卸下（log 可选，自动解算时用于回传战斗日志） */
+    static decayWeapon(gm: GameManager, log?: string[]): void {
+        const id = gm.currentEquip['hand'];
         if (!id) return;
         const max = ITEM_DATA[id]?.durable;
         if (max === undefined) return;
-        const cur = this._gm.durableSaveData[id] ?? max;
+        const cur = gm.durableSaveData[id] ?? max;
         const next = cur - 1;
         if (next <= 0) {
-            delete this._gm.currentEquip['hand'];
-            delete this._gm.durableSaveData[id];
-            this.state?.log.push(`${ITEM_DATA[id]?.name || id} 损坏了！`);
+            delete gm.currentEquip['hand'];
+            delete gm.durableSaveData[id];
+            if (log) log.push(`${ITEM_DATA[id]?.name || id} 损坏了！`);
         } else {
-            this._gm.durableSaveData[id] = next;
+            gm.durableSaveData[id] = next;
         }
-        this._eventBus.emit(GameEvents.EQUIP_CHANGE, this._gm.currentEquip);
+        EventBus.instance.emit(GameEvents.EQUIP_CHANGE, gm.currentEquip);
     }
 
-    /** 受到攻击 → 消耗所有已装备防具耐久，归零则损坏卸下 */
-    private decayArmor(): void {
+    /** 受到攻击 → 消耗所有已装备防具耐久，归零则损坏卸下（log 可选） */
+    static decayArmor(gm: GameManager, log?: string[]): void {
         for (const slot of ['body', 'head', 'foot', 'neck'] as const) {
-            const id = this._gm.currentEquip[slot];
+            const id = gm.currentEquip[slot];
             if (!id) continue;
             const max = ITEM_DATA[id]?.durable;
             if (max === undefined) continue;
-            const cur = this._gm.durableSaveData[id] ?? max;
+            const cur = gm.durableSaveData[id] ?? max;
             const next = cur - 1;
             if (next <= 0) {
-                delete this._gm.currentEquip[slot];
-                delete this._gm.durableSaveData[id];
-                this.state?.log.push(`${ITEM_DATA[id]?.name || id} 损坏了！`);
+                delete gm.currentEquip[slot];
+                delete gm.durableSaveData[id];
+                if (log) log.push(`${ITEM_DATA[id]?.name || id} 损坏了！`);
             } else {
-                this._gm.durableSaveData[id] = next;
+                gm.durableSaveData[id] = next;
             }
+            EventBus.instance.emit(GameEvents.EQUIP_CHANGE, gm.currentEquip);
         }
-        this._eventBus.emit(GameEvents.EQUIP_CHANGE, this._gm.currentEquip);
     }
 
     /** 每回合结束递减所有技能冷却 */
@@ -230,7 +242,7 @@ export class ActionCombat {
         if (s.mstHp > 0) {
             const hitChance = s.dodge ? 0.25 : 0.85;
             if (Math.random() < hitChance) {
-                let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * this.calcDamageReduce();
+                let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);
                 if (s.guard) dmg *= 0.5;
                 dmg = Math.round(dmg);
                 s.playerCurHp -= dmg;
@@ -238,7 +250,7 @@ export class ActionCombat {
             } else {
                 msg += ` ${s.mstName} 攻击落空了！`;
             }
-            this.decayArmor();
+            ActionCombat.decayArmor(this._gm, this.state?.log);
         }
         s.guard = false;
         s.dodge = false;
@@ -252,7 +264,7 @@ export class ActionCombat {
         if (!this.state || this.state.ended) return '战斗已结束';
         const s = this.state;
         s.turn++;
-        s.playerAtk = this.calcPlayerAtk();
+        s.playerAtk = ActionCombat.calcPlayerAtk(this._gm);
         const pdm = s.prefixPlayerDmgMul || 1;
         let msg = '';
         if (Math.random() < s.pHit) {
@@ -262,7 +274,7 @@ export class ActionCombat {
         } else {
             msg += '你的攻击落空了！';
         }
-        this.decayWeapon();
+        ActionCombat.decayWeapon(this._gm, this.state?.log);
         return this.monsterCounter(msg);
     }
 
@@ -278,7 +290,7 @@ export class ActionCombat {
         }
 
         s.turn++;
-        s.playerAtk = this.calcPlayerAtk();
+        s.playerAtk = ActionCombat.calcPlayerAtk(this._gm);
         const pdm = s.prefixPlayerDmgMul || 1;
         const magicResist = s.prefixMagicResist || 0;
         const roll = () => (0.85 + Math.random() * 0.3);
@@ -323,7 +335,7 @@ export class ActionCombat {
         }
 
         // 仅攻击类技能消耗武器耐久；防御/敏捷姿态不磨损武器
-        if (skillId === 'melee' || skillId === 'magic' || skillId === 'shot') this.decayWeapon();
+        if (skillId === 'melee' || skillId === 'magic' || skillId === 'shot') ActionCombat.decayWeapon(this._gm, this.state?.log);
         // 防御/闪避姿态在本回合怪物反击中生效
         return this.monsterCounter(msg);
     }
@@ -352,13 +364,13 @@ export class ActionCombat {
 
         if (s.mstHp > 0) {
             if (Math.random() < (s.dodge ? 0.25 : 0.85)) {
-                let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * this.calcDamageReduce();
+                let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);
                 if (s.guard) dmg *= 0.5;
                 dmg = Math.round(dmg);
                 s.playerCurHp -= dmg;
                 msg += ` ${s.mstName} 攻击，造成 ${dmg} 伤害。`;
             }
-            this.decayArmor();
+            ActionCombat.decayArmor(this._gm, this.state?.log);
         }
         s.guard = false;
         s.dodge = false;
@@ -381,12 +393,12 @@ export class ActionCombat {
         s.turn++;
         let msg = '逃跑失败！';
         if (Math.random() < (s.dodge ? 0.25 : 0.85)) {
-            let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * this.calcDamageReduce();
+            let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);
             if (s.guard) dmg *= 0.5;
             dmg = Math.round(dmg);
             s.playerCurHp -= dmg;
             msg += ` ${s.mstName} 趁机攻击，造成 ${dmg} 伤害。`;
-            this.decayArmor();
+            ActionCombat.decayArmor(this._gm, this.state?.log);
         }
         s.guard = false;
         s.dodge = false;

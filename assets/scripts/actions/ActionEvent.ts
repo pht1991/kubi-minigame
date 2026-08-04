@@ -80,9 +80,9 @@ export class ActionEvent {
                 this._gm.eventSaveData[eventId].experienced = true;
                 this._eventBus.emit(GameEvents.EVENT_TRIGGER, eventId);
                 this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-                // 触发战斗
+                // 触发战斗（公式与面板战一致：前缀/减伤/耐久已接入）
                 if (data.mst) {
-                    this._dungeon.battle(data.mst, {});
+                    this._dungeon.battle(data.mst);
                 }
             },
         });

@@ -107,7 +107,16 @@ export class ActionMap {
         const keys = mstList ? Object.keys(mstList).filter(k => (mstList[k].amount ?? 0) > 0) : [];
         if (keys.length === 0) return { success: false, message: '附近没有怪物' };
         const mstId = keys[Math.floor(Math.random() * keys.length)];
-        return this._dungeon.battle(mstId, {});
+        const r = this._dungeon.battle(mstId);
+        // 胜利后递减该地点怪物数量（与资源枯竭设计自洽；玩家阵亡则不扣减）
+        if (r.success) {
+            const entry = this._gm.placeSaveData[placeId]?.mst?.[mstId];
+            if (entry && entry.amount > 0) {
+                entry.amount -= 1;
+                this._eventBus.emit('place_change', placeId);
+            }
+        }
+        return r;
     }
 
     /** 探测狩猎（不自动战斗）：随机抽怪，返回怪物 ID 供 BattlePanel 使用 */

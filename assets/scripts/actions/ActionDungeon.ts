@@ -10,6 +10,7 @@
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { ActionExecutor, ActionResult } from './ActionExecutor';
+import { ActionCombat } from './ActionCombat';
 import { MST_DATA, DUNGEON_DATA, ITEM_DATA, UPPER_CHANCE, TRADE_DATA, PREFIX_DATA } from '../data/data';
 
 export class ActionDungeon {
@@ -62,8 +63,9 @@ export class ActionDungeon {
             // 遭遇战斗：按层数抽怪
             const mstId = this.pickDungeonMst(ds.stairCount);
             if (mstId) {
+                const prefix = this.rollPrefix();
                 this._eventBus.emit('dungeon_change', ds);
-                return this.battle(mstId, {});
+                return this.battle(mstId, prefix || undefined);
             }
         }
         // 发现宝箱
@@ -225,44 +227,45 @@ export class ActionDungeon {
     }
 
     /**
-     * 与怪物战斗（简化回合解算）
+     * 与怪物战斗（简化回合解算，公式与 ActionCombat 完全一致：
+     * 前缀加成 / 装备减伤 / 武器·防具耐久消耗均已接入，确保事件、地图、地牢遇怪与面板战结果一致）
      * @param mstId   MST_DATA 键
-     * @param prefix  前缀加成（暂仅记录，未深度接入）
+     * @param prefix  前缀怪物 key（可选，与交互式战斗统一）
      */
-    battle(mstId: string, _prefix: Record<string, any>): ActionResult {
+    battle(mstId: string, prefix?: string): ActionResult {
         const mst = MST_DATA[mstId];
         if (!mst) return { success: false, message: '怪物不存在' };
 
-        // 怪物血量（含倍率与魔王轮回加成）
-        let mstHp = mst.maxHp;
-        if (mst.hpMul) mstHp = Math.ceil(mstHp * mst.hpMul * (1 + this._gm.maouLevel));
-
-        // 玩家攻击力
-        const skill = this._gm.skill;
-        const weaponId = this._gm.currentEquip['hand'];
-        const weapon = weaponId ? ITEM_DATA[weaponId] : undefined;
-        let atk = weapon?.attack || 5;
-        atk *= 1 + (skill.melee || 0) * 0.15 + (skill.fighter || 0) * 1;
-        if (weapon?.type === 'magic' || weapon?.type === 'staff') {
-            atk *= 1 + (skill.magic || 0) * 0.15;
-        }
-
-        // 怪物伤害 → 玩家防御减免
-        let mstDmg = mst.damage;
-        mstDmg *= Math.pow(0.9, skill.def || 0);
+        // 怪物血量 + 前缀修正（与 ActionCombat.init 同一公式）
+        const pf = ActionCombat.applyPrefix(prefix, mst);
+        const mstHp0 = pf.mstHp;
+        const mstDmgAdj = pf.mstDmg;          // 已含 atk/agile 前缀加成
+        const prefixPlayerDmgMul = pf.prefixPlayerDmgMul;
+        const prefixName = pf.prefixName;
 
         // 玩家命中率（武器射程 vs 怪物射程）
+        const weaponId = this._gm.currentEquip['hand'];
+        const weapon = weaponId ? ITEM_DATA[weaponId] : undefined;
         const wRange = weapon?.range || 1;
         const mRange = mst.range || 1;
         const pHit = wRange >= mRange ? 0.9 : 0.6;
 
-        // 回合解算
+        const log: string[] = [`与 ${prefixName}${mst.name} 交战中…`];
         let curHp = this._gm.playerState.hp;
+        let mstHp = mstHp0;
         let turns = 0;
         while (curHp > 0 && mstHp > 0 && turns < 60) {
+            // 玩家攻击（每回合重算：武器损坏后自动降级为徒手）
+            const atk = ActionCombat.calcPlayerAtk(this._gm) * prefixPlayerDmgMul;
+            ActionCombat.decayWeapon(this._gm, log);
             if (Math.random() < pHit) mstHp -= atk * (0.85 + Math.random() * 0.3);
             if (mstHp > 0) {
-                if (Math.random() < 0.85) curHp -= mstDmg * (0.85 + Math.random() * 0.3);
+                // 怪物反击（应用装备减伤，与 ActionCombat 一致）
+                if (Math.random() < 0.85) {
+                    const dmg = Math.round(mstDmgAdj * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm));
+                    curHp -= dmg;
+                }
+                ActionCombat.decayArmor(this._gm, log);
             }
             turns++;
         }
@@ -273,7 +276,7 @@ export class ActionDungeon {
             // 玩家阵亡
             this._gm.playerStateChange({ hp: -oldHp });
             this._eventBus.emit(GameEvents.BATTLE_END, { win: false, mst: mstId });
-            return { success: false, message: `你被 ${mst.name} 击败了` };
+            return { success: false, message: `你被 ${prefixName}${mst.name} 击败了` };
         }
 
         // 胜利：扣除失血
@@ -290,11 +293,12 @@ export class ActionDungeon {
             }
         }
         // 嗜血/吸收 天赋
+        const skill = this._gm.skill;
         if (skill.blood) this._gm.playerStateChange({ hp: Math.round(oldHp * 0.2) });
         if (skill.absorb) this._gm.playerStateChange({ san: Math.round(this._gm.playerState.san * 0.2) });
 
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
         this._eventBus.emit(GameEvents.BATTLE_END, { win: true, mst: mstId });
-        return { success: true, message: `击败了 ${mst.name}` };
+        return { success: true, message: `击败了 ${prefixName}${mst.name}` };
     }
 }
