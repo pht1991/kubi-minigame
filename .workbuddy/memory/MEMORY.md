@@ -30,7 +30,12 @@ Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 路径 `D:\Projects\demos\front_e
 
 ## 推送工作流
 大改动/修复→跑 `push-all.bat`（push master→deploy-wechat→deploy-web 推 gh-pages，两端构建）。子脚本用 `BASE=%~dp0` 隔离（deploy-wechat 无 setlocal 会污染 ROOT）。gh-pages 需 Settings→Pages 启用一次。build/ 已 gitignore。
+
+## 对象池复用与 UI 组件状态泄漏（2026-08-04 踩坑 → 主页 3 字中文标签变竖排）
+**坑**：`GridCell` 在 `a10ec78` 引入对象池复用（`renderCells` 复用节点 / `clearCells` 回收到 `_cellPool`），但 `refresh()` 各分支只重置部分 Label 属性，list 模式的 `overflow=CLAMP` 与 prefab 默认的 `enableWrapText=true` 在节点被复用到网格模式时会**残留**，叠加 prefab 写死的 `nameLabel UITransform=40×50.4` → fontSize 22 时 3 字中文（≈66px）按 40px 强制换行，"制造台/炼金台/…"被拆成竖排显示。
+**修复**：`GridCell.refresh()` 的非列表分支显式重置全套 Label 状态（`lineHeight=28`、`overflow=NONE`、`enableWrapText=false`），并把 nameLabel UITransform 宽度从 40 → 140（格子 160 宽，留 10px 内边距，足够横排 4–6 字）。**铁律**：对象池复用任何带多状态属性（Label/Button/Sprite/EditBox…）的组件时，**进入每个分支都要显式重置全套可视属性**，不能依赖 prefab 默认或上一次渲染的状态。
 ⚠️ deploy-wechat.bat / deploy-web.bat 已加固（2026-08-03）：原来 tee 分支 + `if not exist <artifact>` 守卫会在产物已存在/tee 失败时跳过 `call :MAIN`，漏掉 fix-build-config（libVersion 仍是模板默认 `"game"`，真机基础库不认）。现改为：构建用 `start "" /B` 异步启动 + 轮询产物（game.js / index.html）最多 900s，产物一出现即继续后处理并强杀残留 Cocos；`fix-build-config.js`（[3/5]）**始终执行**；入口 `__tee__/auto` 跳过 `pause`（push-all 调用不再卡在等按键）；deploy-web 推送加 `GIT_SSH_COMMAND` 超时防无限挂。验证要点：跑完查 `build/wechatgame/project.config.json` 的 `libVersion` 须为 `"3.16.2"`。Cocos 单实例僵尸锁仍可能拖慢首编译，跑前先 taskkill CocosCreator。
 ⚠️ 后台 Git Bash 跑 `.bat` 时 stdin 被重定向会导致：① Cocos 报 `Input redirection is not supported`；② `timeout /t 5` 不真等→bat 误超时提前退、[3/5] 漏跑。已把 wait 循环改 `ping -n 6 127.0.0.1 >nul`，且 Cocos 启动行加 `<nul`；**后台可靠调用须经 `< nul` 包裹**：用 `run-wechat-build.bat`（= `call deploy-wechat.bat __tee__ < nul`）或 `push-all.bat` 内部。双击 .bat（console）无此问题。
+⚠️ **严禁用 `cmd //c 'D:\路径\foo.bat < nul'` 从 Git Bash 启动 .bat**——Git Bash 会把 `//c` 后的反斜杠 Windows 路径拆坏，报 `'ubi-minigame' 不是内部或外部命令` 并秒退（2026-08-04 实测踩坑）。正确做法：要么双击 .bat（console），要么在 Git Bash 里直接 `./run-push-all.bat`（Git Bash 经 cmd 拉起 .bat，`<nul` 已在 .bat 内部）；新增 `run-push-all.bat` 包装器 = `call "%~dp0push-all.bat" < nul`。后台跑要拿日志就 `./run-push-all.bat > build/pushall.log 2>&1`。
 - 更正：`deploy-wechat.bat` 结尾已是 `exit /b`（无裸 exit），push-all 链路本身正确；若只补推 web 且本地 `build/web-mobile` 含最新代码（grep `measuredHeight` 验证），可直接 orphan 分支 `git push origin gh-pages --force`（在 `../.web-deploy-*` 临时仓，记得加 `.nojekyll` 防 Jekyll 破坏）。
 - 清理 deploy 临时目录（`../.web-deploy-tmp` 等）：**勿在 WorkBuddy Bash 手动 `rm -rf`/`find -delete`**——会被 safe-delete 拦截或遇 `.git` 只读 ACL 报 Permission denied；交给 `deploy-web.bat` 开头原生 `rmdir /s /q` 自动清即可（目录在仓库外、无害）。

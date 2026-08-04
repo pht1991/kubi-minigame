@@ -141,10 +141,18 @@ export class GridCell extends Component {
                 this.nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
                 this.nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
                 this.nameLabel.fontSize = 22;
+                // 显式重置溢出/换行/行高：对象池复用时上一轮 list 模式可能把
+                // overflow 设为 CLAMP、prefab 默认 enableWrapText=true；两者叠加
+                // 会让 nameLabel 在 40px 宽度下把 3 字中文（22×3≈66px）按字符换行成竖排。
+                this.nameLabel.lineHeight = 28;
+                this.nameLabel.overflow = Label.Overflow.NONE;
+                this.nameLabel.enableWrapText = false;
                 const nt = this.nameLabel.node.getComponent(UITransform);
                 if (nt) {
                     nt.setAnchorPoint(0.5, 0.5);
-                    nt.setContentSize(40, 50.4);
+                    // 修正：prefab 写死 40×50.4 太窄，3 字中文就装不下。格子 160 宽，
+                    // 留 10px 内边距，给到 140 足以横排 4–6 字。
+                    nt.setContentSize(140, 50.4);
                 }
                 this.nameLabel.node.setPosition(0, -5, 0); // 恢复 prefab 原始位置
             }
