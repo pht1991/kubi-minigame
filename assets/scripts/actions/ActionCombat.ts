@@ -404,6 +404,42 @@ export class ActionCombat {
             }
         }
 
+        // 能量球：为匹配武器恢复满耐久（原版战斗内允许；原版 durableSaveData=0 为笔误，此处按描述“恢复所有耐久度”实现为充满）
+        const d = item as any;
+        if (d.durableRec) {
+            const rec = d.durableRec as string;
+            const weaponIds = new Set<string>();
+            for (const k in this._gm.durableSaveData) weaponIds.add(k);
+            for (const slot of ['hand', 'head', 'body', 'foot', 'neck'] as const) {
+                const id = this._gm.currentEquip[slot];
+                if (id) weaponIds.add(id);
+            }
+            let charged = 0;
+            for (const wid of weaponIds) {
+                const w = ITEM_DATA[wid] as any;
+                if (!w || w.weaponType === undefined) continue;
+                const wt = w.weaponType as string;
+                const match = rec === wt || (rec === 'unmagic' && (wt === 'melee' || wt === 'shoot'));
+                if (match && w.durable !== undefined) {
+                    this._gm.durableSaveData[wid] = w.durable;
+                    charged++;
+                }
+            }
+            if (charged > 0) {
+                EventBus.instance.emit(GameEvents.EQUIP_CHANGE, this._gm.currentEquip);
+                msg += ` 为 ${charged} 把武器恢复了耐久。`;
+            }
+        }
+
+        // 升级书：永久提升对应技能（原版战斗内允许）
+        if (d.upgrade) {
+            const up = d.upgrade as string;
+            const gain = (d.value as number) || 1;
+            this._gm.skill[up] = this._gm.getSkillLevel(up) + gain;
+            EventBus.instance.emit(GameEvents.SKILL_CHANGE, this._gm.skill);
+            msg += ` 永久提升【${up}】技能 +${gain}。`;
+        }
+
         if (s.mstHp > 0) {
             if (Math.random() < (s.dodge ? 0.25 : 0.85)) {
                 let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);

@@ -243,27 +243,34 @@ export class BattlePanel extends ModalPanel {
         });
     }
 
-    /** 弹出战斗道具选择 */
+    /**
+     * 弹出战斗道具选择（原版战斗内可用：消耗品 + 能量球充能 + 升级书；武器/回城卷轴禁用）
+     * 原版 main.js handleItemClick：战斗中(msState!=0) 禁 scroll(传送) 与 equipType(换装)，
+     * 但 effect / durableRec(能量球) / special(升级书) 均可在战斗内使用。
+     */
     private showItemGrid(): void {
         if (!this._combat.state || this._combat.state.ended) return;
         const bag = this._gm.boxSaveData['bag'] || {};
-        const healItems: { id: string; name: string; count: number }[] = [];
+        const usableItems: { id: string; name: string; count: number }[] = [];
 
         for (const itemId in bag) {
             if (bag[itemId] <= 0) continue;
             const d = ITEM_DATA[itemId];
             if (!d) continue;
-            const canUse = !!(d as any).effect || d.type === 'food' || d.type === 'cooked' || d.type === 'potion';
-            if (canUse) healItems.push({ id: itemId, name: `${d.name} ×${bag[itemId]}`, count: bag[itemId] });
+            // 战斗内可用：消耗品(effect/food/cooked/potion) + 能量球充能武器(durableRec) + 升级书(upgrade)
+            // 禁用：回城卷轴(scroll, 战斗内不可传送) / 武器(equipType, 原版“你不能在战斗中更改装备！”)
+            const battleUsable = !!(d as any).effect || d.type === 'food' || d.type === 'cooked' || d.type === 'potion'
+                || !!(d as any).durableRec || !!(d as any).upgrade;
+            if (battleUsable) usableItems.push({ id: itemId, name: `${d.name} ×${bag[itemId]}`, count: bag[itemId] });
         }
 
-        if (healItems.length === 0) {
-            this._combat.state.log.push('背包中没有可用道具！');
+        if (usableItems.length === 0) {
+            this._combat.state.log.push('背包中没有战斗可用道具！');
             this.refreshUI();
             return;
         }
 
-        const options = healItems.map(h => ({ label: h.name, data: h.id }));
+        const options = usableItems.map(h => ({ label: h.name, data: h.id }));
         const dialogPanel = this._findDialog();
         if (dialogPanel) dialogPanel.show('使用道具', options, (data: string) => {
             this._combat.useItem(data);
