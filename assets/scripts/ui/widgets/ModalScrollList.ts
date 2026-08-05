@@ -109,12 +109,15 @@ export class ModalScrollList {
         const vt = this.view.getComponent(UITransform);
         const ct = this.content.getComponent(UITransform);
 
-        // 自管面板模式（HarvestModal/TradePanel）：view 高度由调用方在 buildSkeleton 固定
-        // （保持原行为，不在此改动），这里仅按「内容高与初始视口大者」设 content 高度保证铺满。
+        // 自管面板模式（HarvestModal/TradePanel）：view 是 mkScroll 代码创建（非场景节点），
+        // 无 Mask 坑，安全让视口高度跟随内容——内容少时收缩、消除底部「未铺满」死区；
+        // content 始终用真实内容高（多于视口时正常可滚）。
         if (o.autoResizePanel === false) {
             const viewH = o.viewH ?? 600;
-            if (ct) ct.setContentSize(o.width, Math.max(totalH, viewH));
-            return Math.max(totalH, viewH);
+            const actualViewH = Math.min(totalH, viewH);
+            if (vt) vt.setContentSize(o.width, actualViewH);
+            if (ct) ct.setContentSize(o.width, totalH);
+            return actualViewH;
         }
 
         // 自适应面板模式：高度推导全部走 computeListLayout（唯一真相源）

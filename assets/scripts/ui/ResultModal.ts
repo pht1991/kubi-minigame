@@ -13,7 +13,7 @@ import { UIVStack, UILabel, UIButton } from './widgets';
 
 export class ResultModal extends ModalPanel {
     protected panelW = 600;
-    protected panelH = 420;
+    protected panelH = 360;
     protected showMask = true;
     protected maskClose = false;   // 必须点「确定」关闭，防止误触穿透
     protected showClose = false;
@@ -28,7 +28,12 @@ export class ResultModal extends ModalPanel {
             .add(new UILabel(this._msgText, { size: 22, width: cw, color: C.body, align: 'center' }))
             .add(new UIButton('确定', Btn.confirm, () => this.hide(), 240, 64));
         stack.mount(this._content!);
-        stack.pos(0, -stack.h / 2 - 10, 0);
+        // 自适应：面板高度跟随文案（短文案不再大片留白；长文案钳到上限防溢出）
+        const pad = 30;
+        const minH = 280, maxH = 880;
+        const panelH = Math.max(minH, Math.min(maxH, stack.h + 2 * pad + 140));
+        this.resizePanel(panelH);
+        stack.pos(0, -stack.h / 2 - pad, 0);
     }
 
     /** 显示结果（标题 + 多行文案） */

@@ -6,7 +6,7 @@
 
 import { Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType, view } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
-import { S } from './theme';
+import { S, Btn, BtnStyle } from './theme';
 import { UIShape, UIVStack, UIHStack, UILabel, UIButton } from './widgets';
 import { ActionCombat, CombatState } from '../actions/ActionCombat';
 import { GameManager } from '../core/GameManager';
@@ -77,9 +77,9 @@ export class BattlePanel extends ModalPanel {
         const mstSection = new Node('MstSection');
         mstSection.setParent(panel);
 
-        this._mstNameLabel = this.mkCenter(mstSection, 0, 440, 640, 40, '', 30, new Color(80, 40, 30), true);
+        this._mstNameLabel = this.mkCenter(mstSection, 0, 440, 640, 40, '', 30, C.battleName, true);
 
-        const mstHpBgShape = new UIShape('MstHpBg').rect(500, 24, new Color(80, 80, 80, 200));
+        const mstHpBgShape = new UIShape('MstHpBg').rect(500, 24, C.hpTrack);
         mstHpBgShape.mount(mstSection).pos(0, 400, 0);
         const mstHpBg = mstHpBgShape.node;
 
@@ -91,13 +91,13 @@ export class BattlePanel extends ModalPanel {
         this._mstHpBar.setPosition(-250, 0, 0);
         this._mstHpBarGfx = this._mstHpBar.addComponent(Graphics);
 
-        this._mstHpLabel = this.mkCenter(mstSection, 0, 370, 640, 30, '', 20, new Color(60, 40, 30));
+        this._mstHpLabel = this.mkCenter(mstSection, 0, 370, 640, 30, '', 20, C.battleLabel);
 
         // —— 玩家 HP 区 ——
         const plSection = new Node('PlSection');
         plSection.setParent(panel);
 
-        const plHpBgShape = new UIShape('PlHpBg').rect(500, 24, new Color(80, 80, 80, 200));
+        const plHpBgShape = new UIShape('PlHpBg').rect(500, 24, C.hpTrack);
         plHpBgShape.mount(plSection).pos(0, 330, 0);
         const plHpBg = plHpBgShape.node;
 
@@ -109,8 +109,8 @@ export class BattlePanel extends ModalPanel {
         this._playerHpBar.setPosition(-250, 0, 0);
         this._playerHpBarGfx = this._playerHpBar.addComponent(Graphics);
 
-        this._playerHpLabel = this.mkCenter(plSection, 0, 295, 640, 30, '', 22, new Color(40, 80, 40));
-        this.mkCenter(plSection, 0, 350, 640, 30, '玩家', 22, new Color(40, 80, 40));
+        this._playerHpLabel = this.mkCenter(plSection, 0, 295, 640, 30, '', 22, C.battleLabel);
+        this.mkCenter(plSection, 0, 350, 640, 30, '玩家', 22, C.battleName);
 
         // —— 分隔线 ——
         const sep = new UIShape('Separator').line(-310, 260, 310, 260, C.battleSep, 2);
@@ -129,25 +129,24 @@ export class BattlePanel extends ModalPanel {
         this._resultLabel = this.mkCenter(panel, 0, 0, 600, 80, '', 28, C.battleTitle);
         this._resultLabel.node.active = false;
 
-        // —— 继续按钮（widgets） ——
-        const contBtn = new UIButton('继续',
-            { bg: new Color(200, 140, 80, 255), border: new Color(140, 80, 40, 255), borderW: 2, text: C.white, radius: 0, fontSize: 26 },
-            () => this.close(), 200, 60);
+        // —— 继续按钮（widgets，统一 Btn 预设） ——
+        const contBtn = new UIButton('继续', Btn.confirm, () => this.close(), 200, 60);
         contBtn.mount(panel).pos(0, -100, 0);
         this._continueBtn = contBtn.node;
         this._continueBtn.active = false;
 
-        // —— 操作按钮行（UIHStack 自动排布） ——
+        // —— 操作按钮行（UIHStack 自动排布，统一描边） ——
         const actions = [
             { id: 'attack', name: '攻击', color: C.actAttack },
             { id: 'skill', name: '技能', color: C.actSkill },
             { id: 'item', name: '道具', color: C.actItem },
             { id: 'flee', name: '逃跑', color: C.actFlee },
         ];
+        const actStyle: BtnStyle = { bg: C.white, border: C.battleActBorder, borderW: 2, text: C.white, radius: S.btnRadius, fontSize: 24 };
         const actRow = new UIHStack().gap(20);
         for (const cfg of actions) {
             actRow.add(new UIButton(cfg.name,
-                { bg: cfg.color, border: C.btnBorder, borderW: S.btnBorderW, text: C.white, radius: S.btnRadius, fontSize: 26 },
+                { ...actStyle, bg: cfg.color },
                 () => {
                     if (!this._combat.state || this._combat.state.ended) return;
                     switch (cfg.id) {
@@ -278,7 +277,7 @@ export class BattlePanel extends ModalPanel {
         const recent = s.log.slice(-5);
         const list = new UIVStack().gap(2).align('center').fixedWidth(580);
         for (const text of recent) {
-            list.add(new UILabel(text, { size: 18, width: 580, height: 36, color: new Color(220, 210, 190, 255), align: 'center', lineHeight: 26 }));
+            list.add(new UILabel(text, { size: 18, width: 580, height: 36, color: C.battleLogText, align: 'center', lineHeight: 26 }));
         }
         list.mount(this._logContent);
         list.pos(0, -list.h / 2, 0);

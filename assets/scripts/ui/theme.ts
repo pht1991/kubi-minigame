@@ -106,6 +106,13 @@ export const C = {
     actSkill:       new Color(60, 120, 200),
     actItem:        new Color(60, 160, 80),
     actFlee:        new Color(150, 150, 150),
+
+    // ── 战斗（扩展，统一此处，禁止面板内写 new Color 字面量）──
+    hpTrack:        new Color(80, 70, 60, 200),     // HP 条底槽
+    battleName:     new Color(235, 225, 210, 255),  // 怪物名 / 「玩家」标签
+    battleLabel:    new Color(200, 190, 175, 255),  // HP 数值等次级文字
+    battleLogText:  new Color(220, 210, 190, 255),  // 战斗日志文字
+    battleActBorder:new Color(255, 245, 230, 160),  // 行动按钮描边
 };
 
 // ══════════ 尺寸 / 间距 token（魔法数字集中地）═════════

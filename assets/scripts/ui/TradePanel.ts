@@ -186,10 +186,10 @@ export class TradePanel extends ModalPanel {
             width: PW - 48, viewH: 480, gap: 6, padT: 6,
             autoResizePanel: false, repositionScroll: false, align: 'center',
         });
-        list.setRows(rows);
+        const listH = list.setRows(rows);
 
         const mp = Math.round(ActionTrade.instance.getBarterMargin() * 100);
-        this._tx(by + 480 + 44, `提示：易货 >> 卖货换金币再买 (${mp}%差价)`, 15, C.sub);
+        this._tx(by + listH + 44, `提示：易货 >> 卖货换金币再买 (${mp}%差价)`, 15, C.sub);
     }
 
     // ════ 执行交易（带数量的版本）═════

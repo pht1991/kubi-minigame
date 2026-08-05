@@ -78,16 +78,16 @@ export class HarvestModal extends ModalPanel {
             width: listW, viewH: 540, gap: ROW_GAP,
             autoResizePanel: false, repositionScroll: false, align: 'center',
         });
-        this._list.setRows(rows);
+        const listH = this._list.setRows(rows);
 
-        // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)——HStack 自动排布
+        // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)——HStack 自动排布（y 跟随列表实际高度）
         const btnW = (listW - 2 * 12) / 3;
         const btnRow = new UIHStack().gap(12)
             .add(new UIButton('背包', Btn.neutral, () => this.onOpenBag?.(), btnW, 60))
             .add(new UIButton('全部拾取', Btn.primary, () => this.takeAll(), btnW, 60))
             .add(new UIButton('完成', Btn.confirm, () => this.finish(), btnW, 60));
         btnRow.mount(this._content!);
-        btnRow.pos(0, -(540 + 56 + 30), 0);
+        btnRow.pos(0, -(listH + 56 + 30), 0);
     }
 
     /** 尝试把某物品放入背包：已有种类(堆叠)或背包有空格即可；否则失败 */
