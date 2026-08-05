@@ -32,10 +32,10 @@ export class BattlePanel extends ModalPanel {
     private _continueBtn: Node | null = null;
 
     protected panelW = 680;
-    protected panelH = 1100;
-    protected showMask = false;   // 战斗界面自带不透明背景，不需要半透明遮罩
-    protected showClose = false;  // 战斗中不提供关闭按钮（防误触）
-    protected buildContentContainer = false;
+    protected panelH = 820;
+    protected showMask = true;     // 与其它弹窗一致：半透明遮罩
+    protected showClose = false;   // 战斗中不提供关闭按钮（防误触）
+    protected buildContentContainer = true;
 
     protected buildSkeleton(): void {
         super.buildSkeleton();
@@ -50,12 +50,8 @@ export class BattlePanel extends ModalPanel {
         this._bgNode.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
         this._bgNode.setSiblingIndex(0); // 放到面板之下
 
-        // 标题（战斗界面居中显示）
-        if (this._titleLbl) {
-            this._titleLbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-            this._titleNode.setPosition(0, this.panelH / 2 - 50, 0);
-            this._titleLbl.color = C.battleTitle;
-        }
+        // 标题颜色由基类 ModalPanel 默认居中布局，这里仅覆写战斗专色
+        if (this._titleLbl) this._titleLbl.color = C.battleTitle;
 
         this.buildCombatUI();
         this.node.active = false;
@@ -72,15 +68,25 @@ export class BattlePanel extends ModalPanel {
 
     private buildCombatUI(): void {
         const panel = this._panel!;
+        // 镜像坐标常量（关于 panel 中心 y=0 对称，怪区在 +y、玩区在 -y）
+        const Y = {
+            mstName: 310, mstHp: 260, mstVal: 225,
+            sepUp: 175,
+            logView: 0, logH: 180,
+            sepDn: -175,
+            plVal: -225, plHp: -260, plName: -310,
+            actRow: -340,
+            contBtn: -360,
+        };
 
-        // —— 怪物信息区 ——
+        // —— 怪物信息区（上：名字 → HP 条 → 数值）——
         const mstSection = new Node('MstSection');
         mstSection.setParent(panel);
 
-        this._mstNameLabel = this.mkCenter(mstSection, 0, 475, 640, 40, '', 24, C.battleName, true);
+        this._mstNameLabel = this.mkCenter(mstSection, 0, Y.mstName, 640, 40, '', 24, C.battleName, true);
 
         const mstHpBgShape = new UIShape('MstHpBg').rect(500, 24, C.hpTrack);
-        mstHpBgShape.mount(mstSection).pos(0, 420, 0);
+        mstHpBgShape.mount(mstSection).pos(0, Y.mstHp, 0);
         const mstHpBg = mstHpBgShape.node;
 
         this._mstHpBar = new Node('MstHpBar');
@@ -91,14 +97,16 @@ export class BattlePanel extends ModalPanel {
         this._mstHpBar.setPosition(-250, 0, 0);
         this._mstHpBarGfx = this._mstHpBar.addComponent(Graphics);
 
-        this._mstHpLabel = this.mkCenter(mstSection, 0, 388, 640, 30, '', 20, C.battleLabel);
+        this._mstHpLabel = this.mkCenter(mstSection, 0, Y.mstVal, 640, 30, '', 20, C.battleLabel);
 
-        // —— 玩家 HP 区 ——
+        // —— 玩家 HP 区（下：数值 → HP 条 → 名字，镜像对称）——
         const plSection = new Node('PlSection');
         plSection.setParent(panel);
 
+        this._playerHpLabel = this.mkCenter(plSection, 0, Y.plVal, 640, 30, '', 22, C.battleLabel);
+
         const plHpBgShape = new UIShape('PlHpBg').rect(500, 24, C.hpTrack);
-        plHpBgShape.mount(plSection).pos(0, 330, 0);
+        plHpBgShape.mount(plSection).pos(0, Y.plHp, 0);
         const plHpBg = plHpBgShape.node;
 
         this._playerHpBar = new Node('PlHpBar');
@@ -109,33 +117,40 @@ export class BattlePanel extends ModalPanel {
         this._playerHpBar.setPosition(-250, 0, 0);
         this._playerHpBarGfx = this._playerHpBar.addComponent(Graphics);
 
-        this._playerHpLabel = this.mkCenter(plSection, 0, 360, 640, 30, '', 22, C.battleLabel);
-        this.mkCenter(plSection, 0, 295, 640, 30, '玩家', 22, C.battleName);
+        this.mkCenter(plSection, 0, Y.plName, 640, 30, '玩家', 22, C.battleName);
 
-        // —— 分隔线 ——
-        const sep = new UIShape('Separator').line(-310, 260, 310, 260, C.battleSep, 2);
-        sep.mount(panel);
+        // —— 分隔线（怪/日志、日志/玩）——
+        const sepUp = new UIShape('SepUp').line(-310, Y.sepUp, 310, Y.sepUp, C.battleSep, 2);
+        sepUp.mount(panel);
+        const sepDn = new UIShape('SepDn').line(-310, Y.sepDn, 310, Y.sepDn, C.battleSep, 2);
+        sepDn.mount(panel);
 
-        // —— 战斗日志区（ScrollView） ——
+        // —— 战斗日志区（ScrollView，居中）——
         const logContainer = new Node('LogContainer');
         logContainer.setParent(panel);
 
-        const { view: logView, content: logContent } = this.mkScroll(logContainer, 0, 120, 620, 220);
+        const { view: logView, content: logContent } = this.mkScroll(logContainer, 0, Y.logView, 620, Y.logH);
         this._logContent = logContent;
         const logMask = logView.getComponent(Graphics);
-        if (logMask) { logMask.fillColor = C.battleLogMask; logMask.clear(); logMask.rect(-310, -110, 620, 220); logMask.fill(); }
+        if (logMask) {
+            const halfH = Y.logH / 2;
+            logMask.fillColor = C.battleLogMask;
+            logMask.clear();
+            logMask.rect(-310, -halfH, 620, Y.logH);
+            logMask.fill();
+        }
 
-        // —— 结果文字（覆盖在面板上） ——
+        // —— 结果文字（覆盖在面板上）——
         this._resultLabel = this.mkCenter(panel, 0, 0, 600, 80, '', 28, C.battleTitle);
         this._resultLabel.node.active = false;
 
-        // —— 继续按钮（widgets，统一 Btn 预设） ——
+        // —— 继续按钮（战斗结束时显示）——
         const contBtn = new UIButton('继续', Btn.confirm, () => this.close(), 200, 60);
-        contBtn.mount(panel).pos(0, -100, 0);
+        contBtn.mount(panel).pos(0, Y.contBtn, 0);
         this._continueBtn = contBtn.node;
         this._continueBtn.active = false;
 
-        // —— 操作按钮行（统一暖底色 + 类型彩色描边，克制不突兀） ——
+        // —— 操作按钮行（统一暖底色 + 类型彩色描边，扁按钮 72 高）——
         const actions = [
             { id: 'attack', name: '攻击', color: C.actAttack },
             { id: 'skill', name: '技能', color: C.actSkill },
@@ -143,7 +158,7 @@ export class BattlePanel extends ModalPanel {
             { id: 'flee', name: '逃跑', color: C.actFlee },
         ];
         const actStyle: BtnStyle = { bg: C.btnActionBg, border: C.battleActBorder, borderW: 3, text: C.body, radius: S.btnRadius, fontSize: 24 };
-        const actRow = new UIHStack().gap(18);
+        const actRow = new UIHStack().gap(16);
         for (const cfg of actions) {
             actRow.add(new UIButton(cfg.name,
                 { ...actStyle, border: cfg.color },
@@ -156,9 +171,9 @@ export class BattlePanel extends ModalPanel {
                         case 'flee': this._combat.flee(); break;
                     }
                     this.refreshUI();
-                }, 140, 120));
+                }, 140, 72));
         }
-        actRow.mount(panel).pos(0, -380, 0);
+        actRow.mount(panel).pos(0, Y.actRow, 0);
         this._actionGrid = actRow.node;
     }
 
