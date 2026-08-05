@@ -32,7 +32,7 @@ export class BattlePanel extends ModalPanel {
     private _continueBtn: Node | null = null;
 
     protected panelW = 680;
-    protected panelH = 820;
+    protected panelH = 880;          // 拉高 60px，给玩家名+行动按钮之间留 23px 间距（治玩家名 y=-310 被按钮顶部 -304 压 17px）
     protected showMask = true;     // 与其它弹窗一致：半透明遮罩
     protected showClose = false;   // 战斗中不提供关闭按钮（防误触）
     protected buildContentContainer = true;
@@ -43,12 +43,22 @@ export class BattlePanel extends ModalPanel {
         const vs = view.getVisibleSize();
         const sw = vs.width, sh = vs.height;
 
-        // 不透明战斗背景（置于最底层，拦截所有点击）
+        // 战斗场景氛围底（最底层，浅米黄区别于普通弹窗的米白）
         const bgShape = new UIShape('BattleBg').rect(sw, sh, C.battleBg);
         this._bgNode = bgShape.node;
         this._bgNode.setParent(this.node);
         this._bgNode.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
-        this._bgNode.setSiblingIndex(0); // 放到面板之下
+        this._bgNode.setSiblingIndex(0); // 放到遮罩/面板之下
+
+        // 遮罩调到更半透明（默认 C.maskDim.a=150 偏深叠加深底变 76,76,76）
+        // 战斗场景底本身已不透，只让遮罩提供轻量氛围
+        if (this._maskGfx) {
+            const g = this._maskGfx;
+            g.clear();
+            g.fillColor = new Color(0, 0, 0, 100);
+            g.rect(-this._vsW / 2, -this._vsH / 2, this._vsW, this._vsH);
+            g.fill();
+        }
 
         // 标题颜色由基类 ModalPanel 默认居中布局，这里仅覆写战斗专色
         if (this._titleLbl) this._titleLbl.color = C.battleTitle;
@@ -69,14 +79,15 @@ export class BattlePanel extends ModalPanel {
     private buildCombatUI(): void {
         const panel = this._panel!;
         // 镜像坐标常量（关于 panel 中心 y=0 对称，怪区在 +y、玩区在 -y）
+        // 注意：玩家名 y=-310 与按钮区要留 ≥20px 间距，行动按钮已下移至 -380（见下方 actRow）
         const Y = {
             mstName: 310, mstHp: 260, mstVal: 225,
             sepUp: 175,
             logView: 0, logH: 180,
             sepDn: -175,
             plVal: -225, plHp: -260, plName: -310,
-            actRow: -340,
-            contBtn: -360,
+            actRow: -380,
+            contBtn: -400,
         };
 
         // —— 怪物信息区（上：名字 → HP 条 → 数值）——
