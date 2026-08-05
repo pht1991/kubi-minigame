@@ -94,25 +94,26 @@ export const C = {
     saveBorder:  new Color(200, 168, 130, 180),
 
     // ── 战斗（专用，可覆盖）──
-    battleBg:       new Color(20, 15, 10, 230),
+    battleBg:       new Color(250, 242, 230, 255),  // 浅米黄不透明战斗底（与全游戏米黄主题一致）
     battleSep:      new Color(180, 140, 100, 200),
-    battleLogMask:  new Color(40, 35, 30, 180),
+    battleLogMask:  new Color(240, 232, 220, 255),  // 日志区浅底（在浅背景上不突兀）
     battleTitle:    new Color(160, 30, 30, 255),
     hpEnemy:        new Color(200, 60, 40, 255),
     hpPlayer:       new Color(60, 180, 60, 255),
     win:            new Color(40, 140, 40, 255),
     lose:           new Color(200, 40, 40, 255),
-    actAttack:      new Color(200, 60, 40),
+    actAttack:      new Color(200, 60, 40),         // 行动按钮描边色（细线，不整块填充）
     actSkill:       new Color(60, 120, 200),
     actItem:        new Color(60, 160, 80),
     actFlee:        new Color(150, 150, 150),
 
     // ── 战斗（扩展，统一此处，禁止面板内写 new Color 字面量）──
-    hpTrack:        new Color(80, 70, 60, 200),     // HP 条底槽
-    battleName:     new Color(235, 225, 210, 255),  // 怪物名 / 「玩家」标签
-    battleLabel:    new Color(200, 190, 175, 255),  // HP 数值等次级文字
-    battleLogText:  new Color(220, 210, 190, 255),  // 战斗日志文字
-    battleActBorder:new Color(255, 245, 230, 160),  // 行动按钮描边
+    hpTrack:        new Color(80, 70, 60, 200),     // HP 条底槽（深棕，浅背景上可见）
+    battleName:     new Color(90, 60, 40, 255),     // 怪物名 / 「玩家」标签（深棕）
+    battleLabel:    new Color(110, 90, 75, 255),    // HP 数值等次级文字（深灰）
+    battleLogText:  new Color(90, 70, 50, 255),     // 战斗日志文字（深棕）
+    btnActionBg:    new Color(210, 175, 130, 255),  // 行动按钮低饱和暖底色
+    battleActBorder:new Color(140, 90, 60, 255),    // 行动按钮描边（深棕，3px）
 };
 
 // ══════════ 尺寸 / 间距 token（魔法数字集中地）═════════

@@ -77,10 +77,10 @@ export class BattlePanel extends ModalPanel {
         const mstSection = new Node('MstSection');
         mstSection.setParent(panel);
 
-        this._mstNameLabel = this.mkCenter(mstSection, 0, 440, 640, 40, '', 30, C.battleName, true);
+        this._mstNameLabel = this.mkCenter(mstSection, 0, 475, 640, 40, '', 24, C.battleName, true);
 
         const mstHpBgShape = new UIShape('MstHpBg').rect(500, 24, C.hpTrack);
-        mstHpBgShape.mount(mstSection).pos(0, 400, 0);
+        mstHpBgShape.mount(mstSection).pos(0, 420, 0);
         const mstHpBg = mstHpBgShape.node;
 
         this._mstHpBar = new Node('MstHpBar');
@@ -91,7 +91,7 @@ export class BattlePanel extends ModalPanel {
         this._mstHpBar.setPosition(-250, 0, 0);
         this._mstHpBarGfx = this._mstHpBar.addComponent(Graphics);
 
-        this._mstHpLabel = this.mkCenter(mstSection, 0, 370, 640, 30, '', 20, C.battleLabel);
+        this._mstHpLabel = this.mkCenter(mstSection, 0, 388, 640, 30, '', 20, C.battleLabel);
 
         // —— 玩家 HP 区 ——
         const plSection = new Node('PlSection');
@@ -109,8 +109,8 @@ export class BattlePanel extends ModalPanel {
         this._playerHpBar.setPosition(-250, 0, 0);
         this._playerHpBarGfx = this._playerHpBar.addComponent(Graphics);
 
-        this._playerHpLabel = this.mkCenter(plSection, 0, 295, 640, 30, '', 22, C.battleLabel);
-        this.mkCenter(plSection, 0, 350, 640, 30, '玩家', 22, C.battleName);
+        this._playerHpLabel = this.mkCenter(plSection, 0, 360, 640, 30, '', 22, C.battleLabel);
+        this.mkCenter(plSection, 0, 295, 640, 30, '玩家', 22, C.battleName);
 
         // —— 分隔线 ——
         const sep = new UIShape('Separator').line(-310, 260, 310, 260, C.battleSep, 2);
@@ -135,18 +135,18 @@ export class BattlePanel extends ModalPanel {
         this._continueBtn = contBtn.node;
         this._continueBtn.active = false;
 
-        // —— 操作按钮行（UIHStack 自动排布，统一描边） ——
+        // —— 操作按钮行（统一暖底色 + 类型彩色描边，克制不突兀） ——
         const actions = [
             { id: 'attack', name: '攻击', color: C.actAttack },
             { id: 'skill', name: '技能', color: C.actSkill },
             { id: 'item', name: '道具', color: C.actItem },
             { id: 'flee', name: '逃跑', color: C.actFlee },
         ];
-        const actStyle: BtnStyle = { bg: C.white, border: C.battleActBorder, borderW: 2, text: C.white, radius: S.btnRadius, fontSize: 24 };
-        const actRow = new UIHStack().gap(20);
+        const actStyle: BtnStyle = { bg: C.btnActionBg, border: C.battleActBorder, borderW: 3, text: C.body, radius: S.btnRadius, fontSize: 24 };
+        const actRow = new UIHStack().gap(18);
         for (const cfg of actions) {
             actRow.add(new UIButton(cfg.name,
-                { ...actStyle, bg: cfg.color },
+                { ...actStyle, border: cfg.color },
                 () => {
                     if (!this._combat.state || this._combat.state.ended) return;
                     switch (cfg.id) {
@@ -156,9 +156,9 @@ export class BattlePanel extends ModalPanel {
                         case 'flee': this._combat.flee(); break;
                     }
                     this.refreshUI();
-                }, 140, 150));
+                }, 140, 120));
         }
-        actRow.mount(panel).pos(0, -300, 0);
+        actRow.mount(panel).pos(0, -380, 0);
         this._actionGrid = actRow.node;
     }
 
