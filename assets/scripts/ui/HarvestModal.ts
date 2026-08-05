@@ -80,6 +80,12 @@ export class HarvestModal extends ModalPanel {
         });
         const listH = this._list.setRows(rows);
 
+        // 手动 resizePanel：list 收缩到内容高（listH=actualViewH）后面板也要跟着收缩，
+        // 否则固定 panelH=880 + 3 行材料 → 底部 ~300px 死区
+        // 面板内容 = 标题(90) + 提示(40) + 列表(listH) + 按钮区(86) + 底部padding(30)
+        const targetH = 90 + 40 + listH + 86 + 30;
+        this.resizePanel(Math.max(420, Math.min(880, targetH)));
+
         // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)——HStack 自动排布（y 跟随列表实际高度）
         const btnW = (listW - 2 * 12) / 3;
         const btnRow = new UIHStack().gap(12)

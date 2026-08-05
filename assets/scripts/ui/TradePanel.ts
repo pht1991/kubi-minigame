@@ -190,6 +190,12 @@ export class TradePanel extends ModalPanel {
 
         const mp = Math.round(ActionTrade.instance.getBarterMargin() * 100);
         this._tx(by + listH + 44, `提示：易货 >> 卖货换金币再买 (${mp}%差价)`, 15, C.sub);
+
+        // 手动 resizePanel：list 已收缩到内容高（listH=actualViewH），面板跟着收缩
+        // 面板内容 = 标题(90) + Header(130) + Tab(60) + by(225) + list(listH) + 提示(50) + 底部padding(30)
+        // 顶部 hint 文案 + 选物品标题 = ~50
+        const targetH = 90 + 130 + 60 + 50 + listH + 50 + 30;
+        this.resizePanel(Math.max(600, Math.min(1000, targetH)));
     }
 
     // ════ 执行交易（带数量的版本）═════

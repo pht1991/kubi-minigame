@@ -4,7 +4,7 @@
  * 通过 ActionCombat 状态机驱动回合制战斗。
  */
 
-import { Node, Label, UITransform, Color, Graphics, EventTouch, NodeEventType, view } from 'cc';
+import { Node, Label, UITransform, Color, Graphics, ScrollView, view } from 'cc';
 import { ModalPanel, C } from './ModalPanel';
 import { S, Btn, BtnStyle } from './theme';
 import { UIShape, UIVStack, UIHStack, UILabel, UIButton } from './widgets';
@@ -18,7 +18,6 @@ export class BattlePanel extends ModalPanel {
     onEnd: ((win: boolean) => void) | null = null;
 
     private get _combat(): ActionCombat { return ActionCombat.instance; }
-    private _bgNode: Node | null = null;
     private _mstNameLabel: Label | null = null;
     private _mstHpLabel: Label | null = null;
     private _mstHpBar: Node | null = null;
@@ -27,6 +26,7 @@ export class BattlePanel extends ModalPanel {
     private _playerHpBar: Node | null = null;
     private _playerHpBarGfx: Graphics | null = null;
     private _logContent: Node | null = null;
+    private _logSv: ScrollView | null = null;
     private _actionGrid: Node | null = null;
     private _resultLabel: Label | null = null;
     private _continueBtn: Node | null = null;
@@ -40,22 +40,13 @@ export class BattlePanel extends ModalPanel {
     protected buildSkeleton(): void {
         super.buildSkeleton();
 
-        const vs = view.getVisibleSize();
-        const sw = vs.width, sh = vs.height;
-
-        // 战斗场景氛围底（最底层，浅米黄区别于普通弹窗的米白）
-        const bgShape = new UIShape('BattleBg').rect(sw, sh, C.battleBg);
-        this._bgNode = bgShape.node;
-        this._bgNode.setParent(this.node);
-        this._bgNode.on(NodeEventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
-        this._bgNode.setSiblingIndex(0); // 放到遮罩/面板之下
-
-        // 遮罩调到更半透明（默认 C.maskDim.a=150 偏深叠加深底变 76,76,76）
-        // 战斗场景底本身已不透，只让遮罩提供轻量氛围
+        // 战斗场景氛围遮罩：用浅米黄 battleBg 色 + alpha 100（40% 不透）替代原黑遮罩，
+        // 既保持"半透明"又能透出主场景形成"战斗场景切换"的氛围感。
+        // 之前 `_bgNode` 放在 sibling 0 被 mask 覆盖而失效，已删除。
         if (this._maskGfx) {
             const g = this._maskGfx;
             g.clear();
-            g.fillColor = new Color(0, 0, 0, 100);
+            g.fillColor = new Color(250, 242, 230, 100);  // battleBg 浅米黄 alpha 100
             g.rect(-this._vsW / 2, -this._vsH / 2, this._vsW, this._vsH);
             g.fill();
         }
@@ -80,11 +71,12 @@ export class BattlePanel extends ModalPanel {
         const panel = this._panel!;
         // 镜像坐标常量（关于 panel 中心 y=0 对称，怪区在 +y、玩区在 -y）
         // 注意：玩家名 y=-310 与按钮区要留 ≥20px 间距，行动按钮已下移至 -380（见下方 actRow）
+        // 日志区上移至 y=120（之前 y=0 距 sepUp 175px 大空白），高度 180→240 撑满怪玩之间空档
         const Y = {
             mstName: 310, mstHp: 260, mstVal: 225,
             sepUp: 175,
-            logView: 0, logH: 180,
-            sepDn: -175,
+            logView: 120, logH: 240,
+            sepDn: -145,
             plVal: -225, plHp: -260, plName: -310,
             actRow: -380,
             contBtn: -400,
@@ -140,8 +132,9 @@ export class BattlePanel extends ModalPanel {
         const logContainer = new Node('LogContainer');
         logContainer.setParent(panel);
 
-        const { view: logView, content: logContent } = this.mkScroll(logContainer, 0, Y.logView, 620, Y.logH);
+        const { view: logView, content: logContent, sv: logSv } = this.mkScroll(logContainer, 0, Y.logView, 620, Y.logH);
         this._logContent = logContent;
+        this._logSv = logSv;
         const logMask = logView.getComponent(Graphics);
         if (logMask) {
             const halfH = Y.logH / 2;
@@ -307,6 +300,9 @@ export class BattlePanel extends ModalPanel {
         }
         list.mount(this._logContent);
         list.pos(0, -list.h / 2, 0);
+
+        // 滚到底部：战斗日志"最新一行"最重要，Cocos ScrollView 默认显示顶部会截断最新行
+        if (this._logSv) this._logSv.scrollToBottom(0.1);
     }
 
     private close(): void {
