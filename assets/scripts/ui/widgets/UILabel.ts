@@ -17,6 +17,7 @@
 
 import { Label, Color, Node, UITransform } from 'cc';
 import { UINode } from './UINode';
+import { estimateTextWidth, estimateWrappedLines } from '../textMetrics';
 
 export interface LabelOpts {
     size?: number;
@@ -84,34 +85,20 @@ export class UILabel extends UINode {
     }
 
     /**
-     * 混合字符宽度估算：CJK 方块字（汉字/全角标点/假名）≈ 1.0×字号，ASCII/数字 ≈ 0.6×字号。
-     * 抵消旧「全局 ×0.6」系数对汉字偏紧的问题——旧系数下「需求」(2 汉字) 估算 22px < 实际 36px → 裁切。
+     * 估算文本像素宽（基于混合字符宽：CJK≈1.0×字号、ASCII/数字≈0.55×字号）。
+     * 复用 textMetrics.estimateTextWidth 单一真相源。
      * 不传 width 时本估算仅供父容器排版参考（文字本身 NONE 不裁切）；传 width 时本估算不使用。
      */
     private estimateTextWidth(text: string): number {
-        let total = 0;
-        for (const ch of text) {
-            const code = ch.codePointAt(0)!;
-            const isWide = (code >= 0x2E80 && code <= 0x9FFF)   // CJK 统一表意文字
-                        || (code >= 0x3000 && code <= 0x30FF)   // 中文标点 / 日文假名
-                        || (code >= 0xFF00 && code <= 0xFFEF);  // 全角字符
-            total += isWide ? this._size : this._size * 0.6;
-        }
-        return Math.ceil(total);
+        return estimateTextWidth(text, this._size);
     }
 
     /** 按当前文本估算高度（用于未显式给定 height 或 wrap 时） */
     private estimateHeight(): number {
         const lh = Math.ceil(this._size * 1.5);
         if (!this._wrapW) return lh + 4;
-        const charsPerLine = Math.max(1, Math.floor(this._wrapW / (this._size * 0.9)));
-        // 按 \n 分段后再逐段估算换行数（否则 "生命\n100" 被算成 1 行）
-        const segments = this._text.split('\n');
-        let totalLines = 0;
-        for (const seg of segments) {
-            totalLines += Math.max(1, Math.ceil(seg.length / charsPerLine));
-        }
-        return totalLines * lh + 4; // +4px 余量防字体 ascent/descent 被 CLAMP 裁切
+        const lines = estimateWrappedLines(this._text, this._size, this._wrapW);
+        return lines * lh + 4; // +4px 余量防字体 ascent/descent 被 CLAMP 裁切
     }
 
     setText(t: string): this {

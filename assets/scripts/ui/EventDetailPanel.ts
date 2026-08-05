@@ -108,19 +108,17 @@ export class EventDetailPanel extends ModalPanel {
             const fontSize = S.font.body;
             const lineHeight = 32;
             const textW = cw - 40;                 // 气泡内左右各 20 padding
-            // 估算文本高度（汉字≈fontSize*0.6 宽）
-            const charPerLine = Math.max(1, Math.floor(textW / (fontSize * 0.6)));
-            const totalChars = fullText.replace(/\n/g, '').length;
-            const newlines = (fullText.match(/\n/g) || []).length;
-            const estLines = Math.ceil(totalChars / charPerLine) + newlines;
-            const textH = Math.min(EventDetailPanel.BUBBLE_MAX_H - 32, estLines * lineHeight);
+            // 文字尺寸交给 UILabel（wrap+自适应估高），不再手写 *0.6 估算；
+            // 气泡高度由 label 实测高撑开并钳 80~280
+            const lbl = new UILabel(fullText, {
+                size: fontSize, width: textW, wrap: true,
+                color: DIALOG_TEXT, align: 'left', lineHeight,
+            });
+            const textH = Math.min(EventDetailPanel.BUBBLE_MAX_H - 32, lbl.measuredHeight);
             const bubbleH = Math.max(EventDetailPanel.BUBBLE_MIN_H, textH + 32);
 
             const bubble = new UIShape('Bubble').rect(cw, bubbleH, DIALOG_BG, 12, DIALOG_BORDER, 1.5);
-            bubble.add(new UILabel(fullText, {
-                size: fontSize, width: textW, height: textH,
-                color: DIALOG_TEXT, align: 'left', lineHeight,
-            }));
+            bubble.add(lbl);
             stack.add(bubble);
         }
 

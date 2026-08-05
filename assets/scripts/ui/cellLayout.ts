@@ -17,6 +17,7 @@
  */
 
 import { GridCellData } from '../data/types';
+import { estimateWrappedLines } from './textMetrics';
 
 /** 布局形态：方格 / 横条 / 标题 */
 export type CellLayoutKind = 'tile' | 'bar' | 'header';
@@ -133,18 +134,8 @@ export function estimateBarHeight(name: string, ctx: CellLayoutContext, fs: numb
     const padX = 24;
     const padY = 16;
     const availW = Math.max(120, ctx.barWidth - padX);
-    // 单行可容纳的「显示单位」数：中文=1 单位（≈ fs 像素宽），英文/数字=0.5 单位（≈ fs/2）
-    const perLineUnits = Math.max(1, Math.floor(availW / (fs * 0.95)));
-    let lines = 0;
-    for (const seg of (name || '').split('\n')) {
-        let units = 0;
-        for (const ch of seg) {
-            const c = ch.charCodeAt(0);
-            const u = (c > 0x4e00 && c < 0x9fff) || (c > 0xff00 && c < 0xffef) ? 1 : 0.5;
-            units += u;
-        }
-        lines += Math.max(1, Math.ceil(units / perLineUnits));
-    }
+    // 复用 textMetrics.estimateWrappedLines 单一真相源（CJK=1 单位、ASCII/数字=0.55 单位）
+    const lines = estimateWrappedLines(name || '', fs, availW);
     const textH = lines * lh;
     return Math.max(ctx.barH, textH + padY * 2);
 }

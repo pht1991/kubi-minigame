@@ -9,6 +9,7 @@ import { Color } from 'cc';
 import { UINode } from './UINode';
 import { UIShape } from './UIShape';
 import { UILabel } from './UILabel';
+import { estimateTextWidth } from '../textMetrics';
 import { S } from '../theme';
 
 export interface ModalInfoRowOpts {
@@ -33,8 +34,8 @@ export class ModalInfoRow extends UINode {
         this.add(bg);
 
         if (label) {
-            // 汉字方块字宽 ≈ fontSize，按此算标签宽度避免 overflow=CLAMP 裁切（不留白、不超出 valW 即可）
-            const labelW = label.length * (S.font.sub) + 4;
+            // 复用 textMetrics 混合字符宽（CJK≈1.0×字号）算标签宽，避免 CLAMP 裁切
+            const labelW = estimateTextWidth(label, S.font.sub) + 4;
             const tag = new UILabel(label, {
                 size: S.font.sub, width: labelW,
                 color: o?.labelColor ?? new Color(100, 80, 60, 255), bold: true,

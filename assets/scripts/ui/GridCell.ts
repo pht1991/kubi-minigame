@@ -16,6 +16,7 @@
 import { _decorator, Component, Node, Label, UIOpacity, Vec3, tween, Color, UITransform, Graphics } from 'cc';
 import { GridCellData } from '../data/types';
 import type { ResolvedCellLayout } from './cellLayout';
+import { charUnits } from './textMetrics';
 import { C } from './theme';
 
 const { ccclass } = _decorator;
@@ -409,18 +410,16 @@ export class GridCell extends Component {
      */
     private truncateForList(text: string): string {
         if (!text) return text;
+        // 复用 textMetrics.charUnits（CJK=1.0/窄=0.55），映射到原 2 倍单位（半角=1.1、全角=2.0）
+        const unitOf = (c: string) => charUnits(c) * 2;
         let w = 0;
-        for (let i = 0; i < text.length; i++) {
-            const c = text.charCodeAt(i);
-            w += (c > 0x4e00 && c < 0x9fff) || (c > 0xff00 && c < 0xffef) ? 2 : 1;
-        }
+        for (let i = 0; i < text.length; i++) w += unitOf(text[i]);
         const MAX_W = 110;
         if (w <= MAX_W) return text;
         let cut = 0;
         w = 0;
         for (let i = 0; i < text.length; i++) {
-            const c = text.charCodeAt(i);
-            const cw = (c > 0x4e00 && c < 0x9fff) || (c > 0xff00 && c < 0xffef) ? 2 : 1;
+            const cw = unitOf(text[i]);
             if (w + cw + 1 > MAX_W - 2) break;
             w += cw;
             cut = i + 1;
