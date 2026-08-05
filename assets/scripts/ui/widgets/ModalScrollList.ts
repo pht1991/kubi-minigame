@@ -18,6 +18,35 @@ import { Node, UITransform, ScrollView } from 'cc';
 import { UIVStack } from './UILayout';
 import { UINode } from './UINode';
 
+export interface ListLayoutResult {
+    /** 内容高度（含最小占位 minScrollH） */
+    scrollH: number;
+    /** 面板高度（钳 min/max 后） */
+    panelH: number;
+    /** 实际滚动视口高度（铺满分配给滚动区的区域） */
+    actualScrollH: number;
+}
+
+/**
+ * 弹窗滚动区高度推导——全局唯一真相源。
+ * 输入内容总高 + 预留参数，输出面板高与视口高。
+ * 调用方必须把 view(视口) 高度设为 actualScrollH、content 高度设为 max(totalH, actualScrollH)，
+ * 否则 content < view 会出现「未铺满」空白，且 view 可能高过面板导致 Mask 裁剪错位。
+ */
+export function computeListLayout(totalH: number, o: ModalScrollListOpts): ListLayoutResult {
+    const titleReserve = o.titleReserve ?? 110;
+    const bottomReserve = o.bottomReserve ?? 30;
+    const minScrollH = o.minScrollH ?? 160;
+    const minPanelH = o.minPanelH ?? 380;
+    const maxPanelH = o.maxPanelH ?? 1040;
+
+    const scrollH = Math.max(totalH, minScrollH);
+    let panelH = titleReserve + scrollH + bottomReserve;
+    panelH = Math.max(minPanelH, Math.min(maxPanelH, panelH));
+    const actualScrollH = Math.min(scrollH, panelH - titleReserve - bottomReserve);
+    return { scrollH, panelH, actualScrollH };
+}
+
 export interface ModalScrollListOpts {
     /** 列表区宽度 */
     width: number;
@@ -67,38 +96,40 @@ export class ModalScrollList {
     setRows(rows: UINode[]): number {
         for (const c of [...this.content.children]) c.destroy();
 
+        const o = this._o;
         const vstack = new UIVStack()
-            .gap(this._o.gap ?? 8)
-            .align(this._o.align ?? 'center')
-            .fixedWidth(this._o.width);
+            .gap(o.gap ?? 8)
+            .align(o.align ?? 'center')
+            .fixedWidth(o.width);
         for (const r of rows) vstack.add(r);
         vstack.mount(this.content);
         vstack.pos(0, -vstack.h / 2, 0);
 
         const totalH = vstack.h;
-        const viewH = this._o.viewH ?? 600;
+        const vt = this.view.getComponent(UITransform);
         const ct = this.content.getComponent(UITransform);
-        if (ct) ct.setContentSize(this._o.width, Math.max(totalH, viewH));
 
-        const o = this._o;
-        if (o.autoResizePanel === false) return Math.max(totalH, viewH);
+        // 自管面板模式（HarvestModal/TradePanel）：view 高度由调用方在 buildSkeleton 固定
+        // （保持原行为，不在此改动），这里仅按「内容高与初始视口大者」设 content 高度保证铺满。
+        if (o.autoResizePanel === false) {
+            const viewH = o.viewH ?? 600;
+            if (ct) ct.setContentSize(o.width, Math.max(totalH, viewH));
+            return Math.max(totalH, viewH);
+        }
 
+        // 自适应面板模式：高度推导全部走 computeListLayout（唯一真相源）
         const titleReserve = o.titleReserve ?? 110;
-        const bottomReserve = o.bottomReserve ?? 30;
-        const minScrollH = o.minScrollH ?? 160;
-        const minPanelH = o.minPanelH ?? 380;
-        const maxPanelH = o.maxPanelH ?? 1040;
+        const { panelH, actualScrollH } = computeListLayout(totalH, o);
 
-        const scrollH = Math.max(totalH, minScrollH);
-        let panelH = titleReserve + scrollH + bottomReserve;
-        panelH = Math.max(minPanelH, Math.min(maxPanelH, panelH));
-        const actualScrollH = Math.min(scrollH, panelH - titleReserve - bottomReserve);
+        // 关键修复：视口高度 = 实际滚动高度（铺满分配给它的区域，消除「未铺满」空白）
+        if (vt) vt.setContentSize(o.width, actualScrollH);
+        // 内容高度 = 内容真实高（≥ 视口高时可滚，< 视口高时恰好铺满）
+        if (ct) ct.setContentSize(o.width, Math.max(totalH, actualScrollH));
 
         this._resizePanel(panelH);
         if (o.repositionScroll !== false) {
             this.view.setPosition(this.view.position.x, panelH / 2 - titleReserve, 0);
         }
-        if (ct) ct.setContentSize(this._o.width, Math.max(totalH, actualScrollH));
         return actualScrollH;
     }
 }

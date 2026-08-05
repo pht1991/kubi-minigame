@@ -29,7 +29,7 @@ export class DialogPanel extends ModalPanel {
             parent: this._panel, x: 0, y: this.panelH / 2 - 110,
             width: 600, viewH: 700, gap: 8, padT: 36, padB: 24,
             minScrollH: 200, minPanelH: 300, maxPanelH: 900,
-            titleReserve: 110, bottomReserve: 30, align: 'center',
+            align: 'center',
         });
     }
 

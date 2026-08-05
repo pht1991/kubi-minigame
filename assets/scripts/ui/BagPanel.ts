@@ -57,10 +57,10 @@ export class BagPanel extends ModalPanel {
     protected buildSkeleton(): void {
         super.buildSkeleton();
         this._list = this.createScrollList({
-            parent: this._panel, x: 0, y: this.panelH / 2 - 110,
+            parent: this._panel, x: 0, y: this.panelH / 2 - 100,
             width: this.CONTENT_W, viewH: 700, gap: this.ROW_GAP,
-            minScrollH: 160, minPanelH: 380, maxPanelH: 1040,
-            titleReserve: 110, bottomReserve: 30, align: 'center',
+            maxPanelH: 1040,
+            titleReserve: 100, bottomReserve: 20, align: 'center',
         });
     }
 
