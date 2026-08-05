@@ -36,20 +36,14 @@ export class BattlePanel extends ModalPanel {
     protected showMask = true;     // 与其它弹窗一致：半透明遮罩
     protected showClose = false;   // 战斗中不提供关闭按钮（防误触）
     protected buildContentContainer = true;
+    protected maskClose = false;   // 战斗界面禁用"点遮罩关闭"——避免和"逃跑"按钮功能冲突（想退出战斗必须走逃跑/继续按钮）
 
     protected buildSkeleton(): void {
         super.buildSkeleton();
 
-        // 战斗场景氛围遮罩：用浅米黄 battleBg 色 + alpha 100（40% 不透）替代原黑遮罩，
-        // 既保持"半透明"又能透出主场景形成"战斗场景切换"的氛围感。
-        // 之前 `_bgNode` 放在 sibling 0 被 mask 覆盖而失效，已删除。
-        if (this._maskGfx) {
-            const g = this._maskGfx;
-            g.clear();
-            g.fillColor = new Color(250, 242, 230, 100);  // battleBg 浅米黄 alpha 100
-            g.rect(-this._vsW / 2, -this._vsH / 2, this._vsW, this._vsH);
-            g.fill();
-        }
+        // 战斗场景视觉：mask 走基类默认的 C.maskDim（半透明黑色），让背后主场景变暗；
+        // 弹窗卡片自身由基类 C.panelBg 画米白色圆角矩形（见图2效果）。
+        // 注：46661be 改的"mask 浅米黄"是错的——会盖住状态栏/底栏让整屏米黄，视觉糊。
 
         // 标题颜色由基类 ModalPanel 默认居中布局，这里仅覆写战斗专色
         if (this._titleLbl) this._titleLbl.color = C.battleTitle;
