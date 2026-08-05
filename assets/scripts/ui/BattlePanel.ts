@@ -30,6 +30,8 @@ export class BattlePanel extends ModalPanel {
     private _actionGrid: Node | null = null;
     private _resultLabel: Label | null = null;
     private _continueBtn: Node | null = null;
+    /** 战斗回合时序（普通攻击）：true 表示"已点攻击、怪物反击等待触发"，期间再次点攻击按钮会被忽略 */
+    private _counterPending = false;
 
     protected panelW = 680;
     protected panelH = 880;          // 拉高 60px，给玩家名+行动按钮之间留 23px 间距（治玩家名 y=-310 被按钮顶部 -304 压 17px）
@@ -64,14 +66,16 @@ export class BattlePanel extends ModalPanel {
     private buildCombatUI(): void {
         const panel = this._panel!;
         // 镜像坐标常量（关于 panel 中心 y=0 对称，怪区在 +y、玩区在 -y）
-        // 注意：玩家名 y=-310 与按钮区要留 ≥20px 间距，行动按钮已下移至 -380（见下方 actRow）
-        // 日志区上移至 y=120（之前 y=0 距 sepUp 175px 大空白），高度 180→240 撑满怪玩之间空档
+        // 玩家名 y=-310 与按钮区要留 ≥20px 间距，行动按钮已下移至 -380
+        // 关键修复（间距对称）：日志区 logView y=0（之前 120）居中，logH 240→340，
+        // 让 mstVal 底 y=200 ↔ logView 顶 y=170 = 30px、plVal 顶 y=-200 ↔ logView 底 y=-170 = 30px 镜像对称，
+        // 消除之前"上重叠 8px + 下空白 210px"的视觉撕裂。
         const Y = {
-            mstName: 310, mstHp: 260, mstVal: 225,
+            mstName: 310, mstHp: 260, mstVal: 215,
             sepUp: 175,
-            logView: 120, logH: 240,
-            sepDn: -145,
-            plVal: -225, plHp: -260, plName: -310,
+            logView: 0, logH: 340,
+            sepDn: -175,
+            plVal: -215, plHp: -260, plName: -310,
             actRow: -380,
             contBtn: -400,
         };
@@ -162,8 +166,9 @@ export class BattlePanel extends ModalPanel {
                 { ...actStyle, border: cfg.color },
                 () => {
                     if (!this._combat.state || this._combat.state.ended) return;
+                    if (this._counterPending) return;     // 攻击反击延迟 0.8s 期间忽略所有按钮
                     switch (cfg.id) {
-                        case 'attack': this._combat.attack(); break;
+                        case 'attack': this.doPlayerAttack(); return;
                         case 'skill': this.showSkillGrid(); return;
                         case 'item': this.showItemGrid(); return;
                         case 'flee': this._combat.flee(); break;
@@ -173,6 +178,34 @@ export class BattlePanel extends ModalPanel {
         }
         actRow.mount(panel).pos(0, Y.actRow, 0);
         this._actionGrid = actRow.node;
+    }
+
+    /**
+     * 玩家普通攻击（带"先玩家动 + 延迟 0.8s 怪物反击"的时序）：
+     * 立刻调 playerAttack 扣 mstHp + 入 log "你攻击了..." + refresh；
+     * 0.8s 后 scheduleOnce 回调 monsterCounter 扣 playerCurHp + 拼接反击段 + refresh。
+     * 期间 _counterPending 锁定所有按钮避免重复触发。
+     */
+    private doPlayerAttack(): void {
+        if (!this._combat.state || this._combat.state.ended) return;
+        if (this._counterPending) return;
+
+        // 玩家先动：怪物HP 扣减 + 入玩家动作 log → 立即可见
+        this._counterPending = true;
+        this._combat.playerAttack();
+        this.refreshUI();
+
+        // 怪物反击延迟 0.8s：玩家HP 扣减 + 拼接反击段 → 模拟"对手走一步我再走一步"的交互感
+        this.scheduleOnce(() => {
+            // 防御：用户在 0.8s 内点"关闭/继续"等导致战斗结束，state 可能为 null
+            if (!this._combat.state || this._combat.state.ended) {
+                this._counterPending = false;
+                return;
+            }
+            this._combat.monsterCounter();
+            this._counterPending = false;
+            this.refreshUI();
+        }, 0.8);
     }
 
     /** 弹出技能选择子网格（含冷却显示 + 防御/敏捷姿态技能） */
@@ -300,6 +333,8 @@ export class BattlePanel extends ModalPanel {
     }
 
     private close(): void {
+        this.unscheduleAllCallbacks();    // 清理"攻击→延迟反击"未触发的 scheduleOnce，避免访问已 null 的 state
+        this._counterPending = false;
         this._combat.clear();
         const win = this._combat.state?.win ?? false;
         this.node.active = false;

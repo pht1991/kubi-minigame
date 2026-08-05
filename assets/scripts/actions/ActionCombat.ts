@@ -236,8 +236,8 @@ export class ActionCombat {
         }
     }
 
-    /** 怪物反击（应用防御/闪避/装备减伤） */
-    private monsterCounter(msg: string): string {
+    /** 怪物反击（应用防御/闪避/装备减伤）——同步调用版本，外部传入玩家动作消息 */
+    private _applyCounter(msg: string): string {
         const s = this.state!;
         if (s.mstHp > 0) {
             const hitChance = s.dodge ? 0.25 : 0.85;
@@ -259,8 +259,12 @@ export class ActionCombat {
         return this.checkEnd();
     }
 
-    /** 普通攻击 */
-    attack(): string {
+    /**
+     * 玩家攻击部分（仅玩家动作：扣 mstHp + push 玩家 log "你攻击了..."，不触发反击）
+     * 用于 BattlePanel "先玩家再延迟反击"的交互模式：调 playerAttack() 后立即 refreshUI，
+     * 0.8s 后再调 monsterCounter() 让反击生效。
+     */
+    playerAttack(): string {
         if (!this.state || this.state.ended) return '战斗已结束';
         const s = this.state;
         s.turn++;
@@ -275,7 +279,45 @@ export class ActionCombat {
             msg += '你的攻击落空了！';
         }
         ActionCombat.decayWeapon(this._gm, this.state?.log);
-        return this.monsterCounter(msg);
+        s.log.push(msg);
+        return msg;
+    }
+
+    /**
+     * 怪物反击（无参）：从 state.log 取最后一条玩家消息作前缀，
+     * 扣 playerCurHp + 用反击段替换最后一条 log。
+     * 必须配合 playerAttack()/playerUseSkill()/playerUseItem() 使用。
+     */
+    monsterCounter(): string {
+        const s = this.state;
+        if (!s || s.ended) return s?.log[s.log.length - 1] || '';
+        const lastIdx = s.log.length - 1;
+        const baseMsg = s.log[lastIdx] || '';
+        let msg = baseMsg;
+        if (s.mstHp > 0) {
+            const hitChance = s.dodge ? 0.25 : 0.85;
+            if (Math.random() < hitChance) {
+                let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);
+                if (s.guard) dmg *= 0.5;
+                dmg = Math.round(dmg);
+                s.playerCurHp -= dmg;
+                msg += ` ${s.mstName} 反击，造成 ${dmg} 伤害。`;
+            } else {
+                msg += ` ${s.mstName} 攻击落空了！`;
+            }
+            ActionCombat.decayArmor(this._gm, s.log);
+        }
+        s.guard = false;
+        s.dodge = false;
+        this.tickCd();
+        s.log[lastIdx] = msg;            // 替换玩家条 log 为完整消息
+        return this.checkEnd();
+    }
+
+    /** 普通攻击（同步攻击+反击，给自动战斗 / ActionDungeon.battle 兼容用） */
+    attack(): string {
+        const playerMsg = this.playerAttack();
+        return this._applyCounter(playerMsg);
     }
 
     /** 使用技能（独立效果 + 冷却） */
@@ -337,7 +379,7 @@ export class ActionCombat {
         // 仅攻击类技能消耗武器耐久；防御/敏捷姿态不磨损武器
         if (skillId === 'melee' || skillId === 'magic' || skillId === 'shot') ActionCombat.decayWeapon(this._gm, this.state?.log);
         // 防御/闪避姿态在本回合怪物反击中生效
-        return this.monsterCounter(msg);
+        return this._applyCounter(msg);
     }
 
     /** 使用道具（回复类） */
