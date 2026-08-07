@@ -74,7 +74,7 @@ export class OutdoorPage extends BasePage {
 
     /** 未显式指定 prob 时的默认出现概率（低频：每次出门只遇到少数商人） */
     private defaultTraderProb(d: any): number {
-        if (d.give === 'gold') return 0.9;       // 金币商队高概率（核心金币来源）
+        if (d.give === 'gold') return 0.9;       // 金子商队高概率（金子核心来源）
         if (d.season) return 0.5;                // 季节限定商人中等概率（本身稀缺）
         if (d.type === 'upgrade') return 0.25;   // 升级商人较低频
         if (d.type === 'potion' || d.type === 'scroll') return 0.15;  // 特殊商人稀少
@@ -129,10 +129,10 @@ export class OutdoorPage extends BasePage {
         // 商人（与地点平铺，点击进交易二级页；仅展示本次随机在场的一批）
         for (const key of this.rolledTraders) {
             const d = TRADE_DATA[key];
-            const giveName = d.give === 'gold' ? '金币' : (ITEM_DATA[d.give]?.name || d.give);
+            const giveName = ITEM_DATA[d.give]?.name || d.give;
             const refresh = d.time ? ` 每${d.time}h补货` : '';
             const stock = ActionTrade.instance.getStock(key);
-            const stockStr = d.give === 'gold' ? '领取金币' : `剩余${stock.available}/${stock.max}`;
+            const stockStr = `剩余${stock.available}/${stock.max}`;
             cells.push({
                 id: `trader_${key}`,
                 name: `${d.name}\n出售:${giveName} · ${stockStr}${refresh}`,

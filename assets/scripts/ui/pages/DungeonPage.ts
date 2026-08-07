@@ -191,11 +191,11 @@ export class DungeonPage extends BasePage {
         options.push({ label: '离开商人', data: { action: 'leave' } });
 
         this.dialogPanel?.show(
-            `地牢商人 (持有 ${gold} 金)`,
+            `地牢商人 (持有 金子×${gold})`,
             options,
             (data) => {
                 if (data.action === 'open') {
-                    // 用统一交易面板打开该商人（金币不足可在面板内易货）
+                    // 用统一交易面板打开该商人（资源不足可在面板内易货）
                     this.tradePanel?.show(data.traderId, (msg) => { this.setMsg(msg); });
                 }
             },

@@ -2,7 +2,7 @@
  * ActionSkill.ts - 技能系统动作
  * 两类学习路径，与原项目一致：
  *   1) 教师事件类（melee/shoot/def/agile/magic/farm/alco）：支付递增的 want 物资 → 等级+1
- *   2) 纯天赋类（greedy/lucky/durable/.../fighter/blood/absorb）：支付金币（cost+costInc×等级）→ 等级+1
+ *   2) 纯天赋类（greedy/lucky/durable/.../fighter/blood/absorb）：支付金子（cost+costInc×等级，cost 单位 gold 物品）→ 等级+1
  * one:true 的技能（blood/absorb）仅可学一次。
  */
 
@@ -57,7 +57,7 @@ export class ActionSkill {
             cost = {};
             for (const k in base) cost[k] = Math.max(1, Math.round(base[k] * mul));
         } else {
-            // 金币成本
+            // 金子成本（gold 物品）
             const c = (data.cost || 1) + (data.costInc || 0) * level;
             cost = { gold: c };
         }
