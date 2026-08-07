@@ -1,26 +1,26 @@
 /**
- * ActionTrade.ts - 贸易系统动作
+ * ActionTrade.ts - 贸易系统动作（还原原版纯以物易物）
  *
- * 原项目是易货系统：把物品放进 register 箱，商人按价值比例给你 give 物品（上限 max）。
- * 网格 UI 下简化为「花金币购买商人的 give 物品」——单价取自物品价值(value/effect)，缺省 2 金。
- * 单次购买上限 = TRADE_DATA[id].max（部分特殊商人 give==='gold' 视为返金，直接给到上限）。
+ * 原版机制（kubi-original-src/src/main.js · TradeComponent）：
+ *   每个商人只有一种可给物品 give（黄金/宝石/木材/升级书…），玩家把背包里的物品
+ *   放进“寄存栏”(register) 作为付出，商人按 TRADE_MUL=0.75 的兑换率，把付出总价值
+ *   折算成 give 物品数量给你；上限 max 受信标(beaconMax)与商业大亨(seller)科技影响。
+ *   原版没有“金币”这种独立货币——黄金只是 give 之一，所谓“购买”本质也是以物易物。
  *
- * 这是阶段二的功能性简化实现，老板后续想还原完整易货谈判可在此扩展。
+ * 本实现还原该模式：移除“金币购买 / 以物易物”两种模式，统一为单一易货。
+ * 交互上用“易货篮”承载多种付出物品（对应原版 register），成交时才真正消耗并给 give。
  */
 
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
-import { ActionExecutor, ActionResult } from './ActionExecutor';
-import { ITEM_DATA, TRADE_DATA } from '../data/data';
+import { ActionResult } from './ActionExecutor';
+import { ITEM_DATA, TRADE_DATA, SKILL_DATA } from '../data/data';
 
 export class ActionTrade {
     private static _instance: ActionTrade;
-    private _gm: GameManager;
-    private _exec: ActionExecutor;
-    private _eventBus: EventBus;
 
-    /** 易货利润率：商人吃差价，玩家实际获得 = 公平价值 × MARGIN（模拟原版以物易物谈判劣势） */
-    private static readonly BARTER_MARGIN = 0.65;
+    /** 原版兑换率：玩家付出价值只值 0.75 倍（谈判劣势，商人吃差价） */
+    private static readonly TRADE_MUL = 0.75;
 
     static get instance(): ActionTrade {
         if (!this._instance) this._instance = new ActionTrade();
@@ -29,11 +29,33 @@ export class ActionTrade {
 
     private constructor() {
         this._gm = GameManager.instance;
-        this._exec = ActionExecutor.instance;
         this._eventBus = EventBus.instance;
     }
 
-    /** 确保商人库存记录存在，并按刷新周期补货（重置 sold） */
+    private _gm: GameManager;
+    private _eventBus: EventBus;
+
+    /**
+     * 物品交易价值（对齐原版 getValue）：
+     *   优先数字 value（ITEM_DATA[id].value） → 否则 effect 正项求和(hp/full/moist/ps/san)
+     *   → 否则基线 2（无显式价值的原材料/食物仍可按地板价参与易货，保证“一篮子东西都能换”）。
+     */
+    valueOf(itemId: string): number {
+        const item = (ITEM_DATA as any)[itemId];
+        if (!item) return 0;
+        if (item.value && item.value > 0) return item.value;
+        if (item.effect) {
+            let v = 0;
+            for (const k of ['hp', 'full', 'moist', 'ps', 'san'] as const) {
+                const e = (item.effect as any)[k];
+                if (e && e > 0) v += e;
+            }
+            if (v > 0) return v;
+        }
+        return 2;
+    }
+
+    /** 确保商人库存记录存在，并按刷新周期(time)补货（重置 sold） */
     private ensureStock(traderId: string): { sold: number; day: number; hour: number } {
         const detail = TRADE_DATA[traderId];
         const now = this._gm.timeData;
@@ -54,14 +76,18 @@ export class ActionTrade {
         return rec;
     }
 
-    /** 查询商人当前可购买库存（供 UI 展示与购买上限计算） */
+    /**
+     * 商人当前可交易库存。
+     * 动态上限（还原原版意图）：基础 max × (1 + 0.5×信标等级) × (1 + 商业大亨加成)。
+     * 黄金等特殊商人不再“免费每日领”，而是与其它商人一样按易货给 give、受 sold 上限约束。
+     */
     getStock(traderId: string): { available: number; max: number; soldOut: boolean; restockHours: number } {
         const detail = TRADE_DATA[traderId];
         if (!detail) return { available: 0, max: 0, soldOut: true, restockHours: 0 };
-        const max = detail.max || 100;
-        if (detail.give === 'gold') {
-            return { available: max, max, soldOut: false, restockHours: 0 };
-        }
+        const baseMax = detail.max || 100;
+        const beacon = this._gm.getScienceLevel('beaconMax');           // 0 / 1
+        const seller = (this._gm.skill['seller'] || 0) * (SKILL_DATA.seller?.buff || 1);
+        const max = Math.round(baseMax * (0.5 * beacon + 1) * (1 + seller));
         const rec = this.ensureStock(traderId);
         const available = Math.max(0, max - rec.sold);
         const now = this._gm.timeData;
@@ -73,138 +99,62 @@ export class ActionTrade {
         return { available, max, soldOut: available <= 0, restockHours };
     }
 
-    /** 公开查询物品金币单价（供 UI 展示） */
-    getPrice(itemId: string): number {
-        return this.priceOf(itemId);
-    }
-
-    /** 公开查询易货利润率（供 UI 展示交换比率） */
-    getBarterMargin(): number {
-        return ActionTrade.BARTER_MARGIN;
-    }
-
     /**
-     * 预览易货结果（不扣物品，仅计算换得数量，供 UI 弹窗展示）
-     * @returns 可换得数量（已含商人利润率），若不可交易返回 0
+     * 预览易货篮结果（不扣物品）：给定付出篮，计算可换得 give 数量。
+     * giveQty = floor( Σ valueOf(offer)×qty × TRADE_MUL / valueOf(give) )，并受库存 available 上限。
      */
-    previewBarter(traderId: string, offerItem: string, offerQty: number): number {
+    previewBasket(traderId: string, basket: Record<string, number>): { giveQty: number; offeredValue: number; capped: boolean } {
         const detail = TRADE_DATA[traderId];
-        if (!detail || detail.give === 'gold' || offerQty <= 0) return 0;
-        const offerPrice = this.priceOf(offerItem);
-        const unitValue = this.priceOf(detail.give);
-        if (offerPrice <= 0 || unitValue <= 0) return 0;
+        if (!detail) return { giveQty: 0, offeredValue: 0, capped: false };
+        const give = detail.give;
+        const giveVal = this.valueOf(give);
+        if (giveVal <= 0) return { giveQty: 0, offeredValue: 0, capped: false };
+        let offered = 0;
+        for (const id in basket) offered += this.valueOf(id) * basket[id];
         const stock = this.getStock(traderId);
-        const offeredValue = offerQty * offerPrice * ActionTrade.BARTER_MARGIN;
-        return Math.min(stock.available, Math.floor(offeredValue / unitValue));
-    }
-
-    /** 计算物品金币单价（与原 getValue 简化对齐） */
-    private priceOf(itemId: string): number {
-        const item = ITEM_DATA[itemId];
-        if (!item) return 2;
-        if (item.value && item.value.gold) return item.value.gold;
-        if (item.effect) {
-            let v = 0;
-            for (const k of ['hp', 'full', 'moist', 'ps', 'san'] as const) {
-                const e = item.effect[k];
-                if (e && e > 0) v += e;
-            }
-            if (v > 0) return Math.max(2, Math.ceil(v / 2));
-        }
-        return 2; // 原材料基线价
+        const raw = Math.floor((offered * ActionTrade.TRADE_MUL) / giveVal);
+        const giveQty = Math.max(0, Math.min(stock.available, raw));
+        return { giveQty, offeredValue: offered, capped: raw > stock.available };
     }
 
     /**
-     * 与商人交易（金币购买，受商人库存与刷新周期限制）
+     * 执行易货（统一接口，替代原金币购买/以物易物两模式）：
+     * 校验背包拥有足够付出 → 预览换算 → 一次性结算（扣付出 + 给 give×giveQty）→ 累加 sold。
      * @param traderId TRADE_DATA 的键
-     * @param amount   购买数量（默认买满可用库存）
+     * @param basket   付出篮：物品ID → 数量（成交前不消耗，仅预览）
      */
-    trade(traderId: string, amount?: number): ActionResult {
+    trade(traderId: string, basket: Record<string, number>): ActionResult {
         const detail = TRADE_DATA[traderId];
         if (!detail) return { success: false, message: '商人不存在' };
         const give = detail.give;
-        const max = detail.max || 100;
-
-        // give==='gold' 视为每日返金（售卖收益），无库存/金币消耗，但每日仅可领取一次
-        if (give === 'gold') {
-            const rec = this.ensureStock(traderId);
-            const now = this._gm.timeData;
-            (rec as any).claimDay = (rec as any).claimDay ?? -1;
-            if ((rec as any).claimDay === now.day) {
-                return { success: false, message: '今日收益已领取，明天再来' };
-            }
-            const r = this._exec.execute({ [give]: max }, {}, 0, { outputBox: 'bag' });
-            if (r.success) {
-                (rec as any).claimDay = now.day;
-                this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-                return { success: true, message: `获得 ${max} 金币` };
-            }
-            return r;
-        }
-
-        const stock = this.getStock(traderId);
-        if (stock.soldOut) {
-            return { success: false, message: `${detail.name} 已售罄，${stock.restockHours} 小时后补货` };
-        }
-
-        let buy = amount && amount > 0 ? amount : max;
-        buy = Math.min(buy, stock.available);
-
-        const price = this.priceOf(give);
-        const cost = price * buy;
-        const gold = this._gm.boxSaveData['bag']?.['gold'] || 0;
-        if (gold < cost) {
-            return { success: false, message: `金币不足（需 ${cost}）` };
-        }
-
-        const r = this._exec.execute({ [give]: buy }, { gold: cost }, 0, { outputBox: 'bag' });
-        if (r.success) {
-            this._gm.tradeSaveData[traderId].sold += buy;
-            this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-            return { success: true, message: `用 ${cost} 金币换得 ${give} ×${buy}` };
-        }
-        return r;
-    }
-
-    /**
-     * 易货（以物易物）：用持有的 offerItem 按估值换商人的 give 物品，受商人库存限制。
-     * 商人吃差价：实际换得 = floor(offerQty × priceOf(offer) × BARTER_MARGIN / priceOf(give))。
-     * 这意味着易货不如「卖掉换金币再买」划算，符合原版谈判劣势设定。
-     * @param traderId TRADE_DATA 的键
-     * @param offerItem 玩家提供的物品 ID
-     * @param offerQty 提供数量
-     */
-    barter(traderId: string, offerItem: string, offerQty: number): ActionResult {
-        const detail = TRADE_DATA[traderId];
-        if (!detail) return { success: false, message: '商人不存在' };
-        const give = detail.give;
-        if (give === 'gold') return { success: false, message: '该商人只收金币，不参与易货' };
-        if (offerQty <= 0) return { success: false, message: '数量无效' };
-
-        const offerPrice = this.priceOf(offerItem);
-        const unitValue = this.priceOf(give);
-        if (offerPrice <= 0) return { success: false, message: '该物品没有交易价值' };
-        if (unitValue <= 0) return { success: false, message: '商人货物无法估值' };
-
         const bag = this._gm.boxSaveData['bag'] || {};
-        if ((bag[offerItem] || 0) < offerQty) {
-            return { success: false, message: `背包中 ${ITEM_DATA[offerItem]?.name || offerItem} 不足 ${offerQty}` };
+
+        // 校验背包是否拥有足够付出，并归集有效付出
+        const offers: Record<string, number> = {};
+        for (const id in basket) {
+            const q = basket[id];
+            if (q <= 0) continue;
+            if ((bag[id] || 0) < q) {
+                return { success: false, message: `背包中 ${ITEM_DATA[id]?.name || id} 不足 ${q}` };
+            }
+            offers[id] = q;
+        }
+        if (Object.keys(offers).length === 0) return { success: false, message: '易货篮是空的' };
+
+        const { giveQty, capped } = this.previewBasket(traderId, offers);
+        if (giveQty < 1) {
+            return { success: false, message: capped ? `${detail.name} 库存不足` : '付出的价值不足以交换（兑换率 75%）' };
         }
 
-        const stock = this.getStock(traderId);
-        // 商人吃差价：玩家只获得公平价值的 65%
-        const offeredValue = offerQty * offerPrice * ActionTrade.BARTER_MARGIN;
-        const outQty = Math.min(stock.available, Math.floor(offeredValue / unitValue));
-        if (outQty < 1) {
-            return { success: false, message: stock.soldOut ? `${detail.name} 已售罄，暂无可换货物` : '物品价值不足以交换（商人利润率较高）' };
-        }
-
-        this._gm.changeItem({ [offerItem]: -offerQty, [give]: outQty }, 'bag');
-        this._gm.tradeSaveData[traderId].sold += outQty;
+        // 一次性结算：扣付出 + 给 give（changeItem 支持单调用混合正负增减）
+        const delta: Record<string, number> = {};
+        for (const id in offers) delta[id] = -offers[id];
+        delta[give] = giveQty;
+        this._gm.changeItem(delta, 'bag');
+        this._gm.tradeSaveData[traderId].sold += giveQty;
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-        return {
-            success: true,
-            message: `用 ${ITEM_DATA[offerItem]?.name || offerItem} ×${offerQty} 换得 ${ITEM_DATA[give]?.name || give} ×${outQty}`,
-        };
+
+        const offerStr = Object.keys(offers).map(id => `${ITEM_DATA[id]?.name || id}×${offers[id]}`).join('、');
+        return { success: true, message: `用 ${offerStr} 换得 ${ITEM_DATA[give]?.name || give} ×${giveQty}` };
     }
 }

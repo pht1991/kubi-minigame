@@ -9,7 +9,6 @@
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionDungeon } from '../../actions/ActionDungeon';
-import { ActionTrade } from '../../actions/ActionTrade';
 import { TRADE_DATA, ITEM_DATA } from '../../data/data';
 import { DialogOption } from '../DialogPanel';
 
@@ -181,10 +180,10 @@ export class DungeonPage extends BasePage {
         const gold = this.gm.boxSaveData['bag']?.['gold'] || 0;
         const options: DialogOption[] = merchantIds.map(id => {
             const trade = TRADE_DATA[id];
-            const price = ActionTrade.instance.getPrice(trade.give);
             const giveName = ITEM_DATA[trade.give]?.name || trade.give;
+            const max = trade.max || 1;
             return {
-                label: `${trade.name}：${giveName} ×1 (${price}金)`,
+                label: `${trade.name}：${giveName} ×${max}`,
                 data: { action: 'open', traderId: id },
                 disabled: false,
             };
