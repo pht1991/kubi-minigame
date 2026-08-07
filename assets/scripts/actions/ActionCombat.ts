@@ -236,9 +236,14 @@ export class ActionCombat {
         }
     }
 
-    /** 怪物反击（应用防御/闪避/装备减伤）——同步调用版本，外部传入玩家动作消息 */
-    private _applyCounter(msg: string): string {
+    /**
+     * 怪物反击消息生成（不 push）：怪物 HP>0 时返回反击/落空独立一行内容；
+     * 负责扣玩家血 + 消耗防具 + tickCd。抽出来是为了让"玩家行动"与"怪物反击"
+     * 各占一行日志，不再拼接成一条。
+     */
+    private rollCounterMsg(): string {
         const s = this.state!;
+        let counterMsg = '';
         if (s.mstHp > 0) {
             const hitChance = s.dodge ? 0.25 : 0.85;
             if (Math.random() < hitChance) {
@@ -246,16 +251,24 @@ export class ActionCombat {
                 if (s.guard) dmg *= 0.5;
                 dmg = Math.round(dmg);
                 s.playerCurHp -= dmg;
-                msg += ` ${s.mstName} 反击，造成 ${dmg} 伤害。`;
+                counterMsg = `${s.mstName} 反击，造成 ${dmg} 伤害。`;
             } else {
-                msg += ` ${s.mstName} 攻击落空了！`;
+                counterMsg = `${s.mstName} 攻击落空了！`;
             }
             ActionCombat.decayArmor(this._gm, this.state?.log);
         }
         s.guard = false;
         s.dodge = false;
         this.tickCd();
-        s.log.push(msg);
+        return counterMsg;
+    }
+
+    /** 怪物反击（同步调用版本）：先 push 玩家动作消息，再 push 怪物反击独立一行 */
+    private _applyCounter(playerMsg: string): string {
+        const s = this.state!;
+        s.log.push(playerMsg);
+        const counterMsg = this.rollCounterMsg();
+        if (counterMsg) s.log.push(counterMsg);
         return this.checkEnd();
     }
 
@@ -284,40 +297,24 @@ export class ActionCombat {
     }
 
     /**
-     * 怪物反击（无参）：从 state.log 取最后一条玩家消息作前缀，
-     * 扣 playerCurHp + 用反击段替换最后一条 log。
-     * 必须配合 playerAttack()/playerUseSkill()/playerUseItem() 使用。
+     * 怪物反击（无参）：玩家行动日志已由 playerAttack() 等方法 push，
+     * 这里只 push 怪物反击独立一行（不再拼回玩家那一行）。
+     * 必须配合 playerAttack()/playerUseSkill() 使用。
      */
     monsterCounter(): string {
         const s = this.state;
         if (!s || s.ended) return s?.log[s.log.length - 1] || '';
-        const lastIdx = s.log.length - 1;
-        const baseMsg = s.log[lastIdx] || '';
-        let msg = baseMsg;
-        if (s.mstHp > 0) {
-            const hitChance = s.dodge ? 0.25 : 0.85;
-            if (Math.random() < hitChance) {
-                let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);
-                if (s.guard) dmg *= 0.5;
-                dmg = Math.round(dmg);
-                s.playerCurHp -= dmg;
-                msg += ` ${s.mstName} 反击，造成 ${dmg} 伤害。`;
-            } else {
-                msg += ` ${s.mstName} 攻击落空了！`;
-            }
-            ActionCombat.decayArmor(this._gm, s.log);
-        }
-        s.guard = false;
-        s.dodge = false;
-        this.tickCd();
-        s.log[lastIdx] = msg;            // 替换玩家条 log 为完整消息
+        const counterMsg = this.rollCounterMsg();
+        if (counterMsg) s.log.push(counterMsg);
         return this.checkEnd();
     }
 
     /** 普通攻击（同步攻击+反击，给自动战斗 / ActionDungeon.battle 兼容用） */
     attack(): string {
-        const playerMsg = this.playerAttack();
-        return this._applyCounter(playerMsg);
+        this.playerAttack();   // 已 push 玩家行动行
+        const counterMsg = this.rollCounterMsg();
+        if (counterMsg) this.state!.log.push(counterMsg);
+        return this.checkEnd();
     }
 
     /** 使用技能（独立效果 + 冷却） */
@@ -440,20 +437,9 @@ export class ActionCombat {
             msg += ` 永久提升【${up}】技能 +${gain}。`;
         }
 
-        if (s.mstHp > 0) {
-            if (Math.random() < (s.dodge ? 0.25 : 0.85)) {
-                let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);
-                if (s.guard) dmg *= 0.5;
-                dmg = Math.round(dmg);
-                s.playerCurHp -= dmg;
-                msg += ` ${s.mstName} 攻击，造成 ${dmg} 伤害。`;
-            }
-            ActionCombat.decayArmor(this._gm, this.state?.log);
-        }
-        s.guard = false;
-        s.dodge = false;
-        this.tickCd();
-        s.log.push(msg);
+        s.log.push(msg);   // 玩家使用道具独立一行
+        const counterMsg = this.rollCounterMsg();
+        if (counterMsg) s.log.push(counterMsg);   // 怪物反击独立一行
         return this.checkEnd();
     }
 
@@ -470,18 +456,9 @@ export class ActionCombat {
         }
         s.turn++;
         let msg = '逃跑失败！';
-        if (Math.random() < (s.dodge ? 0.25 : 0.85)) {
-            let dmg = s.mstDmg * (0.85 + Math.random() * 0.3) * ActionCombat.calcDamageReduce(this._gm);
-            if (s.guard) dmg *= 0.5;
-            dmg = Math.round(dmg);
-            s.playerCurHp -= dmg;
-            msg += ` ${s.mstName} 趁机攻击，造成 ${dmg} 伤害。`;
-            ActionCombat.decayArmor(this._gm, this.state?.log);
-        }
-        s.guard = false;
-        s.dodge = false;
-        this.tickCd();
-        s.log.push(msg);
+        s.log.push(msg);   // 逃跑失败独立一行
+        const counterMsg = this.rollCounterMsg();
+        if (counterMsg) s.log.push(counterMsg);   // 怪物趁机攻击独立一行
         return this.checkEnd();
     }
 

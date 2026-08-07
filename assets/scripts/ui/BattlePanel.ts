@@ -183,7 +183,7 @@ export class BattlePanel extends ModalPanel {
     /**
      * 玩家普通攻击（带"先玩家动 + 延迟 0.8s 怪物反击"的时序）：
      * 立刻调 playerAttack 扣 mstHp + 入 log "你攻击了..." + refresh；
-     * 0.8s 后 scheduleOnce 回调 monsterCounter 扣 playerCurHp + 拼接反击段 + refresh。
+     * 0.8s 后 scheduleOnce 回调 monsterCounter 扣 playerCurHp + push 怪物反击独立一行 + refresh。
      * 期间 _counterPending 锁定所有按钮避免重复触发。
      */
     private doPlayerAttack(): void {
@@ -327,7 +327,8 @@ export class BattlePanel extends ModalPanel {
         for (const c of [...this._logContent.children]) c.destroy();
 
         // 日志行：VStack 自动排布（顶部对齐 content anchor(0.5,1)）
-        const recent = s.log.slice(-5);
+        // 拆分玩家/怪物双行后单回合占 2 行，可见条数 -5→-8 保留约 4 回合历史
+        const recent = s.log.slice(-8);
         const list = new UIVStack().gap(2).align('center').fixedWidth(580);
         for (const text of recent) {
             list.add(new UILabel(text, { size: 18, width: 580, height: 36, color: C.battleLogText, align: 'center', lineHeight: 26 }));
