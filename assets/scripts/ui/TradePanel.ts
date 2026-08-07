@@ -22,13 +22,12 @@ import { GameManager } from '../core/GameManager';
 import { QuantityPanel, QtyOptions } from './QuantityPanel';
 
 const PW = 680;    // 面板宽
-const PH = 1040;   // 面板高
 
 
 // ═════════════════ TradePanel ═══════════════
 export class TradePanel extends ModalPanel {
     protected panelW = PW;
-    protected panelH = PH;
+    protected panelH = 380;   // 初始最小高度，render 时按内容动态 resize
 
     private _tid = '';
     private _give = '';
@@ -135,14 +134,23 @@ export class TradePanel extends ModalPanel {
         }
 
         const list = this.createScrollList({
-            parent: this._content!, x: 0, y: -130,
-            width: PW - 48, viewH: 300, gap: 6, padT: 6,
+            parent: this._content!, x: 0, y: 0,
+            width: PW - 48, viewH: 600, gap: 6, padT: 6,
             autoResizePanel: false, repositionScroll: false, align: 'center',
         });
-        list.setRows(rows);
+        const actualViewH = list.setRows(rows);
 
-        // ════ Footer: 成交 / 清空 ════
-        const by = PH / 2 - 48;
+        // 面板跟随内容收缩：Header 约 130 + 滚动区实际高度 + 按钮区 120 + 底部留白 30
+        const headerH = 130;
+        const footerH = 120;
+        const bottomPad = 30;
+        const targetPanelH = headerH + actualViewH + footerH + bottomPad;
+        const panelH = Math.max(380, Math.min(1040, targetPanelH));
+        this.resizePanel(panelH);
+
+        // 滚动区顶贴在 Header 下方；按钮底贴面板底
+        list.view.setPosition(0, -headerH, 0);
+        const by = panelH - 156;   // content 顶部到按钮中心的距离
         this._btn(by, 280, 72, '成交', C.accent, () => this._deal(), -150);
         this._btn(by, 200, 72, '清空', C.panelBorder, () => this._clearBasket(), 170);
     }
