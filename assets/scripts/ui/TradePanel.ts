@@ -140,17 +140,18 @@ export class TradePanel extends ModalPanel {
         });
         const actualViewH = list.setRows(rows);
 
-        // 面板跟随内容收缩：Header 约 130 + 滚动区实际高度 + 按钮区 120 + 底部留白 30
+        // 面板跟随内容收缩：content 顶部距面板顶 90 + Header130 + 滚动区 + 按钮间距20 + 按钮72 + 底留白30
         const headerH = 130;
-        const footerH = 120;
+        const gapToBtn = 20;
+        const btnH = 72;
         const bottomPad = 30;
-        const targetPanelH = headerH + actualViewH + footerH + bottomPad;
+        const targetPanelH = 90 + headerH + actualViewH + gapToBtn + btnH + bottomPad;
         const panelH = Math.max(380, Math.min(1040, targetPanelH));
         this.resizePanel(panelH);
 
-        // 滚动区顶贴在 Header 下方；按钮底贴面板底
+        // 滚动区顶贴在 Header 下方；按钮紧贴滚动区底部下方
         list.view.setPosition(0, -headerH, 0);
-        const by = panelH - 156;   // content 顶部到按钮中心的距离
+        const by = headerH + actualViewH + gapToBtn + btnH / 2;
         this._btn(by, 280, 72, '成交', C.accent, () => this._deal(), -150);
         this._btn(by, 200, 72, '清空', C.panelBorder, () => this._clearBasket(), 170);
     }
