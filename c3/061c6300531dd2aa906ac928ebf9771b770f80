@@ -1,0 +1,14 @@
+assets/scripts/ui/pages/OutdoorPage.ts
+  h_70068c5a17f62a 617-619
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c3061c6300531dd2aa906ac928ebf9771b770f80",
+  "prompts": {},
+  "humans": {
+    "h_70068c5a17f62a": {
+      "author": "panhaitao-9ap2u <panhaitao@sdpjw.com>"
+    }
+  }
+}
