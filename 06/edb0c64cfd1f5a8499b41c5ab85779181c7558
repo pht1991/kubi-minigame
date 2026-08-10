@@ -1,0 +1,14 @@
+assets/scripts/ui/pages/EventPage.ts
+  h_70068c5a17f62a 92-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "06edb0c64cfd1f5a8499b41c5ab85779181c7558",
+  "prompts": {},
+  "humans": {
+    "h_70068c5a17f62a": {
+      "author": "panhaitao-9ap2u <panhaitao@sdpjw.com>"
+    }
+  }
+}
