@@ -3,7 +3,8 @@
  *
  * 所有「消耗时间换取产出」的动作（烹饪/制造/采集/拾荒/建造/种植/放陷阱…）统一在此播放进度：
  *   - 全屏半透明遮罩拦截触摸（防止操作途中误触底栏/返回）
- *   - 居中圆角面板：标题 + 进度条(动态绘制) + 百分比
+ *   - 居中圆角面板：标题 + 进度条(动态绘制) + 可选百分比
+ *   - 百分比数字是否展示由实例属性 `showPercent` 控制，默认不展示
  *   - play(title, durationMs, onComplete) 用 tween 把进度从 0 动画到 1，结束后回调并隐藏
  *
  * 动画结束才触发真正的结果（ActionExecutor 在 onComplete 内推进时间 + 发产出 + 弹反馈），
@@ -29,6 +30,8 @@ export class ProgressOverlay extends Component {
     private _barW = 460;
     private _barH = 28;
     private _playing = false;
+    /** 是否在进度条下方展示百分比数字（默认 false 不展示，调用方可按需置 true） */
+    showPercent = false;
 
     onLoad(): void {
         ProgressOverlay._instance = this;
@@ -81,9 +84,10 @@ export class ProgressOverlay extends Component {
         const fg = fill.addComponent(Graphics);
         this._barGfx = fg;
 
-        // 百分比文字
+        // 百分比文字（是否展示由 showPercent 控制，默认隐藏）
         const pctLbl = new UILabel('0%', { size: 18, color: C.sub, align: 'center', width: 160 });
         pctLbl.pos(0, barY - 30).mount(panel);
+        pctLbl.node.active = this.showPercent;
         this._pctLbl = pctLbl;
 
         this.node.active = false;
@@ -107,7 +111,8 @@ export class ProgressOverlay extends Component {
         this._playing = true;
         if (this._titleLbl) this._titleLbl.setText(title || '操作中…');
         this._drawBar(0);
-        if (this._pctLbl) this._pctLbl.setText('0%');
+        if (this._pctLbl) this._pctLbl.node.active = this.showPercent;
+        if (this.showPercent && this._pctLbl) this._pctLbl.setText('0%');
         this.node.active = true;
         // 置于 _progressLayer 最顶（层内顺序由 MainScene 固定，这里仅保证本层内置顶）
         this.node.setSiblingIndex(this.node.parent!.children.length - 1);
@@ -118,12 +123,12 @@ export class ProgressOverlay extends Component {
                 easing: 'linear',
                 onUpdate: () => {
                     this._drawBar(prog.v);
-                    if (this._pctLbl) this._pctLbl.setText(Math.round(prog.v * 100) + '%');
+                    if (this.showPercent && this._pctLbl) this._pctLbl.setText(Math.round(prog.v * 100) + '%');
                 },
             })
             .call(() => {
                 this._drawBar(1);
-                if (this._pctLbl) this._pctLbl.string = '100%';
+                if (this.showPercent && this._pctLbl) this._pctLbl.string = '100%';
                 this.node.active = false;
                 this._playing = false;
                 onComplete();   // 先隐藏进度条，再触发结果（避免 ResultModal 被进度遮罩短暂盖住）
