@@ -89,11 +89,18 @@ export class EventPage extends BasePage {
         const talkTexts = dialogInfo.dialogBefore.length > 0
             ? dialogInfo.dialogBefore
             : (data?.desc ? [data.desc] : []);
-        const options: DialogOption[] = talkTexts.map(text => ({
-            label: text,
-            data: null,
-            disabled: true,
-        }));
+        const options: DialogOption[] = [];
+        // 需求 / 奖励摘要（让玩家在对话里明确知道要交付什么、将获得什么）
+        if (dialogInfo.wantStr && dialogInfo.wantStr !== '无') {
+            options.push({ label: `需求：${dialogInfo.wantStr}`, data: null, disabled: true });
+        }
+        if (dialogInfo.getStr && dialogInfo.getStr !== '无') {
+            options.push({ label: `奖励：${dialogInfo.getStr}`, data: null, disabled: true });
+        }
+        // 对话文本
+        talkTexts.forEach(text => {
+            options.push({ label: text, data: null, disabled: true });
+        });
         if (!dialogInfo.experienced && dialogInfo.canTrigger) {
             options.push({ label: '→ 交付并触发', data: { action: 'trigger' } });
         }
