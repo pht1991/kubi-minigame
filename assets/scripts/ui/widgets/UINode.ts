@@ -53,7 +53,7 @@ export class UINode {
     add(...kids: Array<UINode | Node>): this {
         for (const k of kids) {
             const ui = k instanceof UINode ? k : null;
-            const n = ui ? ui.node : k;
+            const n = ui ? ui.node : (k as Node);
             n.setParent(this.node);
             if (ui) this._kids.push(ui);
         }

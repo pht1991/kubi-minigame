@@ -832,7 +832,7 @@ export const PLACE_DATA = {
 
 var myDate = new Date();
 if((myDate.getDate() == 24 || myDate.getDate() == 25)&& (myDate.getMonth()==11)){
-    PLACE_DATA.town.event.santa = true;
+    (PLACE_DATA.town.event as Record<string, boolean>).santa = true;
     var SANTA_GIFT = ({
         1:{
             security:20,

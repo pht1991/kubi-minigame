@@ -46,16 +46,16 @@ export class QuantityPanel extends ModalPanel {
     }
 
     public show(
-        title: string,
-        max: number,
-        onConfirm: (qty: number) => void,
+        title?: string,
+        max?: number,
+        onConfirm?: (qty: number) => void,
         opts?: QtyOptions,
     ): void {
-        this._max = Math.max(1, max);
+        this._max = Math.max(1, max ?? 1);
         this._qty = this._max;            // 默认全选
-        this._onConfirm = onConfirm;
+        this._onConfirm = onConfirm!;
         this._opts = opts || null;
-        super.show(title);
+        super.show(title ?? '');
     }
 
     protected render(): void {

@@ -64,11 +64,11 @@ export class BagPanel extends ModalPanel {
         });
     }
 
-    show(getTitle: () => string, getCells: () => GridCellData[], onSelect: (id: string) => void): void {
-        this._getTitle = getTitle;
-        this._getCells = getCells;
-        this._onSelect = onSelect;
-        super.show(getTitle());
+    show(getTitle?: () => string, getCells?: () => GridCellData[], onSelect?: (id: string) => void): void {
+        this._getTitle = getTitle!;
+        this._getCells = getCells!;
+        this._onSelect = onSelect!;
+        super.show(getTitle!());
     }
 
     refresh(): void {

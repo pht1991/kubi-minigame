@@ -231,7 +231,9 @@ export abstract class ModalPanel extends Component {
     }
 
     // ════ 对外接口 ════
-    public show(title: string): void {
+    // 首参用 any：子类（Bag/Dialog/Quantity）按需用更多参数包装自己的 show，
+    // 调用 super.show(title) 即可；any 让子类签名与基类兼容，避免 TS2416。
+    public show(title: any): void {
         if (this._titleLbl) this._titleLbl.string = title;
         this.node.active = true;
         // 置顶：确保盖住底栏与同级其它弹窗
@@ -366,7 +368,7 @@ export abstract class ModalPanel extends Component {
         view.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
         const sv = view.addComponent(ScrollView);
         sv.horizontal = false; sv.vertical = true; sv.inertia = true; sv.brake = 0.3;
-        sv.elastic = true; sv.elasticBounceTime = 0.5;
+        sv.elastic = true; (sv as any).elasticBounceTime = 0.5;
         sv.verticalScrollBar = null; sv.horizontalScrollBar = null;
         const content = new Node('Cnt');
         const ct = content.addComponent(UITransform); ct.setContentSize(w, h); ct.setAnchorPoint(0.5, 1);

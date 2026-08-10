@@ -13,8 +13,9 @@ export { MST_DATA, PREFIX_DATA, UPPER_CHANCE } from './data_mst';
 export { PLACE_DATA } from './data_place';
 export { DUNGEON_DATA } from './data_dungeon';
 
-// 调试模式
-export const MODE = 'RELEASE';
+// 调试模式（声明为 string 而非字面量/联合：字面量声明会被 CFA 收窄成 'RELEASE'，
+// 导致 MODE == 'DEBUG' 比较被判 TS2367；string 是宽类型，比较合法，且仍可改 'DEBUG' 调试）
+export const MODE: string = 'RELEASE';
 
 export const STOLE = 0.3;
 export const STOLE_CHANCE = 0.05;
@@ -1080,7 +1081,7 @@ export const BOX_INIT = {
             axe     :1,
             water   :2,
             bread   :2,
-        },
+        } as Record<string, number>,
         size:BAG_BASE_SIZE
     },
     makeTable:{

@@ -9,6 +9,8 @@ export interface DialogOption {
     label: string;
     desc?: string;
     disabled?: boolean;
+    /** 长文本不截断（如升级材料需求行） */
+    noTruncate?: boolean;
     data: any;
 }
 
@@ -40,12 +42,12 @@ export class DialogPanel extends ModalPanel {
      * @param onSelect 点击选项的回调（参数为选项的 data）
      * @param onCancel 关闭时的回调（可选）
      */
-    show(title: string, options: DialogOption[], onSelect: (data: any) => void, onCancel?: () => void): void {
-        this._options = options;
+    show(title?: string, options?: DialogOption[], onSelect?: (data: any) => void, onCancel?: () => void): void {
+        this._options = options ?? [];
         this._selectedIndex = -1;
-        this._onSelect = onSelect;
+        this._onSelect = onSelect!;
         this._onCancel = onCancel || null;
-        super.show(title);
+        super.show(title ?? '');
     }
 
     protected onHide(): void {

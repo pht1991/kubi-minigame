@@ -387,6 +387,8 @@ export class MainScene extends Component {
             battlePanel: this._battlePanel!,
             eventDetailPanel: this._eventDetailPanel!,
             setMsg: (msg: string) => { this._lastMsg = msg; },
+            onHomeCellClick: (id: string) => this.onHomeCellClick(id),
+            refreshGoButton: () => this.refreshGoButton(),
         };
         // 统一向各模态面板注入上下文，规避「面板误用未注入依赖」类崩溃
         this._dialogPanel?.attach(pageCtx);
@@ -423,8 +425,6 @@ export class MainScene extends Component {
         pageCtx.bagPage = this._bagPage;
         this._bigBoxPage = new BigBoxPage(pageCtx);
         pageCtx.bigBoxPage = this._bigBoxPage;
-        pageCtx.onHomeCellClick = (id: string) => this.onHomeCellClick(id);
-        pageCtx.refreshGoButton = () => this.refreshGoButton();
         pageCtx.modalLayer = this._modalLayer!;
 
         // 初始化一级网格（须在所有 Page 创建之后，依赖 _buildPage）

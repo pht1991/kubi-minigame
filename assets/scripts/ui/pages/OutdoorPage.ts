@@ -579,8 +579,9 @@ export class OutdoorPage extends BasePage {
 
             if (p.things && Object.keys(p.things).length > 0) {
                 const thingParts = Object.entries(p.things).map(([id, cnt]) => {
+                    const n = cnt as number;
                     const itemName = ITEM_DATA[id]?.name || id;
-                    const qtyDesc = cnt >= 10 ? '大量' : cnt >= 5 ? '较多' : cnt >= 3 ? '少量' : '较少';
+                    const qtyDesc = n >= 10 ? '大量' : n >= 5 ? '较多' : n >= 3 ? '少量' : '较少';
                     return `${itemName}${qtyDesc}`;
                 });
                 cells.push({
