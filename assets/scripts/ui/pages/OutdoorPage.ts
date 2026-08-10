@@ -614,6 +614,9 @@ export class OutdoorPage extends BasePage {
                 for (const evId in p.event) {
                     if (EVENT_DATA[evId] && !this.gm.eventSaveData[evId]?.experienced) {
                         const ev = EVENT_DATA[evId];
+                        // 对齐原版 main.js getEvents：前置事件（ev.event）未完成则不展示，
+                        // 避免同一地点把链式同类型 NPC（如地精工匠 1~6）一次性全部列出。
+                        if (ev.event && !this.gm.eventSaveData[ev.event]?.experienced) continue;
                         cells.push({
                             id: `event_${evId}`,
                             name: `事件·${ev.name}  [对话]\n${ev.desc ? this.truncate(ev.desc, 40) : ''}`,
