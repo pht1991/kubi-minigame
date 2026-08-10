@@ -77,8 +77,8 @@ export class ActionCombat {
         this._eventBus = EventBus.instance;
     }
 
-    /** 开始与指定怪物战斗（prefix 为地牢前缀怪物 key，可选） */
-    init(mstId: string, prefix?: string): boolean {
+    /** 开始与指定怪物战斗（prefix 为地牢前缀怪物 key 或前缀对象，可选） */
+    init(mstId: string, prefix?: string | Record<string, boolean>): boolean {
         const mst = MST_DATA[mstId];
         if (!mst) return false;
 
@@ -166,26 +166,32 @@ export class ActionCombat {
     /**
      * 前缀怪物修正（与 ActionDungeon.battle 共用，统一战斗公式）
      * atk→怪物伤害↑、fat→怪物HP↑、def→玩家伤害↓、magic→魔法抵抗、agile→怪物略强
+     * 支持原版的多前缀对象（如 {atk:true, def:true, upper:true}），各效果累加。
      */
-    static applyPrefix(prefix: string | undefined, mst: any): { mstHp: number; mstDmg: number; prefixName: string; prefixPlayerDmgMul: number; prefixMagicResist: number } {
+    static applyPrefix(prefix: string | Record<string, boolean> | undefined, mst: any): { mstHp: number; mstDmg: number; prefixName: string; prefixPlayerDmgMul: number; prefixMagicResist: number } {
         let mstHp = mst.maxHp;
         if (mst.hpMul) mstHp = Math.ceil(mstHp * mst.hpMul * (1 + GameManager.instance.maouLevel));
         let mstDmg = mst.damage;
         let prefixName = '';
         let prefixPlayerDmgMul = 1;
         let prefixMagicResist = 0;
-        if (prefix && PREFIX_DATA[prefix]) {
-            const p = PREFIX_DATA[prefix];
-            prefixName = p.name || '';
+        const applyOne = (key: string) => {
+            if (!PREFIX_DATA[key]) return;
+            const p = PREFIX_DATA[key];
+            prefixName += p.name || '';
             const buff = (p as any).buff ?? 0.4;
-            switch (prefix) {
+            switch (key) {
                 case 'atk':   mstDmg *= (1 + buff); break;                 // 残暴：伤害↑
                 case 'fat':   mstHp *= (1 + buff); break;                   // 肥胖：HP↑
-                case 'def':   prefixPlayerDmgMul = 1 / (1 + buff); break;   // 坚硬：玩家伤害↓
+                case 'def':   prefixPlayerDmgMul *= 1 / (1 + buff); break;  // 坚硬：玩家伤害↓
                 case 'magic': prefixMagicResist = buff; break;              // 抗魔：魔法抵抗
                 case 'agile': mstDmg *= (1 + buff * 0.5); break;            // 狡猾：略强
                 default: break;
             }
+        };
+        if (prefix) {
+            if (typeof prefix === 'string') applyOne(prefix);
+            else for (const k in prefix) if (prefix[k]) applyOne(k);
         }
         return { mstHp, mstDmg, prefixName, prefixPlayerDmgMul, prefixMagicResist };
     }

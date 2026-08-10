@@ -1,17 +1,52 @@
 /**
  * ActionDungeon.ts - 地牢与战斗系统动作
- * 简化但真实可玩的战斗：武器攻击×技能加成 vs 怪物伤害×防御减免，命中率受射程影响。
- * 覆盖：进入地牢(enter)、下层(descend)、探索房间(explore→战斗/宝箱)、战斗(battle)。
  *
- * 原项目的房间/楼梯/前缀/陷阱是复杂状态机，这里收敛为：
- *   enter → 每层 explore 有概率遭遇战斗或发现宝箱 → descend 进入更深一层。
+ * 完整还原原版 main.js `DungeonComponent` 的房间/楼梯/探索度/前缀/钥匙/绳索机制：
+ *   - 进入地牢(enter) → 探索(search/sneak) / 下楼(descend, 耗钥匙) / 绳索穿洞(ropeGo)
+ *   - 探索一步 = 先独立判定战斗(battleChance 受探索度惩罚) + 再独立生成房间(奖励/空/回家/商人/捡钥匙/用钥匙/陷阱)
+ *   - 每层有探索度 stairData（上限 MAX_DISCOVER=45），奖励/战斗/陷阱胜利都 discoverInc(+1)，
+ *     战/奖概率乘 (1 - 探索度/MAX_DISCOVER)；每推进时间各层探索度衰减 DUNGEON_DEC
+ *   - 战斗抽怪 enermyLevel=ceil(层/10) + UPPER_CHANCE 乱入；前缀可叠加多个（prefix 为对象）
+ *
+ * 注：battle() 自动解算版仍被地图狩猎(ActionMap) 与事件战斗(ActionEvent) 复用，保留不动。
  */
 
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { ActionExecutor, ActionResult } from './ActionExecutor';
 import { ActionCombat } from './ActionCombat';
-import { MST_DATA, DUNGEON_DATA, ITEM_DATA, UPPER_CHANCE, TRADE_DATA, PREFIX_DATA } from '../data/data';
+import { MST_DATA, DUNGEON_DATA, ITEM_DATA, UPPER_CHANCE, TRADE_DATA, PREFIX_DATA, MAX_DISCOVER, DUNGEON_DEC } from '../data/data';
+
+/** 地牢房间类型（对齐原版 getNewRoom） */
+export type DungeonRoomType = 'reward' | 'getKey' | 'useKey' | 'trap' | 'empty' | 'seller' | 'home';
+
+/** 房间解析结果（含已执行的副作用数据，供 UI 展示） */
+export interface DungeonRoom {
+    type: DungeonRoomType;
+    reward?: Record<string, number>;
+    item?: string;       // trap 掉落物 key（gem/gold）
+    amount?: number;     // trap 数量
+    damaged?: boolean;   // trap 是否受伤
+    damage?: number;     // trap 伤害值
+}
+
+/** 一次探索行动的结果：可能遇敌 + 一个房间类型（房间副作用在战斗胜利后才由 UI 调 resolveRoom 执行，对齐原版"先战斗后生成房间"） */
+export interface DungeonExploreResult {
+    battle?: { mstId: string; prefix?: Record<string, boolean> };
+    roomType: DungeonRoomType;
+}
+
+/** 按权重随机选取一个 key（对齐原版 getRandomThing） */
+function weightedPick(table: Record<string, number>): string {
+    let total = 0;
+    for (const k in table) total += table[k];
+    let r = Math.random() * total;
+    for (const k in table) {
+        r -= table[k];
+        if (r < 0) return k;
+    }
+    return Object.keys(table)[0];
+}
 
 export class ActionDungeon {
     private static _instance: ActionDungeon;
@@ -30,7 +65,7 @@ export class ActionDungeon {
         this._eventBus = EventBus.instance;
     }
 
-    /** 进入地牢：初始化进度 */
+    /** 进入地牢：初始化进度（对齐原版 stairCount=1/roomCount=1/deepest=1/stairData={}） */
     enter(): ActionResult {
         this._gm.dungeonSaveData = {
             stairCount: 1,
@@ -42,10 +77,14 @@ export class ActionDungeon {
         return { success: true, message: '进入了地牢第 1 层' };
     }
 
-    /** 下层 */
+    /** 下楼：消耗 1 把地牢钥匙（对齐原版 handleChoice.downStair 的 useItem({dungeonKey:1})） */
     descend(): ActionResult {
         const ds = this._gm.dungeonSaveData;
         if (!ds || !ds.stairCount) return { success: false, message: '尚未进入地牢' };
+        const keys = this._gm.boxSaveData['bag']?.['dungeonKey'] || 0;
+        if (keys <= 0) return { success: false, message: '下楼需要地牢钥匙' };
+        this._gm.changeItem({ dungeonKey: -1 }, 'bag');
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
         ds.stairCount += 1;
         ds.roomCount = 0;
         ds.deepest = Math.max(ds.deepest, ds.stairCount);
@@ -53,121 +92,218 @@ export class ActionDungeon {
         return { success: true, message: `下到了第 ${ds.stairCount} 层` };
     }
 
-    /** 探索当前层房间：60% 遭遇战斗，40% 发现宝箱 */
-    explore(): ActionResult {
+    /**
+     * 绳索穿洞：消耗 1 根 dungeonRope 穿越到 deepest 之前任意层
+     * 时间消耗 time = |to - from|^0.7，上限 20（对齐原版 handleRopeGo）
+     * 时间推进由调用方（DungeonPage）负责，这里只处理消耗与层数。
+     */
+    ropeGo(toFloor: number): ActionResult {
         const ds = this._gm.dungeonSaveData;
         if (!ds || !ds.stairCount) return { success: false, message: '尚未进入地牢' };
-        ds.roomCount += 1;
-
-        if (Math.random() < 0.6) {
-            // 遭遇战斗：按层数抽怪
-            const mstId = this.pickDungeonMst(ds.stairCount);
-            if (mstId) {
-                const prefix = this.rollPrefix();
-                this._eventBus.emit('dungeon_change', ds);
-                return this.battle(mstId, prefix || undefined);
-            }
-        }
-        // 发现宝箱
-        const reward = this.rollReward(ds.stairCount);
-        if (Object.keys(reward).length > 0) {
-            this._gm.changeItem(reward, 'bag');
-            this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-            this._eventBus.emit('dungeon_change', ds);
-            const names = Object.keys(reward).map(k => `${ITEM_DATA[k]?.name || k}×${reward[k]}`).join(' ');
-            return { success: true, message: `发现宝箱：${names}` };
-        }
+        const ropes = this._gm.boxSaveData['bag']?.['dungeonRope'] || 0;
+        if (ropes <= 0) return { success: false, message: '需要地牢绳索' };
+        if (toFloor <= ds.stairCount || toFloor >= ds.deepest) return { success: false, message: '目标层无效' };
+        this._gm.changeItem({ dungeonRope: -1 }, 'bag');
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+        ds.stairCount = toFloor;
+        ds.roomCount = 1;
         this._eventBus.emit('dungeon_change', ds);
-        return { success: true, message: '这个房间空空如也' };
+        return { success: true, message: `空降到了第 ${toFloor} 层` };
     }
 
-    /**
-     * 探测探索（不自动战斗）：60% 概率遭遇战斗
-     * 返回 beastMstId 给 BattlePanel 使用，而不是直接自动解算。
-     * @returns 遭遇的怪物 ID，null = 没有遭遇战斗
-     */
-    probeExplore(): { mstId: string | null; mstName: string; reward?: string } {
+    /** 绳索穿越耗时（对齐原版 time = |Δ|^0.7，上限 20） */
+    ropeTime(toFloor: number, fromFloor: number): number {
+        let t = Math.pow(Math.abs(toFloor - fromFloor), 0.7);
+        if (t >= 20) t = 20;
+        return Math.round(t * 10) / 10;
+    }
+
+    /** 增加当前层探索度（cap 在 MAX_DISCOVER，对齐原版 discoverInc） */
+    discoverInc(amount: number): void {
         const ds = this._gm.dungeonSaveData;
-        if (!ds || !ds.stairCount) return { mstId: null, mstName: '' };
-        ds.roomCount += 1;
-
-        if (Math.random() < 0.6) {
-            const mstId = this.pickDungeonMst(ds.stairCount);
-            if (mstId) {
-                const mst = MST_DATA[mstId];
-                this._eventBus.emit('dungeon_change', ds);
-                return { mstId, mstName: mst?.name || mstId };
-            }
-        }
-        // 宝箱
-        const reward = this.rollReward(ds.stairCount);
-        if (Object.keys(reward).length > 0) {
-            this._gm.changeItem(reward, 'bag');
-            this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-            this._eventBus.emit('dungeon_change', ds);
-            const names = Object.keys(reward).map(k => `${ITEM_DATA[k]?.name || k}×${reward[k]}`).join(' ');
-            return { mstId: null, mstName: '', reward: names };
-        }
+        if (!ds || !ds.stairCount) return;
+        const k = ds.stairCount;
+        ds.stairData[k] = Math.min(MAX_DISCOVER, (ds.stairData[k] || 0) + amount);
         this._eventBus.emit('dungeon_change', ds);
-        return { mstId: null, mstName: '' };
     }
 
     /**
-     * 增强版探测探索：战斗(含前缀怪物)/陷阱/宝箱/地牢商人/空房间
-     * 每 5 个房间或 12% 概率遇到地牢商人；约 48% 战斗；14% 陷阱；宝箱/空房其余。
+     * 探索一步（search 普通/ sneak 潜行）：先独立判定战斗，再独立生成房间类型。
+     * 二者都可能发生（对齐原版 handleChoice：if(random<battleChance)战斗 → getNewRoom）。
+     * 房间副作用留待战斗胜利后由 UI 调 resolveRoom 执行。
      */
-    probeExploreEnhanced(): { type: 'battle' | 'treasure' | 'merchant' | 'empty' | 'trap'; mstId?: string; mstName?: string; reward?: string; prefix?: string } {
+    explore(choice: 'search' | 'sneak'): DungeonExploreResult {
         const ds = this._gm.dungeonSaveData;
-        if (!ds || !ds.stairCount) return { type: 'empty' };
+        if (!ds || !ds.stairCount) return { roomType: 'empty' };
         ds.roomCount += 1;
-
-        const roll = Math.random();
-        // 每 5 个房间或 12% 概率遇到商人
-        if (ds.roomCount % 5 === 0 || roll < 0.12) {
-            this._eventBus.emit('dungeon_change', ds);
-            return { type: 'merchant' };
+        let battle: DungeonExploreResult['battle'];
+        if (Math.random() < this.getBattleChance(choice)) {
+            const b = this.rollDungeonBattle();
+            if (b) battle = b;
         }
-        if (roll < 0.60) {
-            // 战斗（按层数抽怪，可能带前缀）
-            const mstId = this.pickDungeonMst(ds.stairCount);
-            if (mstId) {
-                const mst = MST_DATA[mstId];
-                const prefix = this.rollPrefix();
-                const pname = prefix ? (PREFIX_DATA as any)[prefix]?.name || '' : '';
-                this._eventBus.emit('dungeon_change', ds);
-                return { type: 'battle', mstId, mstName: `${pname}${mst?.name || mstId}`, prefix: prefix || undefined };
-            }
-        }
-        if (roll < 0.74) {
-            // 陷阱：按层数缩放伤害
-            const trapDmg = Math.round((8 + ds.stairCount * 4) * (0.8 + Math.random() * 0.4));
-            this._gm.playerStateChange({ hp: -trapDmg });
-            this._eventBus.emit(GameEvents.UI_REFRESH);
-            this._eventBus.emit('dungeon_change', ds);
-            return { type: 'trap', reward: `踩中陷阱，受到 ${trapDmg} 点伤害！` };
-        }
-        // 宝箱
-        const reward = this.rollReward(ds.stairCount);
-        if (Object.keys(reward).length > 0) {
-            this._gm.changeItem(reward, 'bag');
-            this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-            this._eventBus.emit('dungeon_change', ds);
-            const names = Object.keys(reward).map(k => `${ITEM_DATA[k]?.name || k}×${reward[k]}`).join(' ');
-            return { type: 'treasure', reward: names };
-        }
-        this._eventBus.emit('dungeon_change', ds);
-        return { type: 'empty' };
+        const roomType = this.rollRoom(choice);
+        return { battle, roomType };
     }
 
-    /**
-     * 掷前缀怪物：约 25% 概率出现前缀（atk/fat/def/magic/agile），upper 表示乱入层不在此列
-     */
-    private rollPrefix(): string | null {
-        if (Math.random() < 0.25) {
-            const keys = Object.keys(PREFIX_DATA).filter(k => k !== 'upper');
-            if (keys.length) return keys[Math.floor(Math.random() * keys.length)];
+    /** 战斗概率（对齐原版 getBattleChance：base × 装备 mul × (1 - 探索度/MAX_DISCOVER)） */
+    private getBattleChance(choice: 'search' | 'sneak'): number {
+        const ds = this._gm.dungeonSaveData;
+        const stair = ds?.stairCount || 1;
+        const base = choice === 'sneak' ? 0.1 : 0.6;
+        const mul = this.equipMul('battleChanceMul');
+        const disc = 1 - (ds?.stairData?.[stair] || 0) / MAX_DISCOVER;
+        return Math.max(0, (1 - (1 - base) * mul) * disc);
+    }
+
+    /** 奖励概率（对齐原版 getRewardChance：base × 装备 mul × (1 - 探索度/MAX_DISCOVER)） */
+    private getRewardChance(choice: 'search' | 'sneak'): number {
+        const ds = this._gm.dungeonSaveData;
+        const stair = ds?.stairCount || 1;
+        const base = choice === 'sneak' ? 0.3 : 0.4;
+        const mul = this.equipMul('rewardChanceMul');
+        const disc = 1 - (ds?.stairData?.[stair] || 0) / MAX_DISCOVER;
+        return Math.max(0, (1 - (1 - base) * mul) * disc);
+    }
+
+    /** 遍历当前装备，累乘 battleChanceMul / rewardChanceMul（对齐原版 getBattleChance/rewardChance 的 equip 循环） */
+    private equipMul(field: 'battleChanceMul' | 'rewardChanceMul'): number {
+        let mul = 1;
+        const eq = this._gm.currentEquip;
+        for (const slot in eq) {
+            const id = eq[slot];
+            if (!id) continue;
+            const f = (ITEM_DATA[id] as any)?.[field];
+            if (f) mul *= f;
         }
-        return null;
+        return mul;
+    }
+
+    /** 按层数抽怪 + 前缀（对齐原版 getDungeonBattle：enermyLevel=ceil(层/10)，乱入，前缀可叠加） */
+    private rollDungeonBattle(): { mstId: string; prefix?: Record<string, boolean> } | null {
+        const ds = this._gm.dungeonSaveData;
+        const stair = ds?.stairCount || 1;
+        const step = 10;
+        let i = Math.ceil(stair / step);
+        const isUpper = Math.random() < UPPER_CHANCE;
+        if (isUpper) i += 1;
+        let mstList: Record<string, number> | undefined;
+        do {
+            mstList = DUNGEON_DATA[i]?.mst;
+            i--;
+        } while (!mstList && i > 0);
+        if (!mstList) return null;
+        const mstId = weightedPick(mstList);
+        const prefix: Record<string, boolean> = {};
+        const prefixChance = (stair % step) / step;
+        let time = Math.floor(Math.random() * prefixChance * 5);
+        const o: Record<string, any> = { ...(PREFIX_DATA as any) };
+        delete o.upper;
+        if (isUpper) { time -= 1; prefix.upper = true; }
+        const keys = Object.keys(o);
+        for (let k = time; k > 0; k--) {
+            const key = keys[Math.floor(Math.random() * keys.length)];
+            if (key) prefix[key] = true;
+        }
+        return { mstId, prefix };
+    }
+
+    /** 生成房间类型（对齐原版 getNewRoom：先判 rewardChance → 加权房间 + 钥匙重抽 + 探索度惩罚覆盖） */
+    private rollRoom(choice: 'search' | 'sneak'): DungeonRoomType {
+        const ds = this._gm.dungeonSaveData;
+        const stair = ds?.stairCount || 1;
+        const hasKey = (this._gm.boxSaveData['bag']?.['dungeonKey'] || 0) > 0;
+        let room: DungeonRoomType;
+        if (Math.random() < this.getRewardChance(choice)) {
+            room = 'reward';
+        } else {
+            const table: Record<string, number> = { empty: 5, home: 1, seller: 2, getKey: 2, useKey: 2, trap: 1 };
+            do {
+                room = weightedPick(table) as DungeonRoomType;
+            } while ((room === 'useKey' && !hasKey) || (room === 'getKey' && hasKey));
+        }
+        // 探索度惩罚：探索越透越"安全"，有钥匙→空房、无钥匙→捡钥匙（对齐原版 line 4505）
+        if (Math.random() < (ds?.stairData?.[stair] || 0) / MAX_DISCOVER) {
+            room = hasKey ? 'empty' : 'getKey';
+        }
+        return room;
+    }
+
+    /** 把房间类型解析为结果并执行副作用（useKey 需玩家二次确认，仅返回类型） */
+    resolveRoom(type: DungeonRoomType): DungeonRoom {
+        const ds = this._gm.dungeonSaveData;
+        const stair = ds?.stairCount || 1;
+        switch (type) {
+            case 'reward': {
+                const reward = this.getReward(stair);
+                this._gm.changeItem(reward, 'bag');
+                this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+                this.discoverInc(1);
+                return { type: 'reward', reward };
+            }
+            case 'getKey':
+                this._gm.changeItem({ dungeonKey: 1 }, 'bag');
+                this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+                return { type: 'getKey' };
+            case 'useKey':
+                return { type: 'useKey' };   // 等待玩家用钥匙开宝箱（UI 二次确认）
+            case 'trap': {
+                const item = weightedPick({ gem: 200, gold: 200 });
+                const amount = Math.ceil(Math.pow(stair, 0.2) + 1);
+                const damaged = Math.random() < 0.5;
+                const damage = Math.ceil(Math.random() * Math.floor((1 - Math.pow(0.9, stair)) * 100));
+                if (damaged) this._gm.playerStateChange({ hp: -damage });
+                this._eventBus.emit(GameEvents.UI_REFRESH);
+                this._gm.changeItem({ [item]: amount }, 'bag');
+                this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+                this.discoverInc(1);
+                return { type: 'trap', item, amount, damaged, damage };
+            }
+            default:
+                return { type };   // empty / seller / home
+        }
+    }
+
+    /** 用钥匙开上锁宝箱：消耗 1 钥匙 + 双倍奖励 + 探索度 +1（对齐原版 useKey 的 cloneMul(get,2)） */
+    useKeyChest(): DungeonRoom {
+        const ds = this._gm.dungeonSaveData;
+        const stair = ds?.stairCount || 1;
+        const keys = this._gm.boxSaveData['bag']?.['dungeonKey'] || 0;
+        if (keys <= 0) return { type: 'empty' };
+        this._gm.changeItem({ dungeonKey: -1 }, 'bag');
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+        const get = this.getReward(stair);
+        const doubled: Record<string, number> = {};
+        for (const k in get) doubled[k] = get[k] * 2;
+        this._gm.changeItem(doubled, 'bag');
+        this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
+        this.discoverInc(1);
+        return { type: 'reward', reward: doubled };
+    }
+
+    /** 宝箱奖励（对齐原版 getReward：必保底至少 1 件，每层可获之前层宝物） */
+    private getReward(stair: number): Record<string, number> {
+        const rewardLevel = Math.ceil(stair / 10);
+        const list: any[] = [];
+        for (let i = rewardLevel; i > 0; i--) {
+            const arr = DUNGEON_DATA[i]?.reward;
+            if (arr) list.push(...arr);
+        }
+        const result: Record<string, number> = {};
+        let guard = 0;
+        while (Object.keys(result).length === 0 && guard < 50) {
+            guard++;
+            for (const tmp of list) {
+                const things = tmp.things;
+                for (const attr in things) {
+                    for (let j = things[attr] - 1; j >= 0; j--) {
+                        if (Math.random() < tmp.chance) {
+                            result[attr] = (result[attr] || 0) + 1;
+                        }
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     /** 获取地牢商人可交易列表（TRADE_DATA 中 type==='dungeon' 的项） */
@@ -179,8 +315,8 @@ export class ActionDungeon {
     getFloorInfo(floor: number): { mstNames: string[]; hasReward: boolean } {
         const data = (DUNGEON_DATA as any)[floor];
         if (!data) return { mstNames: [], hasReward: false };
-        const mstNames = data.mst ? Object.keys(data.mst).map(id => MST_DATA[id]?.name || id) : [];
-        const hasReward = data.reward && data.reward.length > 0;
+        const mstNames = data.mst ? Object.keys(data.mst).map((id: string) => MST_DATA[id]?.name || id) : [];
+        const hasReward = !!data.reward && data.reward.length > 0;
         return { mstNames, hasReward };
     }
 
@@ -189,11 +325,11 @@ export class ActionDungeon {
         return Object.keys(DUNGEON_DATA).length;
     }
 
-    /** 按层数抽取地牢怪物 */
+    /** 按层数抽取地牢怪物（保留给地图/事件战斗的旧接口，地牢内部已内联 rollDungeonBattle） */
     private pickDungeonMst(stair: number): string | null {
         const step = 10;
         let i = Math.ceil(stair / step);
-        if (Math.random() < UPPER_CHANCE) i += 1; // 乱入层
+        if (Math.random() < UPPER_CHANCE) i += 1;
         let mstList: Record<string, number> | undefined;
         do {
             mstList = DUNGEON_DATA[i]?.mst;
@@ -204,31 +340,9 @@ export class ActionDungeon {
         return keys[Math.floor(Math.random() * keys.length)];
     }
 
-    /** 按层数摇宝箱奖励 */
-    private rollReward(stair: number): Record<string, number> {
-        const rewardLevel = Math.ceil(stair / 10);
-        const list: any[] = [];
-        for (let i = rewardLevel; i > 0; i--) {
-            const arr = DUNGEON_DATA[i]?.reward;
-            if (arr) list.push(...arr);
-        }
-        const result: Record<string, number> = {};
-        for (const tmp of list) {
-            const things = tmp.things;
-            for (const attr in things) {
-                for (let j = things[attr] - 1; j >= 0; j--) {
-                    if (Math.random() < tmp.chance) {
-                        result[attr] = (result[attr] || 0) + 1;
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
     /**
-     * 与怪物战斗（简化回合解算，公式与 ActionCombat 完全一致：
-     * 前缀加成 / 装备减伤 / 武器·防具耐久消耗均已接入，确保事件、地图、地牢遇怪与面板战结果一致）
+     * 与怪物战斗（自动解算版，公式与 ActionCombat 完全一致）：
+     * 前缀加成 / 装备减伤 / 武器·防具耐久消耗均已接入。被地图狩猎(ActionMap) 与事件战斗(ActionEvent) 复用。
      * @param mstId   MST_DATA 键
      * @param prefix  前缀怪物 key（可选，与交互式战斗统一）
      */

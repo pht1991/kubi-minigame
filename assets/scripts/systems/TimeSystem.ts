@@ -18,6 +18,7 @@ import {
     STOLE,
     TRAP_DATA,
     ITEM_DATA,
+    DUNGEON_DEC,
 } from '../data/data';
 
 /** 冬季每小时体温额外流失（制造"难熬"的低温压力） */
@@ -123,6 +124,15 @@ export class TimeSystem {
 
         // 盗贼偷家：离开基地期间按周期结算一次洗劫
         this.checkRobberRaid();
+
+        // 地牢探索度随时间衰减（对齐原版每次推进各层 stairData 减 DUNGEON_DEC）
+        const ds = this._gm.dungeonSaveData;
+        if (ds && ds.stairData) {
+            for (const k of Object.keys(ds.stairData)) {
+                ds.stairData[k] = Math.max(0, ds.stairData[k] - DUNGEON_DEC);
+            }
+            this._eventBus.emit('dungeon_change', ds);
+        }
 
         if (td.season !== oldSeason) {
             this._eventBus.emit(GameEvents.SEASON_CHANGE, td.season);
