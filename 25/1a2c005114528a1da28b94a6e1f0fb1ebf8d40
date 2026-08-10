@@ -1,0 +1,22 @@
+assets/scripts/actions/ActionCombat.ts
+  h_70068c5a17f62a 80-81,169,171,178-181,183,186,191-194
+assets/scripts/actions/ActionDungeon.ts
+  h_70068c5a17f62a 4-11,18-49,68,80,84-87,95-100,103-112,114-126,131-133,135,137,139-142,144-145,148-149,151-156,158-176,178-205,207-222,224-226,228,231-289,291-306,318-319,328,332,344-345
+assets/scripts/systems/TimeSystem.ts
+  h_70068c5a17f62a 21,128-136
+assets/scripts/ui/BattlePanel.ts
+  h_70068c5a17f62a 57-58
+assets/scripts/ui/pages/DungeonPage.ts
+  h_70068c5a17f62a 4-6,11-12,14,31-42,46-49,61-73,79-147,149-150,152-158,160-161,163-166,171-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "251a2c005114528a1da28b94a6e1f0fb1ebf8d40",
+  "prompts": {},
+  "humans": {
+    "h_70068c5a17f62a": {
+      "author": "panhaitao-9ap2u <panhaitao@sdpjw.com>"
+    }
+  }
+}
