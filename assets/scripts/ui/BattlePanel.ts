@@ -67,13 +67,13 @@ export class BattlePanel extends ModalPanel {
         const panel = this._panel!;
         // 镜像坐标常量（关于 panel 中心 y=0 对称，怪区在 +y、玩区在 -y）
         // 玩家名 y=-310 与按钮区要留 ≥20px 间距，行动按钮已下移至 -380
-        // 关键修复（间距对称）：日志区 logView y=0（之前 120）居中，logH 240→340，
-        // 让 mstVal 底 y=200 ↔ logView 顶 y=170 = 30px、plVal 顶 y=-200 ↔ logView 底 y=-170 = 30px 镜像对称，
-        // 消除之前"上重叠 8px + 下空白 210px"的视觉撕裂。
+        // 关键修复：mkScroll 的 view 锚点是 (0.5,1)，y 表示"view 顶部中心"的局部 y。
+        // 要让日志区中心在 y=0、高度 340，必须传 logView = +170，此时 view 范围 [170,-170]。
+        // 这样 mstVal 底 y=200 ↔ logView 顶 y=170 = 30px、plVal 顶 y=-200 ↔ logView 底 y=-170 = 30px 镜像对称。
         const Y = {
             mstName: 310, mstHp: 260, mstVal: 215,
             sepUp: 175,
-            logView: 0, logH: 340,
+            logView: 170, logH: 340,
             sepDn: -175,
             plVal: -215, plHp: -260, plName: -310,
             actRow: -380,
