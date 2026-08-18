@@ -1,0 +1,102 @@
+assets/scripts/ui/widgets/UIButton.ts
+  s_f8b3b7f5531622::t_c617a4a9ebe8e2 13,51
+  s_f8b3b7f5531622::t_e956e85910b036 9
+design/美术审计.md
+  s_f8b3b7f5531622::t_ecc41b58139298 7,15,72,116,142,147-213
+  s_f8b3b7f5531622::t_659850040abd3e 1-6,8-14,16-71,73-115,117-141,143-146
+design/P0执行清单_上线硬门槛.md
+  s_f8b3b7f5531622::t_311500a6a8f947 7,14,30,85,98-108,111,113,115-138
+  s_f8b3b7f5531622::t_b83bbbf3b971ab 1-6,8-13,15-29,31-84,86-97,109-110,112,114
+assets/scripts/actions/ActionEvent.ts
+  s_f8b3b7f5531622::t_dd052163977684 80-82,84
+assets/scripts/ui/EventDetailPanel.ts
+  s_f8b3b7f5531622::t_7828f15d6c1063 34-35
+assets/scripts/ui/BagPanel.ts
+  s_f8b3b7f5531622::t_0226308d2f8917 36
+assets/scripts/ui/Tutorial.ts
+  s_f8b3b7f5531622::t_12b7bbb15151cb 1-101
+assets/scripts/ui/TutorialPanel.ts
+  s_f8b3b7f5531622::t_84ecdffcc6c8cd 1-87
+assets/scripts/ui/pages/EventPage.ts
+  s_f8b3b7f5531622::t_af2eb01a9c982f 14,21-40
+assets/scripts/ui/StatusBar.ts
+  s_f8b3b7f5531622::t_61b65d4826a1e0 9
+  s_f8b3b7f5531622::t_43305d9e1a96d4 29-34
+  s_f8b3b7f5531622::t_f4704159c95392 56-76
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_e7b29dc178b402 873-875
+  s_f8b3b7f5531622::t_39c1bdfcf79abf 38-39
+  s_f8b3b7f5531622::t_df29d8d079487c 217-219
+  s_f8b3b7f5531622::t_316a10e45cd801 949-951
+  s_f8b3b7f5531622::t_48be98d5ef8b4a 435-441
+  s_f8b3b7f5531622::t_ad36e07e148efd 467-487
+  s_f8b3b7f5531622::t_6d42c25dd883a7 759-762
+assets/scripts/ui/theme.ts
+  s_f8b3b7f5531622::t_f861abd00d8b0f 34,47-50,70-71
+  s_f8b3b7f5531622::t_71577df4d2a724 154,170,173
+assets/scripts/ui/widgets/ModalTab.ts
+  s_f8b3b7f5531622::t_7429369e49fba7 42
+assets/scripts/ui/GridComponent.ts
+  s_f8b3b7f5531622::t_8861736ab33e61 427-428,430-431,433-434
+  s_f8b3b7f5531622::t_cffd86c4687478 447,449,451
+  s_f8b3b7f5531622::t_0dc96bf317cac2 527-529,543-546,565,568-571,575,577-578
+assets/scripts/core/SaveManager.ts
+  s_f8b3b7f5531622::t_ee2b854bd2e09d 171-199
+assets/scripts/core/EventBus.ts
+  s_f8b3b7f5531622::t_b9f6981c38d85d 87-88
+PROGRESS.md
+  s_f8b3b7f5531622::t_c060816bff3683 27-32
+  s_f8b3b7f5531622::t_8d5022bf64a46f 56-61
+  s_f8b3b7f5531622::t_016937f88e2ec4 14
+docs/architecture/打磨期工程改动.md
+  s_f8b3b7f5531622::t_b57106207d95ae 56
+  s_f8b3b7f5531622::t_025cce0d948a2b 8,20,24-25,42,50,60,71,82,88-151
+  s_f8b3b7f5531622::t_aacb4a996c9ae1 1-7,9-19,21-23,26-41,43-49,51-55,57-59,61-70,72-81,83-87
+assets/scripts/actions/ActionCombat.ts
+  s_f8b3b7f5531622::t_bc69c06063cc5f 70-77,88-92,137-138,472,499,543-546,558
+assets/scripts/actions/ActionItem.ts
+  s_f8b3b7f5531622::t_c2f5ce18537454 3
+assets/scripts/actions/ActionMap.ts
+  s_f8b3b7f5531622::t_789c83b2d5cdd5 112,116-129
+assets/scripts/ui/BattlePanel.ts
+  s_f8b3b7f5531622::t_d13d29c7bb12ff 57-59
+assets/scripts/ui/pages/OutdoorPage.ts
+  s_f8b3b7f5531622::t_5eb999bde16712 669-673
+design/gdd/打磨期设计裁决.md
+  s_f8b3b7f5531622::t_0103eba3112272 1-172
+design/游戏评估与完善方案.md
+  s_f8b3b7f5531622::t_b64f37270adb3c 1-116
+design/音频方案.md
+  s_f8b3b7f5531622::t_4f8b4550ca089a 1-214
+docs/打磨期_工作室派工与进度.md
+  s_f8b3b7f5531622::t_37160ba0a1fb42 1-72
+tests/Playtest报告.md
+  s_f8b3b7f5531622::t_9766e3283e9269 1-119
+tests/QA计划.md
+  s_f8b3b7f5531622::t_b6dcf9eccfb106 1-120
+tests/发布QA门控.md
+  s_f8b3b7f5531622::t_05097bca15a390 1-105
+tests/测试用例.md
+  s_f8b3b7f5531622::t_d59b47b60f49a8 1-177
+tests/烟雾测试.md
+  s_f8b3b7f5531622::t_4fab8a7531e2b8 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.29",
+  "base_commit_sha": "3217f5951a515802e0ee6eec64cc3c0abd263c4e",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
