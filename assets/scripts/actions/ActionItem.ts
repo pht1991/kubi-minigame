@@ -1,6 +1,6 @@
 /**
  * ActionItem.ts - 物品动作
- * 覆盖：使用（食物回状态）、丢弃、装备
+ * 覆盖：使用（食物/状态道具/容量道具/技能书等）、丢弃、装备/卸下
  */
 
 import { GameManager } from '../core/GameManager';

@@ -31,6 +31,7 @@ export const C = {
 
     // ── 主题强调色 ──
     accent:  new Color(196, 132, 64, 255),
+    accentDeep: new Color(150, 95, 45, 255),         // 主按钮深底（白字 ≈5.3:1，达 AA；原 accent 白字仅 3.1:1）
     accent2: new Color(76, 128, 72, 255),
     tabOn:   new Color(210, 162, 110, 255),
     tabOff:  new Color(228, 218, 205, 255),
@@ -43,6 +44,10 @@ export const C = {
 
     // ── 状态 / 禁用 ──
     disabled: new Color(175, 170, 163, 255),
+    disabledBg:    new Color(216, 212, 206, 255),   // 禁用态浅灰底
+    disabledText:  new Color(102, 98, 93, 255),      // 禁用态深灰字（与 disabledBg 对比 ≈4.1:1，≥3:1）
+    disabledBorder:new Color(190, 185, 178, 255),    // 禁用态灰描边
+    dangerBorder:  new Color(140, 80, 40, 255),      // danger 按钮描边（原 theme.ts:168 硬编码，收口到 token）
 
     // ── 遮罩 / 关闭 ──
     maskDim:     new Color(0, 0, 0, 180),
@@ -62,8 +67,8 @@ export const C = {
     cellBgDisabled:  new Color(225, 220, 212, 255),
     cellStroke:      new Color(200, 180, 155, 255),
     cellStrokeDisabled: new Color(190, 185, 175, 255),
-    cellSelectedBg:   new Color(230, 245, 255, 255),
-    cellSelectedStroke:new Color(120, 180, 230, 255),
+    cellSelectedBg:   new Color(237, 232, 213, 255),  // 暖杏（#EDE8D5）：统一选中态，原浅蓝 230,245,255 与暖色主题冲突
+    cellSelectedStroke:new Color(201, 184, 122, 255),  // 金描边（#C9B87A）：与 GridComponent 暖杏金一致
     cellCooldownBg:   new Color(245, 235, 220, 255),
     cellCooldownStroke:new Color(200, 190, 165, 255),
     cellText:        new Color(74, 55, 40, 255),
@@ -146,7 +151,7 @@ export const S = {
         cellCount: 17,
         option: 22,
         button: 24,
-        durText: 10,
+        durText: 16,   // P0×4：耐久数值下限 ≥16 设计 px（原 10 ≈5pt，挤成一团不可读）
     },
 };
 
@@ -162,10 +167,10 @@ export interface BtnStyle {
 }
 
 export const Btn = {
-    primary: { bg: C.accent,  border: C.btnBorder, borderW: S.btnBorderW, text: C.white, radius: S.btnRadius } as BtnStyle,
+    primary: { bg: C.accentDeep, border: C.btnBorder, borderW: S.btnBorderW, text: C.white, radius: S.btnRadius } as BtnStyle,
     confirm: { bg: C.accent2, border: C.btnBorder, borderW: S.btnBorderW, text: C.white, radius: S.btnRadius } as BtnStyle,
     neutral: { bg: C.tabOn,   border: C.btnBorder, borderW: S.btnBorderW, text: C.body,  radius: S.btnRadius } as BtnStyle,
-    danger:  { bg: C.danger,  border: new Color(140, 80, 40, 255), borderW: S.btnBorderW, text: C.white, radius: S.btnRadius } as BtnStyle,
+    danger:  { bg: C.danger,  border: C.dangerBorder, borderW: S.btnBorderW, text: C.white, radius: S.btnRadius } as BtnStyle,
 };
 
 // ══════════ 弹窗选项行样式预设 ══════════

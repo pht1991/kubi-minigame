@@ -14,7 +14,6 @@ import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { ActionExecutor, ActionResult } from './ActionExecutor';
 import { EVENT_DATA, ITEM_DATA } from '../data/data';
-import { ActionDungeon } from './ActionDungeon';
 
 export interface EventDialogInfo {
     name: string;
@@ -32,7 +31,6 @@ export class ActionEvent {
     private _gm: GameManager;
     private _exec: ActionExecutor;
     private _eventBus: EventBus;
-    private _dungeon: ActionDungeon;
 
     static get instance(): ActionEvent {
         if (!this._instance) this._instance = new ActionEvent();
@@ -43,7 +41,6 @@ export class ActionEvent {
         this._gm = GameManager.instance;
         this._exec = ActionExecutor.instance;
         this._eventBus = EventBus.instance;
-        this._dungeon = ActionDungeon.instance;
     }
 
     /** 触发一个事件 */
@@ -80,9 +77,11 @@ export class ActionEvent {
                 this._gm.eventSaveData[eventId].experienced = true;
                 this._eventBus.emit(GameEvents.EVENT_TRIGGER, eventId);
                 this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
-                // 触发战斗（公式与面板战一致：前缀/减伤/耐久已接入）
+                // 触发战斗：改为交互式 BattlePanel（与地图/地牢同规则，可放技能/逃跑/道具）
+                // 奖励已在上方先行结算落档，战斗胜负仅影响玩家存亡；
+                // 结束 onEnd 仅 UI_REFRESH，不二次发奖励。事件无 amount 概念，无需 onWin 扣减。
                 if (data.mst) {
-                    this._dungeon.battle(data.mst);
+                    this._eventBus.emit(GameEvents.EVENT_BATTLE_REQUEST, data.mst);
                 }
             },
         });

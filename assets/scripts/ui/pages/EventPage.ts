@@ -11,12 +11,33 @@
 
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
+import { PageContext } from './PageContext';
 import { EVENT_DATA } from '../../data/data';
 import { ActionEvent } from '../../actions/ActionEvent';
 import { DialogOption } from '../../ui/DialogPanel';
 import { GameEvents } from '../../core/EventBus';
 
 export class EventPage extends BasePage {
+    /** EVENT_BATTLE_REQUEST 订阅处理器（保存引用，便于必要时 off） */
+    private _onEventBattleReq: (mstId: string) => void;
+
+    constructor(ctx: PageContext) {
+        super(ctx);
+        // 订阅事件战斗请求：ActionEvent 遇 mst 时发出，本页打开交互式 BattlePanel
+        this._onEventBattleReq = (mstId: string) => this.openEventBattle(mstId);
+        this.eventBus.on(GameEvents.EVENT_BATTLE_REQUEST, this._onEventBattleReq);
+    }
+
+    /**
+     * 事件触发遇怪时打开交互式战斗面板（与地图/地牢同规则：可放技能/选防御·敏捷/逃跑/用道具）。
+     * 事件无 amount 概念，无需 onWin 扣减；onEnd 仅刷新 UI，不二次发放奖励
+     * （事件奖励已在 ActionEvent.trigger 的 onDone 内先行结算落档）。
+     */
+    private openEventBattle(mstId: string): void {
+        this.battlePanel.onEnd = () => this.eventBus.emit(GameEvents.UI_REFRESH);
+        this.battlePanel.startBattle(mstId);
+    }
+
     /** 公开入口：打开事件总览网格 */
     public openQuestGrid(): void {
         this.navigator.push(this.buildQuestPage());

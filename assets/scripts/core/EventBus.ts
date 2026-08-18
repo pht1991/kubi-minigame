@@ -84,6 +84,8 @@ export const GameEvents = {
     BATTLE_END: 'battle_end',
     // 事件系统
     EVENT_TRIGGER: 'event_trigger',
+    // 事件战斗请求（ActionEvent 遇 mst 后请求 UI 打开交互式 BattlePanel，与地图/地牢同规则）
+    EVENT_BATTLE_REQUEST: 'event_battle_request',
     // 盗贼偷家结算反馈（携带 { defended: boolean, items: Record<string,number> }）
     ROBBER_RAID: 'robber_raid',
     // 存档

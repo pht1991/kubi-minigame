@@ -168,6 +168,35 @@ export class SaveManager {
         return this._getStorage(SAVE_KEY) !== null;
     }
 
+    // ════ 新手引导首次标志（独立于主存档，双端兼容）════
+    // 与 kubi_save_data 分库存储：即使玩家尚未产生主存档，也能正确记录「看过引导」，
+    // 避免回访者/老玩家重复弹；微信+网页双端均走 _getStorage/_setStorage fallback。
+    private static readonly TUTORIAL_KEY = 'kubi_tutorial_flags';
+
+    /** 读取全部引导标志 */
+    private _readTutorialFlags(): Record<string, boolean> {
+        const raw = this._getStorage(SaveManager.TUTORIAL_KEY);
+        if (!raw) return {};
+        try {
+            const d = JSON.parse(raw);
+            return (d && typeof d === 'object') ? d : {};
+        } catch {
+            return {};
+        }
+    }
+
+    /** 某引导首次标志是否已置位（如 'firstplay' / 'hint_map'） */
+    getTutorialFlag(key: string): boolean {
+        return !!this._readTutorialFlags()[key];
+    }
+
+    /** 置位某引导首次标志（默认 true；可传 false 复位，便于测试/重置） */
+    setTutorialFlag(key: string, val: boolean = true): void {
+        const flags = this._readTutorialFlags();
+        flags[key] = val;
+        this._setStorage(SaveManager.TUTORIAL_KEY, JSON.stringify(flags));
+    }
+
     /** 删除存档 */
     deleteSave(): void {
         if (this._isWechat) {

@@ -666,7 +666,11 @@ export class OutdoorPage extends BasePage {
                     if (hunted.mstId) {
                         this.setMsg(`遭遇了 ${hunted.mstName}！`);
                         this.navigator.replace(this.buildPlaceDetailPage(placeId));
-                        this.battlePanel.startBattle(hunted.mstId);
+                        // 交互式战斗胜利后扣减该地点怪物数量（与资源枯竭设计自洽）：
+                        // 通过 ActionCombat 的 onWin 一次性回调注入，避免覆写 battlePanel.onEnd
+                        // 造成闭包泄漏/后续无关战斗误扣减（参见 DungeonPage 覆写 onEnd 的既有模式）。
+                        this.battlePanel.startBattle(hunted.mstId, undefined,
+                            () => ActionMap.instance.consumeHuntedMonster(placeId, hunted.mstId!));
                         return;
                     }
                     this.setMsg('附近没有怪物');

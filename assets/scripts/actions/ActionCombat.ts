@@ -67,6 +67,14 @@ export class ActionCombat {
     /** 当前战斗状态，null = 不在战斗中 */
     state: CombatState | null = null;
 
+    /**
+     * 胜利一次性回调（可选）：由战斗发起方注入，仅在本场战斗「胜利」时触发一次。
+     * 用于把战斗副作用收敛到解算路径内——例如地图狩猎胜利后扣减该地点怪物数量，
+     * 避免在各 UI 处各自覆写 battlePanel.onEnd 造成闭包泄漏/误扣减。
+     * 战斗结束（胜/负/逃/死亡）后自动清空。
+     */
+    private _onWin: (() => void) | null = null;
+
     static get instance(): ActionCombat {
         if (!this._instance) this._instance = new ActionCombat();
         return this._instance;
@@ -77,8 +85,11 @@ export class ActionCombat {
         this._eventBus = EventBus.instance;
     }
 
-    /** 开始与指定怪物战斗（prefix 为地牢前缀怪物 key 或前缀对象，可选） */
-    init(mstId: string, prefix?: string | Record<string, boolean>): boolean {
+    /**
+     * 开始与指定怪物战斗（prefix 为地牢前缀怪物 key 或前缀对象，可选）
+     * @param onWin 胜利一次性回调（可选），仅胜利时触发一次，用于注入战斗胜利副作用
+     */
+    init(mstId: string, prefix?: string | Record<string, boolean>, onWin?: () => void): boolean {
         const mst = MST_DATA[mstId];
         if (!mst) return false;
 
@@ -123,6 +134,8 @@ export class ActionCombat {
         };
 
         this._eventBus.emit('combat_start', this.state);
+        // 重置胜利回调（旧战斗残留清理，避免误触发）
+        this._onWin = onWin ?? null;
         return true;
     }
 
@@ -456,6 +469,7 @@ export class ActionCombat {
         if (Math.random() < 0.5) {
             s.ended = true;
             s.win = false;
+            this._onWin = null;   // 战斗结束（逃跑），清空胜利回调
             s.log.push('你成功逃跑了！');
             this._eventBus.emit(GameEvents.BATTLE_END, { win: false, mst: s.mstId, fled: true });
             return '成功逃跑了！';
@@ -482,6 +496,7 @@ export class ActionCombat {
         if (s.playerCurHp <= 0) {
             s.ended = true;
             s.win = false;
+            this._onWin = null;   // 战斗结束（死亡），清空胜利回调
             const oldHp = this._gm.playerState.hp;
             this._gm.playerStateChange({ hp: -oldHp });
             s.log.push('你被击败了！');
@@ -525,6 +540,10 @@ export class ActionCombat {
 
             this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
             this._eventBus.emit(GameEvents.BATTLE_END, { win: true, mst: s.mstId });
+            // 触发胜利一次性回调（如地图狩猎扣减怪物数量），随后清空防止重复/误触发
+            const onWin = this._onWin;
+            this._onWin = null;
+            if (onWin) onWin();
             s.log.push(`击败了 ${s.mstName}！`);
             if (rewardItems.length > 0) s.log.push(`获得：${rewardItems.join(' ')}`);
             return `击败了 ${s.mstName}！`;
@@ -536,5 +555,6 @@ export class ActionCombat {
     /** 清除战斗状态 */
     clear(): void {
         this.state = null;
+        this._onWin = null;
     }
 }

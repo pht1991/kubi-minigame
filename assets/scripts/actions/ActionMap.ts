@@ -109,14 +109,22 @@ export class ActionMap {
         const mstId = keys[Math.floor(Math.random() * keys.length)];
         const r = this._dungeon.battle(mstId);
         // 胜利后递减该地点怪物数量（与资源枯竭设计自洽；玩家阵亡则不扣减）
-        if (r.success) {
-            const entry = this._gm.placeSaveData[placeId]?.mst?.[mstId];
-            if (entry && entry.amount > 0) {
-                entry.amount -= 1;
-                this._eventBus.emit('place_change', placeId);
-            }
-        }
+        if (r.success) this.consumeHuntedMonster(placeId, mstId);
         return r;
+    }
+
+    /**
+     * 狩猎胜利后扣减该地点怪物数量（与采集资源枯竭一致，amount 归零后该怪不再出现）。
+     * 同时供交互式战斗路径（OutdoorPage → BattlePanel）在胜利时复用，保证
+     * 自动解算(ActionDungeon.battle) 与交互式(ActionCombat) 两套路径后果一致。
+     * 幂等安全：amount 已为 0 时不继续递减。
+     */
+    consumeHuntedMonster(placeId: string, mstId: string): void {
+        const entry = this._gm.placeSaveData[placeId]?.mst?.[mstId];
+        if (entry && entry.amount > 0) {
+            entry.amount -= 1;
+            this._eventBus.emit('place_change', placeId);
+        }
     }
 
     /** 探测狩猎（不自动战斗）：随机抽怪，返回怪物 ID 供 BattlePanel 使用 */

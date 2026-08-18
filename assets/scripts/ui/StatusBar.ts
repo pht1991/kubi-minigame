@@ -6,7 +6,7 @@
  * 不再依赖编辑器 @property 绑定或运行时按名查找（场景预置 StatusBar 已移除）。
  */
 
-import { _decorator, Component, Color } from 'cc';
+import { _decorator, Component, Color, Node, NodeEventType, EventTouch } from 'cc';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { TimeSystem } from '../systems/TimeSystem';
@@ -25,6 +25,12 @@ export class StatusBar extends Component {
     psLabel: UILabel | null = null;
     sanLabel: UILabel | null = null;
     tempLabel: UILabel | null = null;
+
+    /**
+     * 状态图标点击回调（T5.2）：点击某状态图标时由 MainScene 弹该状态一句话释义。
+     * MainScene 在赋值 Label 字段后调用 bindStatusClicks() 绑定触摸。
+     */
+    onStatusClick?: (key: string) => void;
 
     // 固定引用，避免 onLoad/onDestroy 中 bind 每次生成新函数导致 off 失效
     private _onRefresh = () => this.refresh();
@@ -45,6 +51,27 @@ export class StatusBar extends Component {
         this._eventBus.off(GameEvents.STATE_CHANGE, this._onRefresh);
         this._eventBus.off(GameEvents.TIME_PASS, this._onRefresh);
         this._eventBus.off(GameEvents.UI_REFRESH, this._onRefresh);
+    }
+
+    /**
+     * 绑定 6 个状态图标的点击（T5.2）：点击弹该状态一句话释义。
+     * 必须在 MainScene 给各 Label 字段赋值之后调用一次（onLoad 时字段尚未赋值）。
+     */
+    public bindStatusClicks(): void {
+        this._bindStatus('hp', this.hpLabel);
+        this._bindStatus('full', this.fullLabel);
+        this._bindStatus('moist', this.moistLabel);
+        this._bindStatus('ps', this.psLabel);
+        this._bindStatus('san', this.sanLabel);
+        this._bindStatus('temp', this.tempLabel);
+    }
+
+    private _bindStatus(key: string, label: UILabel | null): void {
+        if (!label || !label.node) return;
+        label.node.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
+            e.propagationStopped = true;
+            this.onStatusClick?.(key);
+        });
     }
 
     /** 刷新状态栏（两行布局：标题行 + 数值行） */

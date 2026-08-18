@@ -35,6 +35,8 @@ import { ProgressOverlay } from './ProgressOverlay';
 import { ResultModal } from './ResultModal';
 import { HarvestModal } from './HarvestModal';
 import { StatusBar } from './StatusBar';
+import { Tutorial } from './Tutorial';
+import { TutorialPanel } from './TutorialPanel';
 import { GridPage, GridCellData } from '../data/types';
 import { PageContext } from './pages/PageContext';
 import { C, BtnStyle } from './theme';
@@ -211,6 +213,9 @@ export class MainScene extends Component {
     private _restPage: RestPage | null = null;
     private _bagPage: BagPage | null = null;
     private _bigBoxPage: BigBoxPage | null = null;
+
+    /** 新手引导首玩 3 步卡（T5.1） */
+    private _tutorialPanel: TutorialPanel | null = null;
 
     /** 是否已死亡（防止死亡界面重复触发） */
     private _isDead: boolean = false;
@@ -427,6 +432,13 @@ export class MainScene extends Component {
         pageCtx.bigBoxPage = this._bigBoxPage;
         pageCtx.modalLayer = this._modalLayer!;
 
+        // 新手引导首玩 3 步卡（T5.1）：仅首次进入时由 start() 末尾判定弹出
+        const tutNode = new Node('TutorialPanel');
+        tutNode.layer = this.node.layer;
+        this._tutorialPanel = tutNode.addComponent(TutorialPanel);
+        this._modalLayer!.addChild(tutNode);
+        this._tutorialPanel.attach(pageCtx);
+
         // 初始化一级网格（须在所有 Page 创建之后，依赖 _buildPage）
         this.initHomeGrid();
 
@@ -452,6 +464,27 @@ export class MainScene extends Component {
 
         // 盗贼偷家结算反馈（离开基地期间被洗劫 / 被防盗陷阱击退）
         this._eventBus.on(GameEvents.ROBBER_RAID, this._onRobberRaid);
+
+        // T5.1 首玩 3 步卡：仅首次进入游戏时弹出（SaveManager 标志去重，老玩家 / 回访者不重复）
+        if (this._tutorialPanel && !Tutorial.isFirstPlayDone()) {
+            this._tutorialPanel.show('新手引导');
+        }
+    }
+
+    /** T5.2：状态栏点击某状态图标 → 弹该状态一句话释义（复用 DialogPanel，零新架构） */
+    private showStatusDefinition(key: string): void {
+        const def = Tutorial.STATUS_DEFS[key];
+        if (!def || !this._dialogPanel) return;
+        this._dialogPanel.show(def.name, [
+            { label: def.desc, data: null, disabled: true, noTruncate: true },
+            { label: '知道了', data: 'ok' },
+        ], () => {});
+    }
+
+    /** T5.3：首次进入某页面时，顶部 msg 条给一句上下文（仅首次，SaveManager 标志去重） */
+    private _maybePageHint(id: string): void {
+        const key = Tutorial.PAGE_HINT_OF[id];
+        if (key) Tutorial.maybeShowHint(key);
     }
 
     /** 换季公告（冬季预警停产，春季恢复） */
@@ -723,6 +756,10 @@ export class MainScene extends Component {
         comp.tempLabel = labels[5];
         comp.refresh(); // 首帧立即填充（字段已在 addComponent 后赋值）
 
+        // T5.2：状态图标点击 → 弹该状态一句话释义（复用 DialogPanel）
+        comp.onStatusClick = (key: string) => this.showStatusDefinition(key);
+        comp.bindStatusClicks();
+
         this._statusBar = bar;
     }
 
@@ -833,6 +870,9 @@ export class MainScene extends Component {
 
     /** 底部快捷栏按钮处理 —— 标签式导航（清栈后push，不堆叠面包屑） */
     private onBottomAction(action: string): void {
+        // T5.3：首次进入该页时顶部 msg 条给一句上下文（仅首次，SaveManager 标志去重）
+        this._maybePageHint(action);
+
         // 背包为模态弹窗，独立于导航栈：直接打开，不动当前页/面包屑
         if (action === 'bag') {
             this._bagPage?.openBagPanel();
@@ -905,6 +945,9 @@ export class MainScene extends Component {
     /** 一级网格点击处理（首页 + 设施入口） */
     private onHomeCellClick(id: string): void {
         this._lastMsg = ''; // 切换系统时清空旧反馈
+
+        // T5.3：首次进入该页时顶部 msg 条给一句上下文（仅首次，SaveManager 标志去重）
+        this._maybePageHint(id);
 
         // 已建设施入口 → 对应功能（已建设施直接打开详情弹窗，跳过中间列表页）
         const facilityRoutes: Record<string, () => void> = {

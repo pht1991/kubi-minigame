@@ -6,11 +6,11 @@
  * 点击自带 stopPropagation，避免穿透到遮罩/面板。
  */
 
-import { Color, NodeEventType, EventTouch, Graphics } from 'cc';
+import { NodeEventType, EventTouch, Graphics } from 'cc';
 import { UINode } from './UINode';
 import { UIShape } from './UIShape';
 import { UILabel } from './UILabel';
-import { BtnStyle } from '../theme';
+import { BtnStyle, C } from '../theme';
 
 export class UIButton extends UINode {
     private _bg: UIShape;
@@ -48,7 +48,7 @@ export class UIButton extends UINode {
     setEnabled(b: boolean): this {
         this._enabled = b;
         const s: BtnStyle = b ? this._style
-            : { ...this._style, bg: new Color(175, 170, 163), text: new Color(140, 135, 130) };
+            : { ...this._style, bg: C.disabledBg, text: C.disabledText, border: C.disabledBorder };
         this._bg.gfx.clear();
         this._bg.rect(this._w, this._h, s.bg, s.radius, s.border, s.borderW);
         this._label.setColor(s.text);

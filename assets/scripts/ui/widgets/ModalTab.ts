@@ -39,6 +39,6 @@ export class ModalTab extends UINode {
             on ? C.tabOn : C.tabOff, 12,
             on ? C.accent : C.panelBorder, 2,
         );
-        this._lbl.setColor(on ? C.white : C.body);
+        this._lbl.setColor(C.body);   // 选中态文字改深棕（C.body）：tabOn 暖底白字仅 2.3:1，深棕字 ≈6.3:1 达 AA
     }
 }

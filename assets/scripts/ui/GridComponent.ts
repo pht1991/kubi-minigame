@@ -424,14 +424,14 @@ export class GridComponent extends Component {
         const shape = this._upgradeShape!;
         let fill: Color, stroke: Color;
         if (info.state === 'maxed') {
-            fill = new Color(220, 218, 212);        // 浅灰
-            stroke = new Color(190, 188, 182);
+            fill = C.cellBgDisabled;        // 浅灰（已满级）
+            stroke = C.cellStrokeDisabled;
         } else if (info.state === 'disabled') {
-            fill = new Color().fromHEX('#EDE8D5');   // 浅杏色
-            stroke = new Color().fromHEX('#D0C9B0');
+            fill = C.cellBgDisabled;        // 灰底（明确禁用，与 warm 选中态区分）
+            stroke = C.cellStrokeDisabled;
         } else {
-            fill = new Color().fromHEX('#EDE8D5');   // 暖杏色
-            stroke = new Color().fromHEX('#C9B87A');  // 金描边
+            fill = C.cellSelectedBg;        // 暖杏底（与全局选中态统一）
+            stroke = C.cellSelectedStroke;  // 金描边（#C9B87A）
         }
         shape.gfx.clear();
         shape.rect(BTN_W, BTN_H, fill, R, stroke, 1);
@@ -444,11 +444,11 @@ export class GridComponent extends Component {
         const ulabel = this._upgradeLabel!;
         ulabel.setText(info.state === 'maxed' ? '已满级' : info.label);
         if (info.state === 'maxed') {
-            ulabel.setColor(new Color().fromHEX('#888780')); // 灰色文字
+            ulabel.setColor(C.cellTextDisabled);          // 深灰（已满级）
         } else if (info.state === 'disabled') {
-            ulabel.setColor(new Color().fromHEX('#A89F80')); // 暗杏色文字
+            ulabel.setColor(C.sub);                        // 暗杏灰（禁用）
         } else {
-            ulabel.setColor(new Color().fromHEX('#8B6914')); // 金棕色文字
+            ulabel.setColor(C.cellCount);                  // 金棕色（可用升级，暖杏底上可读）
         }
 
         // 点击事件（仅 normal 状态响应）
@@ -524,7 +524,9 @@ export class GridComponent extends Component {
         const halfFH = totalFooterH / 2;
         for (let i = 0; i < footerCells.length; i++) {
             const fd = footerCells[i];
-            const fnode = this.createCellNode();
+            // 复用对象池节点（无则新建），与正文格共用 _cellPool，避免全量重建
+            const fnode = this._cellPool.length > 0 ? this._cellPool.pop()! : this.createCellNode();
+            fnode.active = true;
             fnode.setParent(this._footerNode);
 
             const fL = resolveCellLayout(fd, fctx, { defaultKind: 'bar' });
@@ -538,6 +540,10 @@ export class GridComponent extends Component {
             fnode.setPosition(0, fy, 0);
 
             const fcell = fnode.getComponent(GridCell) || fnode.addComponent(GridCell);
+            // 清除上一轮可能残留的触摸监听（对象池复用节点时防止重复绑定叠加）
+            fnode.off(Node.EventType.TOUCH_START);
+            fnode.off(Node.EventType.TOUCH_END);
+            fnode.off(Node.EventType.TOUCH_CANCEL);
             fcell.setLayout(fL);
             fcell.setData(fd);
             fcell.setOnClick((clickedCell) => {
@@ -556,15 +562,20 @@ export class GridComponent extends Component {
 
     /** 仅清除页脚（不触 cells，供 renderFooter 内部复用） */
     private clearFooter(): void {
+        // 回收页脚格子到对象池（与正文格复用同一池，避免每次渲染全量 destroy+instantiate）
         for (const cell of this._footerCells) {
             if (cell && cell.node && cell.node.isValid) {
-                cell.node.destroy();
+                const node = cell.node;
+                node.removeFromParent();
+                node.active = false;
+                this._cellPool.push(node);
             }
         }
         this._footerCells = [];
+        // 页脚容器保留复用（仅清空子节点），renderFooter 会重建内容
         if (this._footerNode && this._footerNode.isValid) {
-            this._footerNode.destroy();
-            this._footerNode = null;
+            const oldChildren = [...this._footerNode.children];
+            for (const ch of oldChildren) { if (ch.isValid) ch.destroy(); }
         }
     }
 

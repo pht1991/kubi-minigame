@@ -54,9 +54,9 @@ export class BattlePanel extends ModalPanel {
         this.node.active = false;
     }
 
-    /** 开始战斗（prefix 为地牢前缀怪物 key 或前缀对象，可选） */
-    startBattle(mstId: string, prefix?: string | Record<string, boolean>): void {
-        if (!this._combat.init(mstId, prefix)) return;
+    /** 开始战斗（prefix 为地牢前缀怪物 key 或前缀对象，可选；onWin 为胜利一次性回调） */
+    startBattle(mstId: string, prefix?: string | Record<string, boolean>, onWin?: () => void): void {
+        if (!this._combat.init(mstId, prefix, onWin)) return;
         if (this._titleLbl) this._titleLbl.string = '战斗';
         this.refreshUI();
         this.node.active = true;

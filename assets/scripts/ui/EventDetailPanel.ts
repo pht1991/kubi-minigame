@@ -31,8 +31,8 @@ const LABEL_TEXT = new Color(100, 80, 60, 255);
 
 /** 按钮预设 */
 const TALK_STYLE: BtnStyle = { bg: C.tabOn, border: C.btnBorder, borderW: 2, text: C.body, radius: S.btnRadius, fontSize: 22 };
-const TRIGGER_STYLE: BtnStyle = { bg: C.accent, border: C.btnBorder, borderW: 2, text: C.white, radius: S.btnRadius, fontSize: 22 };
-const DISABLED_STYLE: BtnStyle = { bg: C.disabled, border: new Color(170, 165, 158), borderW: 2, text: new Color(140, 135, 130), radius: S.btnRadius, fontSize: 22 };
+const TRIGGER_STYLE: BtnStyle = { bg: C.accentDeep, border: C.btnBorder, borderW: 2, text: C.white, radius: S.btnRadius, fontSize: 22 };
+const DISABLED_STYLE: BtnStyle = { bg: C.disabledBg, border: C.disabledBorder, borderW: 2, text: C.disabledText, radius: S.btnRadius, fontSize: 22 };
 
 export interface EventDetailParams {
     /** NPC 名（标题栏） */

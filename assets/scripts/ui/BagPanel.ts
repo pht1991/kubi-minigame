@@ -33,7 +33,7 @@ export class BagPanel extends ModalPanel {
 
     // 字号——与主页状态栏(S.font.body=20)和底部按钮(22)对齐
     private readonly NAME_SIZE = S.font.body;       // 名称 = 主页数值 20
-    private readonly SUB_SIZE = 16;                  // 副标签/耐久
+    private readonly SUB_SIZE = S.font.durText;      // 副标签/耐久（P0×4：耐久数值下限 ≥16，由主题 token 驱动）
     private readonly COUNT_SIZE = S.font.body;       // 数量 = 主页数值 20
 
     // 类型 → 色块颜色映射（暖棕色调色板内）
