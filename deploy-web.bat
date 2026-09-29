@@ -118,6 +118,8 @@ echo [3/3] Copying build output and pushing to gh-pages ...
 xcopy "%WEB_OUT%\*" "%DEPLOY_TMP%\" /E /Y /I >nul
 REM prevent GitHub Pages Jekyll from mangling the site
 if not exist "%DEPLOY_TMP%\.nojekyll" type nul > "%DEPLOY_TMP%\.nojekyll"
+REM custom domain: serve under phtbyte.com subdomain (survives re-deploys)
+> "%DEPLOY_TMP%\CNAME" echo kubi.phtbyte.com
 git add -A
 git commit -q -m "deploy web %date% %time%"
 git push origin gh-pages
