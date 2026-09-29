@@ -281,6 +281,7 @@ export class MainScene extends Component {
         Layout.landscape = isDesktopWeb;
         // 横屏壳层缩放：状态栏/底栏/标题/字号统一压小（竖屏 1 = 零回归）
         Layout.uiScale = isDesktopWeb ? 0.7 : 1;
+        Layout.isWeb = sys.platform === 'WEB';
         // FIXED_WIDTH 保持设计宽度不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
         view.setDesignResolutionSize(Layout.designW, Layout.designH, ResolutionPolicy.FIXED_WIDTH);
@@ -292,6 +293,16 @@ export class MainScene extends Component {
 
         // 获取微信安全区域（刘海屏顶部 / Home Indicator 底部），避免 UI 被遮挡
         this._fetchSafeArea();
+
+        // Web 端：deploy-web.bat 注入的 HTML 固定顶栏会盖住画布内状态栏，
+        // 需在顶安全区额外留出顶栏高度（屏幕 CSS 像素 → 设计坐标），把状态栏下移到顶栏之下。
+        // 微信/编辑器无该顶栏（isWeb=false），不生效，零回归。
+        if (Layout.isWeb) {
+            const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : Layout.designW;
+            const navInsetDesign = Math.round(Layout.webNavTopPx * Layout.designW / Math.max(winW, 1));
+            this._safeTop += navInsetDesign;
+            console.log('[WebNav] innerWidth=', winW, 'navInsetDesign=', navInsetDesign);
+        }
 
         // 尝试加载存档
         if (!this._saveMgr.load()) {

@@ -116,6 +116,13 @@ if errorlevel 1 (
 REM ---------- step 3 - copy build output, commit, push ----------
 echo [3/3] Copying build output and pushing to gh-pages ...
 xcopy "%WEB_OUT%\*" "%DEPLOY_TMP%\" /E /Y /I >nul
+REM copy extra static pages (about / privacy) into gh-pages root
+if exist "%ROOT%\web-extra\about.html" xcopy "%ROOT%\web-extra\about.html" "%DEPLOY_TMP%\" /Y >nul
+if exist "%ROOT%\web-extra\privacy.html" xcopy "%ROOT%\web-extra\privacy.html" "%DEPLOY_TMP%\" /Y >nul
+REM inject top nav bar (Home / About / Privacy) into generated index.html (fixed top, no canvas overlap)
+set "KB_ROOT=%ROOT%"
+set "KB_DEPLOY_TMP=%DEPLOY_TMP%"
+if exist "%ROOT%\web-extra\inject-nav.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\web-extra\inject-nav.ps1"
 REM prevent GitHub Pages Jekyll from mangling the site
 if not exist "%DEPLOY_TMP%\.nojekyll" type nul > "%DEPLOY_TMP%\.nojekyll"
 REM custom domain: serve under phtbyte.com subdomain (survives re-deploys)

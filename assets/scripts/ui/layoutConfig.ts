@@ -17,6 +17,14 @@ export const Layout = {
     designH: 1334,
     /** 是否横屏桌面模式（桌面浏览器才为 true） */
     landscape: false,
+    /** 是否浏览器（WEB）平台 —— 用于注入 HTML 顶栏让位逻辑（微信/编辑器=false） */
+    isWeb: false,
+    /**
+     * Web 端注入的 HTML 顶栏高度（屏幕 CSS 像素）。
+     * deploy-web.bat 会往 index.html 注入一个固定顶栏（约 38px），
+     * 它会盖住画布内的状态栏；MainScene 据此把状态栏下移到顶栏之下。
+     */
+    webNavTopPx: 44,
     /**
      * 壳层 UI 缩放系数（横屏专用）。
      * 竖屏 750 设计稿的状态栏/底栏/字号直接搬到 1280×720 横屏会显得笨重
