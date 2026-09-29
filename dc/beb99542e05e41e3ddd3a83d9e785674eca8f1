@@ -1,0 +1,49 @@
+deploy-web.bat
+  s_2421242316b263::t_af6c8ce5ebf14e 119-125
+assets/scripts/ui/layoutConfig.ts
+  s_f8b3b7f5531622::t_1583f63a9aed1b 20-27
+web-extra/nav.html
+  s_2421242316b263::t_a01aa711b4b78a 1-6
+web-extra/inject-nav.ps1
+  s_2421242316b263::t_70a00da7f3e089 1-17
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_909572be911904 284
+  s_f8b3b7f5531622::t_ff8b456daee6ca 297-306
+web-extra/privacy.html
+  s_2421242316b263::t_0a67113e90c981 1-36
+.workbuddy/memory/2026-09-29.md
+  s_f8b3b7f5531622::t_5e75903a031feb 91-97
+web-extra/about.html
+  s_2421242316b263::t_ba2002106b4478 45
+  s_2421242316b263::t_7698dbd31f0628 1-44,46-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "dcbeb99542e05e41e3ddd3a83d9e785674eca8f1",
+  "prompts": {},
+  "sessions": {
+    "s_2421242316b263": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "00aab39a-69ad-452b-9fd5-60d74b193a0a",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    },
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3-x"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
