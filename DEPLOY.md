@@ -1,7 +1,7 @@
 # 部署与上架指南 · 超苦逼冒险者（微信小游戏 + 网页版）
 
 项目路径：`D:\Projects\demos\front_end\kubi-minigame`
-Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 微信 appid `wx0b9a400803b8dbdc`
+Cocos Creator 3.8 LTS ｜ 750×1334 竖屏 ｜ 微信 appid `wx****（见 project.config.json）`
 远程仓库：`git@github.com:pht1991/kubi-minigame.git`（master + gh-pages）
 
 ---
@@ -47,7 +47,7 @@ taskkill /F /IM CocosDashboard.exe
 ### A. 首次导入项目
 1. 打开微信开发者工具 → 首屏或顶部「项目」→「导入项目」。
 2. **项目目录**：选 `D:\Projects\demos\front_end\kubi-minigame\build\wechatgame`。
-3. **AppID**：填 `wx0b9a400803b8dbdc`；无权限时也可点「测试号」用测试 AppID 体验（部分能力受限）。
+3. **AppID**：填 `wx****（见 project.config.json）`；无权限时也可点「测试号」用测试 AppID 体验（部分能力受限）。
 4. **后端服务**：选「不使用云开发」（本项目无云开发）。
 5. 点「导入」。首次自动编译，底部状态栏出现 `编译成功` 即可。
 
@@ -102,7 +102,7 @@ taskkill /F /IM CocosDashboard.exe
 1. `deploy-wechat.bat` 顶部 `SEPARATE_ENGINE=false` → 改为 `true`。
 2. `profiles/v2/packages/wechatgame.json` 两处 `separateEngine` → `true`。
 3. 重跑 `deploy-wechat.bat`（或 `push-all.bat`）。
-4. MP 后台给 appid 加 **CocosCreator 插件** `wx0446ba2621dda60a` 并授权；DevTools 清缓存重编译。
+4. MP 后台给 appid 加 **CocosCreator 插件** `wx****（CocosCreator 插件 ID）` 并授权；DevTools 清缓存重编译。
 
 > 说明：开发期 `separateEngine=false` 不拆引擎、不声明微信插件、DevTools 免授权即可预览调试。
 

@@ -25,3 +25,6 @@ Desktop.ini
 profiles/v2/packages/builder.json
 profiles/v2/packages/scene.json
 profiles/v2/packages/utils.json
+
+# ===== 本地工作记忆（AI 协作目录，不入库） =====
+.workbuddy/memory/
