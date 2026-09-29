@@ -71,8 +71,8 @@ export class GridComponent extends Component {
     private _refreshScheduled = false;
     /** 标记：本帧渲染了新的格子，需要在 lateUpdate（LayoutSystem 刷新后）滚到顶部 */
     private _needScrollTop: boolean = false;
-    /** 标记：view 背景已初始化（防止重复 addComponent 触发警告） */
-    private _contentBgReady: boolean = false;
+    /** 标记：scrollToTop 延迟任务是否已排程（避免每帧重复排程） */
+    private _scrollTopScheduled: boolean = false;
     /** 稳定刷新回调引用（供 on/off 精准注销，避免 .bind 每次生成新函数导致泄漏） */
     private _onRefresh = () => this.onUIRefresh();
     /** 页脚容器节点（挂在自身节点下、scrollView 下方，固定不滚动） */
@@ -141,9 +141,11 @@ export class GridComponent extends Component {
         // 不设置 contentSize / position —— 完全交给场景编辑器原始配置
     }
 
-    /** 给 ScrollView 可视区域加暖色底纹（Graphics 直接画在 view 节点自身，确保在 content 之下） */
+    /** 给 ScrollView 可视区域加暖色底纹（Graphics 直接画在 view 节点自身，确保在 content 之下）
+     *  注意：每次渲染都重绘，以适配横屏下 view 尺寸被 MainScene 动态改变的情况
+     *  （避免背景矩形停留在场景原始 700×900，导致横屏内容区两边空白）。 */
     private styleContentBg(): void {
-        if (!this.scrollView || this._contentBgReady) return;
+        if (!this.scrollView) return;
         // ScrollView.view 返回 UITransform，取 .node 拿到真正节点
         const t = this.scrollView.view;
         if (!t || !t.isValid) return;
@@ -155,7 +157,6 @@ export class GridComponent extends Component {
         if (!gfx) {
             gfx = viewNode.addComponent(Graphics);
         }
-        this._contentBgReady = true;
 
         const ax = t.width * t.anchorX;
         const ay = t.height * t.anchorY;
@@ -319,7 +320,9 @@ export class GridComponent extends Component {
             rowH = Math.max(rowH, h);
         }
         const contentHeight = Math.max(topY + rowH + this.bottomPadding, 500);
-        const contentWidth = contentInnerW + edgePad * 2;
+        // 横屏：content 内宽不得超过 view 可用宽，否则格子被 Mask 横向裁切而「看不见」
+        const maxContentW = Layout.landscape ? (Layout.designW - 80) : (contentInnerW + edgePad * 2);
+        const contentWidth = Math.min(contentInnerW + edgePad * 2, maxContentW);
 
         // 设置 content 容器 —— 只设置尺寸（锚点/位置由场景编辑器管理，绝不改）
         let contentTransform = this.contentNode.getComponent(UITransform);
@@ -371,8 +374,18 @@ export class GridComponent extends Component {
 
             this._cells.push(cell);
         }
+        // 适配后重绘 view 背景（横屏下 view 尺寸已被 MainScene 改变，背景须跟随）
+        this.styleContentBg();
+
         // 标记：下一帧 lateUpdate（LayoutSystem 刷新 content 尺寸后）滚到顶部。
         this._needScrollTop = true;
+
+        // 诊断：横屏内容区几何（线上排查空白用，可保留）
+        console.log('[Grid] landscape=', Layout.landscape, 'cols=', columns,
+            'contentH=', contentHeight, 'contentW=', contentWidth,
+            'viewW=', this.scrollView && this.scrollView.view ? this.scrollView.view.width : -1,
+            'viewH=', this.scrollView && this.scrollView.view ? this.scrollView.view.height : -1,
+            'cells=', cells.length);
     }
 
     /**
@@ -487,8 +500,8 @@ export class GridComponent extends Component {
         for (const ch of oldChildren) { if (ch.isValid) ch.destroy(); }
         this._footerCells = [];
 
-        // 页脚参数：满宽(700)，单列列表样式，每行高 70
-        const footerW = 700;
+        // 页脚参数：单列列表样式，每行高 70；横屏满宽(设计宽-80)，竖屏保持原 700
+        const footerW = Layout.landscape ? (Layout.designW - 80) : 700;
         const rowH = 70;
         const gap = 8;
         const totalFooterH = footerCells.length * rowH + (footerCells.length - 1) * gap + 16;
@@ -593,16 +606,18 @@ export class GridComponent extends Component {
         if (!this._needScrollTop) return;
         this._needScrollTop = false;
 
-        const sv = this.scrollView;
-        if (!sv || !sv.isValid) return;
-
-        // content 锚点已是标准 (0.5,0.5)、position (0,0,0)，
-        // 初始时 content 中心与 view 中心重合 → 显示的是内容中段而非顶部。
-        // 必须滚到顶部才能看到第一条数据。
-        // 延迟到 lateUpdate（LayoutSystem 刷新 content 尺寸、ScrollView 边界重算之后）
-        // 再调用，避免基于旧边界算出错误偏移。
-        sv.stopAutoScroll();
-        sv.scrollToTop(0);
+        // 延迟一帧再滚到顶部：横屏下 MainScene.fitContentArea 刚改完 view 高度，
+        // 需等 ScrollView 内部边界（基于最新 view/content 尺寸）刷新后再 scrollToTop，
+        // 否则会基于旧边界算出错误偏移 → 内容停在中段/底部空白。
+        if (this._scrollTopScheduled) return;
+        this._scrollTopScheduled = true;
+        this.scheduleOnce(() => {
+            this._scrollTopScheduled = false;
+            const sv = this.scrollView;
+            if (!sv || !sv.isValid) return;
+            sv.stopAutoScroll();
+            sv.scrollToTop(0);
+        }, 0);
     }
 
     /** 清除所有格子（双重保险：追踪列表 + 扫描残留） */

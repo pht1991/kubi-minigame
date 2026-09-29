@@ -670,6 +670,10 @@ export class MainScene extends Component {
         if (!viewNode) return;
 
         const vs = view.getVisibleSize();
+        // 兜底：横屏初始化时 getVisibleSize 可能因画布尚未刷新而返回异常值，
+        // 导致 availH 算出负/过小而提前 return，view 停留在场景原始 700×900，
+        // 在 1280×720 画布下严重错位（只露中间一小块）。FIXED_WIDTH 下正常可见高≈designH。
+        const visH = (vs.height > 0 && vs.height < Layout.designH * 2.5) ? vs.height : Layout.designH;
         const SB_H = 120;             // 状态栏高度（与 createStatusBar 一致）
         const SB_TOP_PAD = 8;          // 状态栏安全区间距（与 _applySafeAreaToScene 一致）
         const BAR_H = 92;              // 底栏高度（与 createBottomBar 一致）
@@ -680,8 +684,8 @@ export class MainScene extends Component {
         // 可用区域（设计分辨率坐标）：
         //   顶 = 屏幕顶 - safeTop - 间距 - SB_H   （即状态栏底边的 Y 坐标）
         //   底 = 屏幕底 + BAR_H + totalBottomOffset （即底栏顶边的 Y 坐标）
-        const topEdge = vs.height / 2 - this._safeTop - SB_TOP_PAD - SB_H;
-        const bottomEdge = -vs.height / 2 + BAR_H + totalBottomOffset;
+        const topEdge = visH / 2 - this._safeTop - SB_TOP_PAD - SB_H;
+        const bottomEdge = -visH / 2 + BAR_H + totalBottomOffset;
         const availH = topEdge - bottomEdge;
         if (availH <= 0) return; // 异常：空间不足，不修改
 
