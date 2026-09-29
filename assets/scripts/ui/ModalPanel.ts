@@ -72,21 +72,19 @@ export abstract class ModalPanel extends Component {
     protected _content: Node | null = null;   // 子类内容构建区（anchor 0.5,1，位于标题下方）
 
     // ════ 上下文（由 MainScene 在创建后 attach，提供 gm/eventBus/dialogPanel）════
-    // 拦截器：若子类在 attach 之前访问这些 getter，会立即抛出清晰的报错，
-    // 而不是在深层嵌套里以 "Cannot read property 'xxx' of undefined" 崩溃。
+    // 防御式访问：未注入 _ctx 时 getter 返回 null（而非抛错）。
+    // 面板由 MainScene 创建后立即 attach，子类对 gm/eventBus/dialogPanel 的访问
+    // 均发生在 attach 之后的用户交互方法中，运行时有值；配合子类的可选链调用稳健。
     private _ctx: PanelContextLike | null = null;
     public attach(ctx: PanelContextLike): void { this._ctx = ctx; }
-    protected get gm(): GameManager {
-        if (!this._ctx) throw new Error(`[ModalPanel] ${this.constructor.name} 未调用 attach(ctx) 注入上下文`);
-        return this._ctx.gm;
+    protected get gm(): GameManager | null {
+        return this._ctx ? this._ctx.gm : null;
     }
-    protected get eventBus(): EventBus {
-        if (!this._ctx) throw new Error(`[ModalPanel] ${this.constructor.name} 未调用 attach(ctx) 注入上下文`);
-        return this._ctx.eventBus;
+    protected get eventBus(): EventBus | null {
+        return this._ctx ? this._ctx.eventBus : null;
     }
-    protected get dialogPanel(): DialogPanel {
-        if (!this._ctx) throw new Error(`[ModalPanel] ${this.constructor.name} 未调用 attach(ctx) 注入上下文`);
-        return this._ctx.dialogPanel;
+    protected get dialogPanel(): DialogPanel | null {
+        return this._ctx ? this._ctx.dialogPanel : null;
     }
 
     onLoad(): void {
