@@ -11,6 +11,7 @@ import { resolveCellLayout, CellLayoutContext } from './cellLayout';
 import { GridNavigator } from '../core/GridNavigator';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { C } from './theme';
+import { Layout } from './layoutConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -270,14 +271,23 @@ export class GridComponent extends Component {
         for (const lbl of labels) { if (lbl.isValid) lbl.destroy(); }
 
         // 页面级布局上下文
-        const columns = this.columns;
+        let columns = this.columns;
         const tileW = this.cellWidth;
         const tileH = this.cellHeight;
         const spacing = this.cellSpacing;
+        let barWidth = this.barWidth;
+        // 横屏桌面：让主网格用满宽度（列数/横条宽从可用宽度推导）；
+        // 竖屏保持页面原 columns 与 barWidth 不变（零回归）。
+        if (Layout.landscape && columns > 1) {
+            const availInnerW = Layout.designW - 32;        // 两侧各留 16
+            barWidth = Math.max(barWidth, availInnerW);     // 横条（满行）也铺满
+            const fit = Math.floor(availInnerW / (tileW + spacing));
+            columns = Math.min(Math.max(fit, columns), 8);  // 至少保持原列数，最多 8 列
+        }
         const tileGridW = columns * tileW + (columns - 1) * spacing;
         // content 内宽取「方格网格宽」与「横条满宽」的较大者，确保列表页横条不被裁切
-        const contentInnerW = Math.max(tileGridW, this.barWidth);
-        const ctx: CellLayoutContext = { columns, tileW, tileH, spacing, contentInnerW, barWidth: this.barWidth, barH: this.barHeight };
+        const contentInnerW = Math.max(tileGridW, barWidth);
+        const ctx: CellLayoutContext = { columns, tileW, tileH, spacing, contentInnerW, barWidth, barH: this.barHeight };
 
         // 解析每格布局
         const items = cells.map(c => ({ data: c, L: resolveCellLayout(c, ctx) }));

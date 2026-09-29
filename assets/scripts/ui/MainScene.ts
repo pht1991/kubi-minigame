@@ -3,7 +3,8 @@
  * 初始化一级网格（主页），定义各功能入口的跳转逻辑
  */
 
-import { _decorator, Component, Node, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Color, Widget, game } from 'cc';
+import { _decorator, Component, Node, UITransform, view, ResolutionPolicy, Layers, Camera, Vec3, Color, Widget, game, sys } from 'cc';
+import { Layout } from './layoutConfig';
 import { GridNavigator } from '../core/GridNavigator';
 import { GameManager } from '../core/GameManager';
 import { EventBus, GameEvents } from '../core/EventBus';
@@ -272,9 +273,15 @@ export class MainScene extends Component {
     };
 
     onLoad(): void {
-        // 设置适配模式：FIXED_WIDTH 保持设计宽度 750 不变，高度自适应填满屏幕
+        // 响应式设计分辨率：桌面浏览器（WEB 且非移动设备）→ 横屏 1280×720；
+        // 手机 / 微信 / 移动端浏览器 → 保持竖屏 750×1334（字节级不变，零回归）。
+        const isDesktopWeb = sys.platform === 'WEB' && !sys.isMobile;
+        Layout.designW = isDesktopWeb ? 1280 : 750;
+        Layout.designH = isDesktopWeb ? 720 : 1334;
+        Layout.landscape = isDesktopWeb;
+        // FIXED_WIDTH 保持设计宽度不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
-        view.setDesignResolutionSize(750, 1334, ResolutionPolicy.FIXED_WIDTH);
+        view.setDesignResolutionSize(Layout.designW, Layout.designH, ResolutionPolicy.FIXED_WIDTH);
 
         // 设备性能分级：低端机降帧省电，档位供后续布局降级(减少重绘/GridCell 等)使用
         const tier = initPerfTier();
@@ -678,7 +685,7 @@ export class MainScene extends Component {
         const availH = topEdge - bottomEdge;
         if (availH <= 0) return; // 异常：空间不足，不修改
 
-        const VIEW_W = 700; // 保持原宽度
+        const VIEW_W = Layout.landscape ? (Layout.designW - 80) : 700; // 横屏用满宽度；竖屏保持原 700
 
         // 【关键修复】原实现把 ScrollView/view 高度直接设为 availH（与容器同高），
         // 导致滚动区上沿覆盖了顶部标题/面包屑区 → 标题被滚动区背景 Sprite 遮挡。
@@ -691,7 +698,7 @@ export class MainScene extends Component {
 
         // 1) GridContainer 填满「状态栏底 ~ 底栏顶」整段可用高度，并居中到该区中心
         const gcTf = gridContainer.getComponent(UITransform);
-        if (gcTf) gcTf.setContentSize(750, availH);
+        if (gcTf) gcTf.setContentSize(Layout.designW, availH);
         gridContainer.setPosition(0, (topEdge + bottomEdge) / 2, 0);
 
         // 2) ScrollView + view 高度 = 预留头部后的剩余空间；
@@ -711,7 +718,7 @@ export class MainScene extends Component {
         const breadcrumbLabel = gridContainer.getChildByName('BreadcrumbLabel');
         if (breadcrumbLabel) breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0);
         const backButton = gridContainer.getChildByName('BackButton');
-        if (backButton) backButton.setPosition(-300, halfH - TITLE_TOP_PAD, 0);
+        if (backButton) backButton.setPosition(-(Layout.designW / 2 - 40), halfH - TITLE_TOP_PAD, 0);
 
         // 存档指示器随布局重算：始终贴在标题行最右侧（与标题同高，避开中间滚动区）
         this.positionSaveIndicator();
@@ -744,7 +751,7 @@ export class MainScene extends Component {
     private createStatusBar(): void {
         if (this._statusBar && this._statusBar.isValid) return;
 
-        const SB_W = 750;
+        const SB_W = Layout.designW;
         const SB_H = 120;
         const bar = new Node('StatusBar');
         bar.layer = this.node.layer;
@@ -760,18 +767,20 @@ export class MainScene extends Component {
         // 时间标题行（一行文本，字号 24，留足高度防 CLAMP 裁切）
         const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, 36, 200, 56, 24);
 
-        // 6 个属性横排（间距 120），每格 "标题\n数值" 两行（字号 20，行高 24，2 行+余量）
-        const attrs: Array<[string, number]> = [
-            ['HP_Label', -300],
-            ['Full_Label', -180],
-            ['Moist_Label', -60],
-            ['PS_Label', 60],
-            ['San_Label', 180],
-            ['Temp_Label', 300],
-        ];
+        // 6 个属性横排，每格 "标题\n数值" 两行（字号 20，行高 24，2 行+余量）
+        // 横屏：沿全宽均布；竖屏：保留原 -300~300 写死位置（零回归）
+        const n = 6;
+        const attrNames = ['HP_Label', 'Full_Label', 'Moist_Label', 'PS_Label', 'San_Label', 'Temp_Label'];
+        const attrXs: number[] = Layout.landscape
+            ? Array.from({ length: n }, (_, i) => {
+                const span = SB_W - 40;
+                const step = span / n;
+                return -SB_W / 2 + 20 + step * (i + 0.5);
+            })
+            : [-300, -180, -60, 60, 180, 300];
         const labels: UILabel[] = [];
-        for (const [name, x] of attrs) {
-            labels.push(this._mkStatusLabel(bar, name, x, -10, 120, 52, 20));
+        for (let i = 0; i < n; i++) {
+            labels.push(this._mkStatusLabel(bar, attrNames[i], attrXs[i], -10, 120, 52, 20));
         }
 
         // 挂 StatusBar 组件并赋值 UILabel 字段
@@ -815,7 +824,7 @@ export class MainScene extends Component {
         // 防重入：如果已创建则跳过
         if (this._bottomBar && this._bottomBar.isValid) return;
 
-        const BAR_W = 750;            // 拉满画布宽度，不留两侧空隙
+        const BAR_W = Layout.designW;            // 拉满画布宽度，不留两侧空隙
         const BAR_H = 92;             // 底栏高度（原 70 在真机显窄）
         const BTN_W = 230;            // 3 按钮均分 750px，留 ~15px 边距：spacing=(750-690)/4≈15
         const BTN_H = 72;             // 按钮高度（原 56 在真机显矮）
