@@ -18,23 +18,16 @@ export { DUNGEON_DATA } from './data_dungeon';
 export const MODE: string = 'RELEASE';
 
 export const STOLE = 0.3;
-export const STOLE_CHANCE = 0.05;
 export const ROBBER_DAY = 10;
 export const MAX_STATE = 100;//所有状态的基础
 //宏变量
 
 export const COOK_TIME_NEED = 0.5;
-export const SAVE_URL = '//kubitionadvanture.sinaapp.com/save.php';
-export const DELAY_MUL = (MODE == 'DEBUG')?0:400;
-// var DELAY_MUL = 400;
-export const MIX_DELAY = 100;
 
 export const DUNGEON_DEC = 1;
 
 export const MAKE_SPEED_MUL = 0.8;
 export const COOK_SPEED_MUL = 0.8;
-// var DELAY_MUL = 0;
-// var MIX_DELAY = 0;
 export const MAX_DISCOVER = 45;//最大探索度 
 
 export const BIG_BOX_BASE_SIZE = 16;
@@ -559,31 +552,6 @@ export const ALCO_DATA = {
         require:{'fruitAlco':4},
         itemGet:'alco',
         itemAmount:4,
-    },
-}
-export const STATE_DATA = {
-    temp:{
-        name:'体温',
-    },
-    full:{
-        name:'满腹',
-        desc:'饮食一直是冒险者们头疼的问题。满腹度会随着时间的流逝慢慢下降。',
-    },
-    moist:{
-        name:'水分',
-        desc:'饮食一直是冒险者们头疼的问题。水分会随着时间的流逝慢慢下降。',
-    },
-    hp:{
-        name:'生命',
-        desc:'只要进行战斗，就很难避免受伤，出门在外可以多准备一些药剂。',
-    },
-    ps:{
-        name:'体力',
-        desc:'从户外获取资源几乎都需要体力的消耗。回家睡一觉就能很快恢复体力。',
-    },
-    san:{
-        name:'精神',
-        desc:'精神影响着你的战斗士气。在外熬夜或者状态低下均容易造成精神萎靡。',
     },
 }
 export const COOK_DATA = [

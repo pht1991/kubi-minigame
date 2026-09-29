@@ -34,6 +34,7 @@ import { SaveIndicator } from './SaveIndicator';
 import { ProgressOverlay } from './ProgressOverlay';
 import { ResultModal } from './ResultModal';
 import { HarvestModal } from './HarvestModal';
+import { OfflineModal } from './OfflineModal';
 import { StatusBar } from './StatusBar';
 import { Tutorial } from './Tutorial';
 import { TutorialPanel } from './TutorialPanel';
@@ -197,6 +198,8 @@ export class MainScene extends Component {
     private _resultModal: ResultModal | null = null;
     /** 采集/拾荒「收获」选择弹窗（由 HARVEST_READY 触发，玩家自行取舍） */
     private _harvestModal: HarvestModal | null = null;
+    private _offlineModal: OfflineModal | null = null;
+    private _offlineDone = false;
 
     /** 烹饪系统页面模块（从 MainScene 抽离，见 pages/CookPage.ts） */
     private _cookPage: CookPage | null = null;
@@ -365,6 +368,12 @@ export class MainScene extends Component {
         this._harvestModal.onOpenBag = () => this._bagPage?.openBagPanel();
         this._modalLayer!.addChild(harvestNode);
 
+        // 创建离线收益结算弹窗（挂 modalLayer，启动检测到离线时长时弹出）
+        const offlineNode = new Node('OfflineModal');
+        offlineNode.layer = this.node.layer;
+        this._offlineModal = offlineNode.addComponent(OfflineModal);
+        this._modalLayer!.addChild(offlineNode);
+
         // 创建公共进度条（挂独立 _progressLayer，盖住弹窗但不挡 Toast 浮层）
         const progressNode = new Node('ProgressOverlay');
         progressNode.layer = this.node.layer;
@@ -401,6 +410,7 @@ export class MainScene extends Component {
         this._battlePanel?.attach(pageCtx);
         this._eventDetailPanel?.attach(pageCtx);
         this._tradePanel?.attach(pageCtx);
+        this._offlineModal?.attach(pageCtx);
         this._cookPage = new CookPage(pageCtx);
         this._craftPage = new CraftPage(pageCtx);
         // 回填各 Page 引用到 ctx，供少数跨域导航（如建筑详情打开农田/陷阱/酿酒管理页）
@@ -468,6 +478,25 @@ export class MainScene extends Component {
         // T5.1 首玩 3 步卡：仅首次进入游戏时弹出（SaveManager 标志去重，老玩家 / 回访者不重复）
         if (this._tutorialPanel && !Tutorial.isFirstPlayDone()) {
             this._tutorialPanel.show('新手引导');
+        }
+
+        // 离线收益结算：读取上次存档时间，推进离线时光并弹窗汇报（仅首次进入时执行一次）。
+        // 用 scheduleOnce 延到下一帧：新挂载的 OfflineModal 需先完成 onLoad/buildSkeleton 才会有 _content。
+        this.scheduleOnce(() => this._handleOfflineProgress(), 0);
+    }
+
+    /** 离线收益结算：根据上次存档时间与现在的真实间隔，推进游戏内离线时光并弹窗汇报 */
+    private _handleOfflineProgress(): void {
+        if (this._offlineDone) return;
+        this._offlineDone = true;
+        const savedAt = this._saveMgr.localSavedAt;
+        if (!savedAt) return;
+        const elapsed = Date.now() - savedAt;
+        if (elapsed < 60_000) return;
+        const report = this._timeSys.settleOffline(elapsed);
+        if (report) {
+            this._eventBus.emit(GameEvents.UI_REFRESH);
+            this._offlineModal?.showReport(report);
         }
     }
 

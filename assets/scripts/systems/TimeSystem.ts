@@ -19,11 +19,31 @@ import {
     TRAP_DATA,
     ITEM_DATA,
     DUNGEON_DEC,
+    ALCO_DATA,
 } from '../data/data';
 
 /** 冬季每小时体温额外流失（制造"难熬"的低温压力） */
 const WINTER_COLD_PER_HOUR = 0.4;
 const SEASON_NAMES = ['春', '夏', '秋', '冬'];
+
+/** 离线结算：真实离线时长 → 游戏内推进小时的映射与上限 */
+const OFFLINE_MIN_MS = 60_000;        // 离线不足 1 分钟不弹结算
+const OFFLINE_RATE = 1;               // 1 真实小时 = 1 游戏小时
+const OFFLINE_MAX_HOURS = 72;         // 离线最多推进 3 游戏日（足够最短酿造 72h 熟成）
+const OFFLINE_DECAY_MUL = 0.5;        // 离线状态衰减按 50%（"休整中"温和衰减）
+
+/** 离线结算报告（供 UI 弹窗展示） */
+export interface OfflineReport {
+    realMs: number;
+    hours: number;
+    dayBefore: number;
+    dayAfter: number;
+    seasonChanged: boolean;
+    seasonName: string;
+    stateDelta: { full: number; moist: number; san: number; temp: number };
+    brewsReady: number;
+    brewsGrew: number;
+}
 
 export class TimeSystem {
     private static _instance: TimeSystem;
@@ -89,7 +109,7 @@ export class TimeSystem {
      * 推进时间
      * 处理小时/天数/季节变化，以及状态衰减
      */
-    advance(hours: number): void {
+    advance(hours: number, opts?: { offline?: boolean }): void {
         const td = this._gm.timeData;
         const oldDay = td.day;
         const oldSeason = td.season;
@@ -104,8 +124,8 @@ export class TimeSystem {
         // 季节变化（每 SEASON_CIRCLE 天换季）
         td.season = Math.floor((td.day - 1) / SEASON_CIRCLE) % 4;
 
-        // 状态衰减（按小时）
-        this.applyDecay(hours);
+        // 状态衰减（按小时）；离线期间按减弱系数，避免回游即"饿死"
+        this.applyDecay(hours, opts?.offline ? OFFLINE_DECAY_MUL : 1);
 
         // 事件通知
         this._eventBus.emit(GameEvents.TIME_PASS, td);
@@ -122,8 +142,8 @@ export class TimeSystem {
             this._eventBus.emit(GameEvents.EVENT_TRIGGER, 'robberQuestGet');
         }
 
-        // 盗贼偷家：离开基地期间按周期结算一次洗劫
-        this.checkRobberRaid();
+        // 盗贼偷家：离线期间不结算（抽象为离线的日子平安度过，避免回游即被洗劫的负面体验）
+        if (!opts?.offline) this.checkRobberRaid();
 
         // 地牢探索度随时间衰减（对齐原版每次推进各层 stairData 减 DUNGEON_DEC）
         const ds = this._gm.dungeonSaveData;
@@ -218,7 +238,7 @@ export class TimeSystem {
      * 满腹 -FULL_DESC_PER_HOUR/h, 水分 -MOIST_DESC_PER_HOUR/h, 精神 -SAN_DESC_PER_HOUR/h
      * 阵营被动：火之阵营代谢稳定（满腹/水分消耗 -15%）；冰之阵营冷静（精神衰减 -50%）
      */
-    private applyDecay(hours: number): void {
+    private applyDecay(hours: number, mul = 1): void {
         let fullMul = 1;
         let moistMul = 1;
         let sanMul = 1;
@@ -230,15 +250,15 @@ export class TimeSystem {
             sanMul = 0.5;
         }
         const delta = {
-            full: -FULL_DESC_PER_HOUR * hours * fullMul,
-            moist: -MOIST_DESC_PER_HOUR * hours * moistMul,
-            san: -SAN_DESC_PER_HOUR * hours * sanMul,
+            full: -FULL_DESC_PER_HOUR * hours * fullMul * mul,
+            moist: -MOIST_DESC_PER_HOUR * hours * moistMul * mul,
+            san: -SAN_DESC_PER_HOUR * hours * sanMul * mul,
         };
         this._gm.playerStateChange(delta);
 
         // 冬季严寒：体温持续流失（制造"难熬"的低温压力，需靠火堆/温酒/保暖维持）
         if (this.season === 3) {
-            this._gm.playerStateChange({ temp: -WINTER_COLD_PER_HOUR * hours });
+            this._gm.playerStateChange({ temp: -WINTER_COLD_PER_HOUR * hours * mul });
         }
     }
 
@@ -255,5 +275,62 @@ export class TimeSystem {
 
         const seasonNames = ['春', '夏', '秋', '冬'];
         return `${seasonNames[this.season]}第${this.day}日 ${period}`;
+    }
+
+    /**
+     * 离线结算：玩家重新进入游戏时，根据上次存档时间与当前时间的真实间隔，
+     * 把游戏内时钟向前推进（受上限约束），并：
+     *   - 让时间敏感的生产（如酿酒）正常熟成；
+     *   - 状态按减弱系数衰减（"休整中"，避免回游即饿死）；
+     *   - 跳过盗贼偷家（抽象为离线的日子平安度过，避免回游即被洗劫的负面体验）。
+     * 返回结算报告供 UI 弹窗展示；间隔过短或不足阈值时返回 null（不弹窗）。
+     */
+    settleOffline(realElapsedMs: number): OfflineReport | null {
+        if (realElapsedMs < OFFLINE_MIN_MS) return null;
+        const hours = Math.min((realElapsedMs / 3_600_000) * OFFLINE_RATE, OFFLINE_MAX_HOURS);
+        if (hours < 0.5) return null;
+
+        const gm = this._gm;
+        const ps = gm.playerState;
+        const before = { full: ps.full, moist: ps.moist, san: ps.san, temp: ps.temp };
+        const dayBefore = gm.timeData.day;
+        const seasonBefore = gm.timeData.season;
+        const readyBefore = this._countReadyBrews();
+
+        this.advance(hours, { offline: true });
+
+        const after = { full: gm.playerState.full, moist: gm.playerState.moist, san: gm.playerState.san, temp: gm.playerState.temp };
+        const readyAfter = this._countReadyBrews();
+
+        return {
+            realMs: realElapsedMs,
+            hours,
+            dayBefore,
+            dayAfter: gm.timeData.day,
+            seasonChanged: gm.timeData.season !== seasonBefore,
+            seasonName: this.seasonName,
+            stateDelta: {
+                full: after.full - before.full,
+                moist: after.moist - before.moist,
+                san: after.san - before.san,
+                temp: after.temp - before.temp,
+            },
+            brewsReady: readyAfter,
+            brewsGrew: Math.max(0, readyAfter - readyBefore),
+        };
+    }
+
+    /** 统计当前已可收获（熟成完成）的酿造份数 */
+    private _countReadyBrews(): number {
+        const slots = (this._gm.alcoSaveData as Array<{ recipeId: string; plantDay: number; plantHour: number }>) || [];
+        const td = this._gm.timeData;
+        let n = 0;
+        for (const s of slots) {
+            const recipe = ALCO_DATA[s.recipeId];
+            if (!recipe) continue;
+            const elapsed = (td.day - s.plantDay) * 24 + (td.hour - s.plantHour);
+            if (elapsed >= (recipe as any).timeMax) n++;
+        }
+        return n;
     }
 }
