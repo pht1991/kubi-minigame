@@ -279,6 +279,8 @@ export class MainScene extends Component {
         Layout.designW = isDesktopWeb ? 1280 : 750;
         Layout.designH = isDesktopWeb ? 720 : 1334;
         Layout.landscape = isDesktopWeb;
+        // 横屏壳层缩放：状态栏/底栏/标题/字号统一压小（竖屏 1 = 零回归）
+        Layout.uiScale = isDesktopWeb ? 0.7 : 1;
         // FIXED_WIDTH 保持设计宽度不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
         view.setDesignResolutionSize(Layout.designW, Layout.designH, ResolutionPolicy.FIXED_WIDTH);
@@ -674,9 +676,10 @@ export class MainScene extends Component {
         // 导致 availH 算出负/过小而提前 return，view 停留在场景原始 700×900，
         // 在 1280×720 画布下严重错位（只露中间一小块）。FIXED_WIDTH 下正常可见高≈designH。
         const visH = (vs.height > 0 && vs.height < Layout.designH * 2.5) ? vs.height : Layout.designH;
-        const SB_H = 120;             // 状态栏高度（与 createStatusBar 一致）
+        const S = Layout.uiScale;
+        const SB_H = Math.round(120 * S); // 状态栏高度（与 createStatusBar 一致）
         const SB_TOP_PAD = 8;          // 状态栏安全区间距（与 _applySafeAreaToScene 一致）
-        const BAR_H = 92;              // 底栏高度（与 createBottomBar 一致）
+        const BAR_H = Math.round(92 * S); // 底栏高度（与 createBottomBar 一致）
         const BAR_BOTTOM_MARGIN = 3;   // 底栏底部间距（与 createBottomBar 一致）
         const MIN_BOTTOM_MARGIN = 16;  // 底部最小间距（与 createBottomBar 一致）
         const totalBottomOffset = BAR_BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
@@ -695,7 +698,7 @@ export class MainScene extends Component {
         // 导致滚动区上沿覆盖了顶部标题/面包屑区 → 标题被滚动区背景 Sprite 遮挡。
         // 正确做法：从可用高度里预留 HEADER_H（标题+面包屑）与底部留白 BOTTOM_PAD，
         // 滚动区高度 = availH - HEADER_H - BOTTOM_PAD，并整体下移到头部下方。
-        const HEADER_H = 100;     // 顶部标题+面包屑预留（原 1100 容器里 450~550 = 100）
+        const HEADER_H = Math.round(100 * S); // 顶部标题+面包屑预留（原 1100 容器里 450~550 = 100）
         const BOTTOM_PAD = 16;    // 底部留白（与 GridComponent.bottomPadding 一致）
         const svH = availH - HEADER_H - BOTTOM_PAD;
         if (svH <= 0) return;
@@ -714,15 +717,16 @@ export class MainScene extends Component {
         if (viewTf) viewTf.setContentSize(VIEW_W, svH);
 
         // 3) 标题/面包屑定位到 GridContainer 顶部（头部区内、滚动区之上，不会被覆盖）
-        const TITLE_TOP_PAD = 35;   // 标题距容器顶边（原 550-515=35）
-        const CRUMB_GAP = 40;         // 面包屑在标题下方（原 515-475=40）
+        // 横屏：节点整体缩放（场景 Label 字号 28/18 是竖屏设计稿尺寸，直接显示偏大）
+        const TITLE_TOP_PAD = Math.round(35 * S);   // 标题距容器顶边（原 550-515=35）
+        const CRUMB_GAP = Math.round(40 * S);       // 面包屑在标题下方（原 515-475=40）
         const halfH = availH / 2;
         const titleLabel = gridContainer.getChildByName('TitleLabel');
-        if (titleLabel) titleLabel.setPosition(0, halfH - TITLE_TOP_PAD, 0);
+        if (titleLabel) { titleLabel.setPosition(0, halfH - TITLE_TOP_PAD, 0); titleLabel.setScale(S, S, 1); }
         const breadcrumbLabel = gridContainer.getChildByName('BreadcrumbLabel');
-        if (breadcrumbLabel) breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0);
+        if (breadcrumbLabel) { breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0); breadcrumbLabel.setScale(S, S, 1); }
         const backButton = gridContainer.getChildByName('BackButton');
-        if (backButton) backButton.setPosition(-(Layout.designW / 2 - 40), halfH - TITLE_TOP_PAD, 0);
+        if (backButton) { backButton.setPosition(-(Layout.designW / 2 - 40), halfH - TITLE_TOP_PAD, 0); backButton.setScale(S, S, 1); }
 
         // 存档指示器随布局重算：始终贴在标题行最右侧（与标题同高，避开中间滚动区）
         this.positionSaveIndicator();
@@ -737,14 +741,16 @@ export class MainScene extends Component {
         const ind = SaveIndicator.instance;
         if (!ind || !ind.node || !ind.node.isValid) return;
         const vs = view.getVisibleSize();
-        const SB_H = 120;        // 状态栏高度（与 createStatusBar 一致）
+        const S = Layout.uiScale;
+        const SB_H = Math.round(120 * S); // 状态栏高度（与 createStatusBar 一致）
         const SB_TOP_PAD = 8;    // 状态栏安全区间距（与 _applySafeAreaToScene 一致）
-        const TITLE_TOP_PAD = 35;// 标题距容器顶边（与 fitContentArea 一致）
-        // 标题行绝对 Y（= 状态栏底边 - 35）
+        const TITLE_TOP_PAD = Math.round(35 * S);// 标题距容器顶边（与 fitContentArea 一致）
+        // 标题行绝对 Y（= 状态栏底边 - TITLE_TOP_PAD）
         const titleTopY = vs.height / 2 - this._safeTop - SB_TOP_PAD - SB_H - TITLE_TOP_PAD;
-        // 最右侧：内容区右缘(=vs.width/2)留 16，再往左退半宽(70)
-        const indX = vs.width / 2 - 16 - 70;
+        // 最右侧：内容区右缘(=vs.width/2)留 16，再往左退半宽(70×S)；横屏下整体缩放药丸
+        const indX = vs.width / 2 - Math.round(16 + 70 * S);
         ind.node.setPosition(indX, titleTopY, 0);
+        ind.node.setScale(S, S, 1);
     }
 
     /**
@@ -755,8 +761,9 @@ export class MainScene extends Component {
     private createStatusBar(): void {
         if (this._statusBar && this._statusBar.isValid) return;
 
+        const S = Layout.uiScale;
         const SB_W = Layout.designW;
-        const SB_H = 120;
+        const SB_H = Math.round(120 * S);
         const bar = new Node('StatusBar');
         bar.layer = this.node.layer;
         const tf = bar.addComponent(UITransform);
@@ -768,10 +775,10 @@ export class MainScene extends Component {
         // 背景（替代原场景 Bg Sprite / 手绘 Graphics）：UIShape 暖色矩形
         new UIShape('StatusBarBg').rect(SB_W, SB_H, new Color(245, 240, 230, 255)).mount(bar);
 
-        // 时间标题行（一行文本，字号 24，留足高度防 CLAMP 裁切）
-        const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, 36, 200, 56, 24);
+        // 时间标题行（字号 24×S，留足高度防 CLAMP 裁切）
+        const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, Math.round(36 * S), Math.round(200 * S), Math.round(56 * S), Math.round(24 * S));
 
-        // 6 个属性横排，每格 "标题\n数值" 两行（字号 20，行高 24，2 行+余量）
+        // 6 个属性横排，每格 "标题\n数值" 两行（字号 20×S，行高+4，2 行+余量）
         // 横屏：沿全宽均布；竖屏：保留原 -300~300 写死位置（零回归）
         const n = 6;
         const attrNames = ['HP_Label', 'Full_Label', 'Moist_Label', 'PS_Label', 'San_Label', 'Temp_Label'];
@@ -784,7 +791,7 @@ export class MainScene extends Component {
             : [-300, -180, -60, 60, 180, 300];
         const labels: UILabel[] = [];
         for (let i = 0; i < n; i++) {
-            labels.push(this._mkStatusLabel(bar, attrNames[i], attrXs[i], -10, 120, 52, 20));
+            labels.push(this._mkStatusLabel(bar, attrNames[i], attrXs[i], Math.round(-10 * S), Math.round(120 * S), Math.round(52 * S), Math.round(20 * S)));
         }
 
         // 挂 StatusBar 组件并赋值 UILabel 字段
@@ -828,10 +835,11 @@ export class MainScene extends Component {
         // 防重入：如果已创建则跳过
         if (this._bottomBar && this._bottomBar.isValid) return;
 
+        const S = Layout.uiScale;
         const BAR_W = Layout.designW;            // 拉满画布宽度，不留两侧空隙
-        const BAR_H = 92;             // 底栏高度（原 70 在真机显窄）
-        const BTN_W = 230;            // 3 按钮均分 750px，留 ~15px 边距：spacing=(750-690)/4≈15
-        const BTN_H = 72;             // 按钮高度（原 56 在真机显矮）
+        const BAR_H = Math.round(92 * S);        // 底栏高度（原 70 在真机显窄；横屏 ×S 压小）
+        const BTN_W = Math.round(230 * S);       // 3 按钮均分，横屏随 S 缩小
+        const BTN_H = Math.round(72 * S);        // 按钮高度（原 56 在真机显矮）
 
         // 容器
         this._bottomBar = new Node('BottomBar');
@@ -868,7 +876,7 @@ export class MainScene extends Component {
         // 统一按钮样式（组件库 UIButton：背景 + 圆角 + 文字 + 点击，自带 stopPropagation）
         const btnStyle: BtnStyle = {
             bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1,
-            text: C.barBtnText, radius: 12, fontSize: 22,
+            text: C.barBtnText, radius: 12, fontSize: Math.round(22 * S),
         };
 
         const spacing = (BAR_W - buttons.length * BTN_W) / (buttons.length + 1);
