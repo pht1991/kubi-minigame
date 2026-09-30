@@ -295,14 +295,14 @@ export class GridComponent extends Component {
             barWidth = Math.min(this.barWidth, Layout.designW - 80);
         }
         const tileGridW = columns * tileW + (columns - 1) * spacing;
-        // 仅当页内存在横条(bar)格子时才纳入 barWidth；否则单方格页的 contentInnerW 不会被
-        // 无意义抬高 → 首格不再贴左、左侧 Mask 不再裁切「建造」等首格（整体居中于内容区）。
-        const hasBar = cells.some(c => (c as GridCellData).layout === 'bar');
-        const contentInnerW = hasBar ? Math.max(tileGridW, barWidth) : tileGridW;
+        // 先用占位 contentInnerW 解析各格布局（bar/header 宽=barWidth，与 contentInnerW 无关），
+        // 再按「实际最宽格子」推导 contentInnerW —— 不靠 hasBar 猜测：
+        // 旧法漏判 type:'list' 推导出的横条 → 建造列表页 contentInnerW=125、横条整体右漂跑偏。
+        const protoCtx: CellLayoutContext = { columns, tileW, tileH, spacing, contentInnerW: tileGridW, barWidth, barH: barHeight };
+        const items = cells.map(c => ({ data: c, L: resolveCellLayout(c, protoCtx) }));
+        const maxCellW = items.reduce((m, it) => Math.max(m, it.L.width), 0);
+        const contentInnerW = Math.max(tileGridW, maxCellW);
         const ctx: CellLayoutContext = { columns, tileW, tileH, spacing, contentInnerW, barWidth, barH: barHeight };
-
-        // 解析每格布局
-        const items = cells.map(c => ({ data: c, L: resolveCellLayout(c, ctx) }));
 
         // ── 第一遍：流式定位，算出每格的占位宽度/高度/中心 x / 顶部 y（从 content 顶向下计） ──
         const edgePad = 16;
