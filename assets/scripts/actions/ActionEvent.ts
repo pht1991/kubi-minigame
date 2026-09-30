@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionEvent.ts - 事件系统动作
  * 对齐原 EventComponent / GiveComponent：

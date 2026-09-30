@@ -15,7 +15,7 @@
 
 import { ModalPanel, C } from './ModalPanel';
 import { Color, Node } from 'cc';
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 import { ModalRow, ModalScrollList, UINode } from './widgets';
 import { ITEM_DATA, TRADE_DATA } from '../data/data';
 import { ActionTrade } from '../actions/ActionTrade';

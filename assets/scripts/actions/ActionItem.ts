@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionItem.ts - 物品动作
  * 覆盖：使用（食物/状态道具/容量道具/技能书等）、丢弃、装备/卸下

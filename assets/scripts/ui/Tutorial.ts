@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 /**
  * Tutorial.ts - 最小新手引导文案与触发逻辑（T-UI-T5）
  *

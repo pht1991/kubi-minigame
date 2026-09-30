@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionCook.ts - 烹饪系统动作
  * 原项目用独立 cooker 箱匹配配方：把食材放入炊具箱，再从箱内凑齐配方烹饪。

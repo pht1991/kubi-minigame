@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionScience.ts - 科研台研究动作
  *

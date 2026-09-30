@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionSkill.ts - 技能系统动作
  * 两类学习路径，与原项目一致：

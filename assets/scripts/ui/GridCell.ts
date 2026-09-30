@@ -14,7 +14,7 @@
  */
 
 import { _decorator, Component, Node, Label, UIOpacity, Vec3, tween, Color, UITransform, Graphics } from 'cc';
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 import { GridCellData } from '../data/types';
 import type { ResolvedCellLayout } from './cellLayout';
 import { charUnits } from './textMetrics';

@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/core/i18n';
+import { t } from '../i18n';
 /**
  * SaveManager.ts - 存档管理
  * 替代原项目 Cookie/localStorage，使用微信小游戏 wx.setStorageSync

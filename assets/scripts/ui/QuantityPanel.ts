@@ -17,7 +17,7 @@
  */
 
 import { _decorator } from 'cc';
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 import { ModalPanel, C } from './ModalPanel';
 import { Btn } from './theme';
 import { UIVStack, UIHStack, UILabel, UIButton } from './widgets';

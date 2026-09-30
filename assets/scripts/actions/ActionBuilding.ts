@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionBuilding.ts - 建筑系统动作
  * 覆盖：建造（消耗材料 → own=true）、建筑升级（消耗材料 → 等级+1）

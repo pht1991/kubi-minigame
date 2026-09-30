@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionMap.ts - 地图探索系统动作
  * 覆盖：资源采集（gather）、拾荒（scavenge）、狩猎（hunt→战斗）

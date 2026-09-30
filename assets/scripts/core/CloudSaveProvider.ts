@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/core/i18n';
+import { t } from '../i18n';
 /**
  * CloudSaveProvider.ts - 云存档提供方（微信云开发）
  *

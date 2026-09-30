@@ -4,7 +4,7 @@
  */
 
 import { _decorator, Component, Node, Label, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Color, Widget, Graphics } from 'cc';
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 import { UIShape, UILabel } from './widgets';
 import { GridPage, GridCellData } from '../data/types';
 import { GridCell } from './GridCell';

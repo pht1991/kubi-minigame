@@ -15,7 +15,7 @@
  */
 
 import { _decorator, Color, view } from 'cc';
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 import { ModalPanel } from './ModalPanel';
 import { C, S, BtnStyle } from './theme';
 import { ITEM_DATA } from '../data/data';

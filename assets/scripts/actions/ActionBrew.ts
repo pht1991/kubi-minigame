@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionBrew.ts - 酿酒系统动作
  * 时间型生产：放入材料 → 等待 timeMax 小时 → 收获酒类

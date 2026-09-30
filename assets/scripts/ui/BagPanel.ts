@@ -1,5 +1,5 @@
 import { _decorator, Color } from 'cc';
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 import { ModalPanel, C } from './ModalPanel';
 import { S } from './theme';
 import { GridCellData } from '../data/types';

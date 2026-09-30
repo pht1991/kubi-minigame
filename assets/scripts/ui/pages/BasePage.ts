@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../../i18n';
 /**
  * BasePage.ts - 所有页面模块的抽象基类
  *

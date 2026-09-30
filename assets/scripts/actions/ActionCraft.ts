@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionCraft.ts - 制造系统动作
  * 覆盖：普通制造(MAKE)、炼金(ALCHEMY)、魔法(MAGIC)

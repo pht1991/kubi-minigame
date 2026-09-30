@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 /**
  * HarvestModal.ts - 采集/拾荒「收获」选择弹窗
  *

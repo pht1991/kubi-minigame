@@ -5,7 +5,7 @@
  */
 
 import { Node, Label, UITransform, Color, Graphics, ScrollView, view } from 'cc';
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
+import { t } from '../i18n';
 import { ModalPanel, C } from './ModalPanel';
 import { S, Btn, BtnStyle } from './theme';
 import { UIShape, UIVStack, UIHStack, UILabel, UIButton } from './widgets';

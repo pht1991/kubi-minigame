@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionExecutor.ts - 通用动作执行器
  * 从原 main.js ActionComponent.act 提取的通用范式：

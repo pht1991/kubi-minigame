@@ -1,4 +1,4 @@
-import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
+import { t } from '../i18n';
 /**
  * ActionCombat.ts - 回合制战斗状态机
  * 将 ActionDungeon.battle 的自动解算改为单回合驱动，供 BattlePanel 交互式调用。
