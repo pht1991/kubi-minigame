@@ -1,0 +1,24 @@
+assets/scripts/ui/GridComponent.ts
+  s_f8b3b7f5531622::t_defec1313def5b 282-283,285-287,289,295-296,302-305,309,518-520
+assets/scripts/ui/cellLayout.ts
+  s_f8b3b7f5531622::t_bd6710a7bdde20 68-69,88,93-94,104,109-110,120,125-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "48f90dfa169f0beedd9a034acf5b591f3d8515e1",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
