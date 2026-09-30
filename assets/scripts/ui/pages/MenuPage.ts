@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * MenuPage.ts - 菜单域页面模块
  *
@@ -103,7 +104,7 @@ export class MenuPage extends BasePage {
 
         // 语言切换：仅「浏览器」平台展示；微信小游戏（移动端/国内）按需求不展示
         if (Layout.isWeb) {
-            cells.push({ id: 'lang', name: langNow === 'zh' ? 'English' : '中文', state: 'normal' });
+            cells.push({ id: 'lang', name: langNow === 'zh' ? 'English' : t('中文'), state: 'normal' });
         }
 
 
@@ -196,24 +197,24 @@ export class MenuPage extends BasePage {
 
     private buildCloudPage(): GridPage {
         const cells: GridCellData[] = [
-            { id: 'c_status', name: `状态: ${this.saveMgr.cloudStatusText()}`, state: 'disabled' },
-            { id: 'c_upload', name: '立即上传', state: 'normal' },
-            { id: 'c_download', name: '下载云端', state: 'normal' },
+            { id: 'c_status', name: `${t('状态: ')}${this.saveMgr.cloudStatusText()}`, state: 'disabled' },
+            { id: 'c_upload', name: t('立即上传'), state: 'normal' },
+            { id: 'c_download', name: t('下载云端'), state: 'normal' },
         ];
 
         return {
-            title: '云存档',
-            breadcrumb: '云存档',
+            title: t('云存档'),
+            breadcrumb: t('云存档'),
             columns: 4,
             cells,
             onCellClick: async (index, cell) => {
                 if (cell.id === 'c_upload') {
                     const ok = await this.saveMgr.uploadToCloud();
-                    this.setMsg(ok ? '已上传到云端' : '上传失败，检查网络/云配置');
+                    this.setMsg(ok ? t('已上传到云端') : t('上传失败，检查网络/云配置'));
                     this.navigator.replace(this.buildCloudPage());
                 } else if (cell.id === 'c_download') {
                     const ok = await this.saveMgr.downloadFromCloud();
-                    this.setMsg(ok ? '已从云端恢复' : '下载失败/云端无存档');
+                    this.setMsg(ok ? t('已从云端恢复') : t('下载失败/云端无存档'));
                     if (ok) this.eventBus.emit(GameEvents.UI_REFRESH);
                     this.navigator.replace(this.buildCloudPage());
                 }
@@ -226,15 +227,15 @@ export class MenuPage extends BasePage {
         const canReincarnate = ActionEvent.instance.canReincarnate();
         const maouLevel = this.gm.maouLevel;
         const cells: GridCellData[] = [
-            { id: 'info', name: `当前轮回: 第 ${maouLevel} 世`, state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'cond', name: canReincarnate ? '条件已满足，可以转生' : '需到达地牢10层或击败魔王', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'desc', name: '转生将重置地牢进度与状态，但保留技能与魔王等级', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'doReincarnate', name: '确认转生', state: canReincarnate ? 'normal' : 'disabled', type: 'list', noTruncate: true },
+            { id: 'info', name: `${t('当前轮回: 第 ')}${maouLevel}${t(' 世')}`, state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'cond', name: canReincarnate ? t('条件已满足，可以转生') : t('需到达地牢10层或击败魔王'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'desc', name: t('转生将重置地牢进度与状态，但保留技能与魔王等级'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'doReincarnate', name: t('确认转生'), state: canReincarnate ? 'normal' : 'disabled', type: 'list', noTruncate: true },
         ];
 
         this.navigator.push({
-            title: '转生',
-            breadcrumb: '转生',
+            title: t('转生'),
+            breadcrumb: t('转生'),
             columns: 1,
             cells,
             onCellClick: (index, cell) => {
@@ -260,23 +261,23 @@ export class MenuPage extends BasePage {
         const ds = this.gm.dungeonSaveData;
 
         const cells: GridCellData[] = [
-            { id: 'time', name: `游戏时间: ${td.day}天 ${td.hour}时`, state: 'disabled' },
-            { id: 'season', name: `季节: ${['春', '夏', '秋', '冬'][td.season]}`, state: 'disabled' },
-            { id: 'hp', name: `生命: ${Math.round(s.hp)}/100`, state: 'disabled' },
-            { id: 'full', name: `满腹: ${Math.round(s.full)}/100`, state: 'disabled' },
-            { id: 'moist', name: `水分: ${Math.round(s.moist)}/100`, state: 'disabled' },
-            { id: 'ps', name: `体力: ${Math.round(s.ps)}/100`, state: 'disabled' },
-            { id: 'san', name: `精神: ${Math.round(s.san)}/100`, state: 'disabled' },
-            { id: 'maou', name: `轮回: 第 ${this.gm.maouLevel} 世`, state: 'disabled' },
-            { id: 'items', name: `背包物品: ${itemCount} 种`, state: 'disabled' },
-            { id: 'skills', name: `已学技能: ${skillCount} 项`, state: 'disabled' },
-            { id: 'events', name: `已完成事件: ${eventCount}/${totalEvents}`, state: 'disabled' },
-            { id: 'dungeon', name: `地牢最深: ${ds?.deepest || 0} 层`, state: 'disabled' },
+            { id: 'time', name: `${t('游戏时间: ')}${td.day}${t('天 ')}${td.hour}${t('时')}`, state: 'disabled' },
+            { id: 'season', name: `${t('季节: ')}${[t('春'), t('夏'), t('秋'), t('冬')][td.season]}`, state: 'disabled' },
+            { id: 'hp', name: `${t('生命: ')}${Math.round(s.hp)}/100`, state: 'disabled' },
+            { id: 'full', name: `${t('满腹: ')}${Math.round(s.full)}/100`, state: 'disabled' },
+            { id: 'moist', name: `${t('水分: ')}${Math.round(s.moist)}/100`, state: 'disabled' },
+            { id: 'ps', name: `${t('体力: ')}${Math.round(s.ps)}/100`, state: 'disabled' },
+            { id: 'san', name: `${t('精神: ')}${Math.round(s.san)}/100`, state: 'disabled' },
+            { id: 'maou', name: `${t('轮回: 第 ')}${this.gm.maouLevel}${t(' 世')}`, state: 'disabled' },
+            { id: 'items', name: `${t('背包物品: ')}${itemCount}${t(' 种')}`, state: 'disabled' },
+            { id: 'skills', name: `${t('已学技能: ')}${skillCount}${t(' 项')}`, state: 'disabled' },
+            { id: 'events', name: `${t('已完成事件: ')}${eventCount}/${totalEvents}`, state: 'disabled' },
+            { id: 'dungeon', name: `${t('地牢最深: ')}${ds?.deepest || 0}${t(' 层')}`, state: 'disabled' },
         ];
 
         this.navigator.push({
-            title: '统计',
-            breadcrumb: '统计',
+            title: t('统计'),
+            breadcrumb: t('统计'),
             columns: 4,
             cells,
             onCellClick: (index, cell) => {},
@@ -286,26 +287,26 @@ export class MenuPage extends BasePage {
     /** 帮助面板 */
     private openHelpPanel(): void {
         const cells: GridCellData[] = [
-            { id: 'h1', name: '【操作说明】', state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
-            { id: 'h2', name: '点击网格格子进入对应功能', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h3', name: '弹窗可点击右上角×或蒙层关闭', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h4', name: '【生存指南】', state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
-            { id: 'h5', name: '满腹/水分/精神随时间下降', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h6', name: '通过采集/狩猎/烹饪获取食物', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h7', name: '建造农田可稳定生产食材', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h8', name: '【战斗指南】', state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
-            { id: 'h9', name: '装备武器提升攻击力', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h10', name: '学习技能获得永久加成', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h11', name: '地牢每层有战斗和宝箱', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h12', name: '【进阶提示】', state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
-            { id: 'h13', name: '陷阱可捕获小动物', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h14', name: '完成事件解锁新内容', state: 'disabled', type: 'list', noTruncate: true },
-            { id: 'h15', name: '到达地牢深层可转生', state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h1', name: t('【操作说明】'), state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
+            { id: 'h2', name: t('点击网格格子进入对应功能'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h3', name: t('弹窗可点击右上角×或蒙层关闭'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h4', name: t('【生存指南】'), state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
+            { id: 'h5', name: t('满腹/水分/精神随时间下降'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h6', name: t('通过采集/狩猎/烹饪获取食物'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h7', name: t('建造农田可稳定生产食材'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h8', name: t('【战斗指南】'), state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
+            { id: 'h9', name: t('装备武器提升攻击力'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h10', name: t('学习技能获得永久加成'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h11', name: t('地牢每层有战斗和宝箱'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h12', name: t('【进阶提示】'), state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } },
+            { id: 'h13', name: t('陷阱可捕获小动物'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h14', name: t('完成事件解锁新内容'), state: 'disabled', type: 'list', noTruncate: true },
+            { id: 'h15', name: t('到达地牢深层可转生'), state: 'disabled', type: 'list', noTruncate: true },
         ];
 
         this.navigator.push({
-            title: '帮助',
-            breadcrumb: '帮助',
+            title: t('帮助'),
+            breadcrumb: t('帮助'),
             columns: 1,
             cells,
             onCellClick: (index, cell) => {},

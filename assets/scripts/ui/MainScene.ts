@@ -259,14 +259,14 @@ export class MainScene extends Component {
     private _onPlayerDeath = (): void => this.onPlayerDeath();
     private _onOperationDone = (payload: { title: string; message: string; modal: boolean }): void => {
         if (payload.modal) {
-            this._resultModal?.showResult(payload.title || '操作完成', payload.message);
+            this._resultModal?.showResult(payload.title || t('操作完成'), payload.message);
         } else {
             Toast.instance?.show(payload.message);
         }
         this._saveMgr.save();
     };
     private _onHarvestReady = (payload: { title: string; loot: Record<string, number> }): void => {
-        this._harvestModal?.showHarvest(payload.title || '收获', payload.loot);
+        this._harvestModal?.showHarvest(payload.title || t('收获'), payload.loot);
         this._saveMgr.save();
     };
     private _onSeasonChange = (season: number): void => this.onSeasonChange(season);
@@ -275,9 +275,9 @@ export class MainScene extends Component {
             .map(k => `${ITEM_DATA[k]?.name || k}×${payload.items[k]}`)
             .join(' ');
         if (payload.defended) {
-            Toast.instance?.show(`防盗陷阱击退了盗贼！获得 ${names}`);
+            Toast.instance?.show(`${t('防盗陷阱击退了盗贼！获得 ')}${names}`);
         } else {
-            Toast.instance?.show(`盗贼趁你不在偷走了：${names}`);
+            Toast.instance?.show(`${t('盗贼趁你不在偷走了：')}${names}`);
         }
         this._saveMgr.save();
     };
@@ -517,7 +517,7 @@ export class MainScene extends Component {
 
         // T5.1 首玩 3 步卡：仅首次进入游戏时弹出（SaveManager 标志去重，老玩家 / 回访者不重复）
         if (this._tutorialPanel && !Tutorial.isFirstPlayDone()) {
-            this._tutorialPanel.show('新手引导');
+            this._tutorialPanel.show(t('新手引导'));
         }
 
         // 离线收益结算：读取上次存档时间，推进离线时光并弹窗汇报（仅首次进入时执行一次）。
@@ -546,7 +546,7 @@ export class MainScene extends Component {
         if (!def || !this._dialogPanel) return;
         this._dialogPanel.show(def.name, [
             { label: def.desc, data: null, disabled: true, noTruncate: true },
-            { label: '知道了', data: 'ok' },
+            { label: t('知道了'), data: 'ok' },
         ], () => {});
     }
 
@@ -558,18 +558,18 @@ export class MainScene extends Component {
 
     /** 换季公告（冬季预警停产，春季恢复） */
     private onSeasonChange(season: number): void {
-        const names = ['春', '夏', '秋', '冬'];
-        const name = names[season] ?? '春';
-        let msg = `${name}季来临。`;
+        const names = [t('春'), t('夏'), t('秋'), t('冬')];
+        const name = names[season] ?? t('春');
+        let msg = `${name}${t('季来临。')}`;
         if (season === 3) {
-            msg += '土地封冻，农田与井水停产，请靠交易、拾荒、狩猎与陷阱求生。';
+            msg += t('土地封冻，农田与井水停产，请靠交易、拾荒、狩猎与陷阱求生。');
         } else if (season === 0) {
-            msg += '大地回春，农田与井水恢复生产。';
+            msg += t('大地回春，农田与井水恢复生产。');
         }
         this._lastMsg = msg;
         this._dialogPanel?.show(
-            `${name}季`,
-            [{ label: '知道了', data: 'ok' }],
+            `${name}${t('季')}`,
+            [{ label: t('知道了'), data: 'ok' }],
             () => {},
             () => {}
         );
@@ -581,25 +581,25 @@ export class MainScene extends Component {
         const offer = await this._saveMgr.shouldOfferCloudRestore();
         if (!offer) return;
         const meta = await CloudSaveProvider.instance.fetchMeta();
-        const timeStr = meta?.updatedAt ? this._fmtCloudTime(meta.updatedAt) : '未知时间';
+        const timeStr = meta?.updatedAt ? this._fmtCloudTime(meta.updatedAt) : t('未知时间');
         this._dialogPanel?.show(
-            '发现云端存档',
+            t('发现云端存档'),
             [
-                { label: '下载云端存档', data: 'download', desc: `云端存档更新于 ${timeStr}，将覆盖当前本地进度` },
-                { label: '保留本地进度', data: 'ignore', desc: '忽略云端，继续使用当前本地进度' },
+                { label: t('下载云端存档'), data: 'download', desc: `${t('云端存档更新于 ')}${timeStr}${t('，将覆盖当前本地进度')}` },
+                { label: t('保留本地进度'), data: 'ignore', desc: t('忽略云端，继续使用当前本地进度') },
             ],
             async (data: string) => {
                 if (data === 'download') {
                     const ok = await this._saveMgr.downloadFromCloud();
-                    this._lastMsg = ok ? '已从云端恢复存档' : '云端恢复失败';
+                    this._lastMsg = ok ? t('已从云端恢复存档') : t('云端恢复失败');
                     if (ok) this._eventBus.emit(GameEvents.UI_REFRESH);
                 } else {
-                    this._lastMsg = '已保留本地进度';
+                    this._lastMsg = t('已保留本地进度');
                 }
                 this.refreshGrid();
             },
             () => {
-                this._lastMsg = '已保留本地进度';
+                this._lastMsg = t('已保留本地进度');
                 this.refreshGrid();
             }
         );
@@ -847,7 +847,7 @@ export class MainScene extends Component {
             const langBtnW = Math.round(60 * S);
             const langBtnH = Math.round(32 * S);
             const langBtn = new UIButton(
-                isZh() ? 'EN' : '中',
+                isZh() ? 'EN' : t('中'),
                 { bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1, text: C.barBtnText, radius: 10, fontSize: Math.round(18 * S) },
                 () => this.toggleLanguage(),
                 langBtnW, langBtnH,
@@ -959,7 +959,7 @@ export class MainScene extends Component {
     /** 语言切换按钮文案：显示「将要切换到的目标语言」（当前中文→EN，当前英文→中） */
     private refreshLangButton(): void {
         if (this._langBtnLabel) {
-            this._langBtnLabel.setText(isZh() ? 'EN' : '中');
+            this._langBtnLabel.setText(isZh() ? 'EN' : t('中'));
         }
     }
 
@@ -1115,16 +1115,16 @@ export class MainScene extends Component {
     private openStatePanel(): void {
         const s = this._gm.playerState;
         const cells: GridCellData[] = [
-            { id: 'hp', name: `生命 ${Math.round(s.hp)}`, state: 'normal' },
-            { id: 'full', name: `满腹 ${Math.round(s.full)}`, state: 'normal' },
-            { id: 'moist', name: `水分 ${Math.round(s.moist)}`, state: 'normal' },
-            { id: 'ps', name: `体力 ${Math.round(s.ps)}`, state: 'normal' },
-            { id: 'san', name: `精神 ${Math.round(s.san)}`, state: 'normal' },
-            { id: 'temp', name: `体温 ${s.temp}`, state: 'normal' },
+            { id: 'hp', name: `${t('生命 ')}${Math.round(s.hp)}`, state: 'normal' },
+            { id: 'full', name: `${t('满腹 ')}${Math.round(s.full)}`, state: 'normal' },
+            { id: 'moist', name: `${t('水分 ')}${Math.round(s.moist)}`, state: 'normal' },
+            { id: 'ps', name: `${t('体力 ')}${Math.round(s.ps)}`, state: 'normal' },
+            { id: 'san', name: `${t('精神 ')}${Math.round(s.san)}`, state: 'normal' },
+            { id: 'temp', name: `${t('体温 ')}${s.temp}`, state: 'normal' },
         ];
         this._navigator.push({
-            title: '状态',
-            breadcrumb: '状态',
+            title: t('状态'),
+            breadcrumb: t('状态'),
             columns: 4,
             cells,
         });
@@ -1139,11 +1139,11 @@ export class MainScene extends Component {
             state: 'normal' as const,
             data: id,
         }));
-        cells.unshift({ id: 'info', name: '选择对手作战', state: 'disabled' });
+        cells.unshift({ id: 'info', name: t('选择对手作战'), state: 'disabled' });
 
         this._navigator.push({
-            title: '战斗',
-            breadcrumb: '战斗',
+            title: t('战斗'),
+            breadcrumb: t('战斗'),
             columns: 4,
             cells,
             onCellClick: (index, cell) => {
@@ -1183,19 +1183,19 @@ export class MainScene extends Component {
         const td = this._gm.timeData;
         const canReincarnate = ActionEvent.instance.canReincarnate();
         const options: DialogOption[] = [
-            { label: '☠ 你死了', data: null, disabled: true },
-            { label: `存活时间：${td.day} 天 ${td.hour} 时`, data: null, disabled: true },
-            { label: `轮回次数：第 ${this._gm.maouLevel} 世`, data: null, disabled: true },
-            { label: `死因：${this.getDeathCause()}`, data: null, disabled: true },
+            { label: t('☠ 你死了'), data: null, disabled: true },
+            { label: `${t('存活时间：')}${td.day}${t(' 天 ')}${td.hour}${t(' 时')}`, data: null, disabled: true },
+            { label: `${t('轮回次数：第 ')}${this._gm.maouLevel}${t(' 世')}`, data: null, disabled: true },
+            { label: `${t('死因：')}${this.getDeathCause()}`, data: null, disabled: true },
             { label: '————————', data: null, disabled: true },
         ];
         if (canReincarnate) {
-            options.push({ label: '转生（重置进度，保留技能/轮回）', data: 'reincarnate' });
+            options.push({ label: t('转生（重置进度，保留技能/轮回）'), data: 'reincarnate' });
         }
-        options.push({ label: '重生（恢复状态，继续游戏）', data: 'respawn' });
+        options.push({ label: t('重生（恢复状态，继续游戏）'), data: 'respawn' });
 
         this._dialogPanel.show(
-            '你死了',
+            t('你死了'),
             options,
             (data) => {
                 if (data === 'reincarnate') {
@@ -1218,11 +1218,11 @@ export class MainScene extends Component {
     /** 推断死因（仅展示用，不影响死亡判定） */
     private getDeathCause(): string {
         const s = this._gm.playerState;
-        if (s.full <= 0) return '饥饿致死';
-        if (s.moist <= 0) return '脱水而亡';
-        if (s.san <= 0) return '精神崩溃';
-        if (s.temp <= 0) return '冻毙荒野';
-        return '伤重不治';
+        if (s.full <= 0) return t(t('饥饿致死'));
+        if (s.moist <= 0) return t(t('脱水而亡'));
+        if (s.san <= 0) return t(t('精神崩溃'));
+        if (s.temp <= 0) return t(t('冻毙荒野'));
+        return t(t('伤重不治'));
     }
 
     onDestroy(): void {

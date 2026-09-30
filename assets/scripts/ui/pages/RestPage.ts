@@ -12,6 +12,7 @@
  */
 
 import { Node } from 'cc';
+import { t } from '../../i18n';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { BUILDING_UPDATE_DATA, ITEM_DATA, MAX_STATE } from '../../data/data';
@@ -37,12 +38,12 @@ export class RestPage extends BasePage {
         if (!hasBed) {
             // 未建造 → 提示去建造
             return {
-                title: '休息',
-                breadcrumb: '主页 > 休息',
+                title: t('休息'),
+                breadcrumb: t('主页 > 休息'),
                 columns: 1,
                 cells: [
-                    { id: 'hint', name: '你还没有床铺\n请先在「建造」中建造一个', state: 'disabled', type: 'list' },
-                    { id: 'goBuild', name: '前往建造', state: 'normal', type: 'list' },
+                    { id: 'hint', name: t('你还没有床铺\n请先在「建造」中建造一个'), state: 'disabled', type: 'list' },
+                    { id: 'goBuild', name: t('前往建造'), state: 'normal', type: 'list' },
                 ],
                 onCellClick: (idx, cell) => {
                     if (cell.id === 'goBuild') {
@@ -70,7 +71,7 @@ export class RestPage extends BasePage {
         const [psPerH, sanPerH] = REST_TABLE_REF[restIdx];
         cells.push({
             id: 'levelInfo',
-            name: `当前床铺：${currentLevelName}\n每小时恢复 体力+${psPerH} 精神+${sanPerH}`,
+            name: `${t('当前床铺：')}${currentLevelName}\n${t('每小时恢复 体力+')}${psPerH}${t(' 精神+')}${sanPerH}`,
             state: 'disabled',
             type: 'list',
         });
@@ -79,7 +80,7 @@ export class RestPage extends BasePage {
         const [nextPsPerH, nextSanPerH] = REST_TABLE_REF[nextRestIdx];
         cells.push({
             id: 'sleep',
-            name: `[睡觉]  可选 1~8 小时`,
+            name: `${t('[睡觉]  可选 1~8 小时')}`,
             state: 'normal',
             type: 'list',
             noTruncate: true,
@@ -89,14 +90,14 @@ export class RestPage extends BasePage {
         // （返回由底栏「主页」按钮提供，不重复添加 cell）
 
         return {
-            title: '床铺',
-            breadcrumb: '主页 > 床铺',
+            title: t('床铺'),
+            breadcrumb: t('主页 > 床铺'),
             columns: 1,
             cells,
             // 升级按钮走公共标题栏接口（与大箱子/厨房/井/卫生间统一），替代旧内联升级格
             ...this.makeUpgradeInfo('sleepPlaceUpdate', {
-                title: '床铺升级',
-                effectText: `升级后每小时恢复 体力+${nextPsPerH} / 精神+${nextSanPerH}`,
+                title: t('床铺升级'),
+                effectText: `${t('升级后每小时恢复 体力+')}${nextPsPerH}${t(' / 精神+')}${nextSanPerH}`,
                 onUpgraded: () => this.navigator.replace(this.openRestPage()),
             }),
             onCellClick: (idx, cell) => {
@@ -112,8 +113,8 @@ export class RestPage extends BasePage {
     private levelName(level: number): string {
         const updateGroup = BUILDING_UPDATE_DATA['sleepPlaceUpdate'];
         const levelKeys = updateGroup ? Object.keys(updateGroup) : [];
-        return level >= levelKeys.length ? '已满级' :
-            (level === 0 ? '地板' : ITEM_DATA[levelKeys[level - 1]]?.name || `Lv.${level}`);
+        return level >= levelKeys.length ? t('已满级') :
+            (level === 0 ? t('地板') : ITEM_DATA[levelKeys[level - 1]]?.name || `Lv.${level}`);
     }
 
     /** 打开睡觉时长的公共数量选择（1~8 小时），确认后执行睡觉 */
@@ -123,21 +124,21 @@ export class RestPage extends BasePage {
         const [psPerH, sanPerH] = REST_TABLE_REF[restIdx];
         const panel = this.ensureQtyPanel();
         panel.show(
-            '选择睡觉时长',
+            t('选择睡觉时长'),
             8,
             (hours) => this.doSleep(hours),
             {
                 infoLines: [
-                    `床铺：${this.levelName(level)}`,
-                    `每小时约恢复 体力+${psPerH} / 精神+${sanPerH}`,
+                    `${t('床铺：')}${this.levelName(level)}`,
+                    `${t('每小时约恢复 体力+')}${psPerH}${t(' / 精神+')}${sanPerH}`,
                 ],
-                confirmLabel: '开始睡觉',
+                confirmLabel: t('开始睡觉'),
                 getPreview: (h: number) => {
                     const tPs = Math.round(psPerH * h);
                     const tSan = Math.round(sanPerH * h);
                     return [
-                        `睡觉 ${h} 小时`,
-                        `预计恢复 体力+${tPs} / 精神+${tSan}`,
+                        `${t('睡觉 ')}${h}${t(' 小时')}`,
+                        `${t('预计恢复 体力+')}${tPs}${t(' / 精神+')}${tSan}`,
                     ];
                 },
             }
@@ -159,7 +160,7 @@ export class RestPage extends BasePage {
         const actualPs = Math.max(0, Math.min(totalPs, MAX_STATE - oldPs));
         const actualSan = Math.max(0, Math.min(totalSan, MAX_STATE - oldSan));
 
-        const msg = `你睡了${safeHours}小时（${this.levelName(level)}），恢复 体力+${actualPs} / 精神+${actualSan}`;
+        const msg = `${t('你睡了')}${safeHours}${t('小时（')}${this.levelName(level)}${t('），恢复 体力+')}${actualPs}${t(' / 精神+')}${actualSan}`;
 
         // 耗时动作：进度条播放真实时长，结束才推进时间 + 恢复；完成后刷新本页
         ActionExecutor.instance.execute(
@@ -167,7 +168,7 @@ export class RestPage extends BasePage {
             {},
             safeHours,
             {
-                title: '睡觉',
+                title: t('睡觉'),
                 successMessage: msg,
                 onDone: () => this.navigator.replace(this.openRestPage()),
             }

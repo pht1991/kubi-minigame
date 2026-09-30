@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 /**
  * ResultModal.ts - 操作结果确认弹窗
  *
@@ -26,7 +27,7 @@ export class ResultModal extends ModalPanel {
         // 声明式：文案 → 确定按钮，VStack 自动排布
         const stack = new UIVStack().gap(28).align('center').fixedWidth(cw)
             .add(new UILabel(this._msgText, { size: 22, width: cw, color: C.body, align: 'center' }))
-            .add(new UIButton('确定', Btn.confirm, () => this.hide(), 240, 64));
+            .add(new UIButton(t('确定'), Btn.confirm, () => this.hide(), 240, 64));
         stack.mount(this._content!);
         // 自适应：面板高度跟随文案（短文案不再大片留白；长文案钳到上限防溢出）
         const pad = 30;

@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionBrew.ts - 酿酒系统动作
  * 时间型生产：放入材料 → 等待 timeMax 小时 → 收获酒类
@@ -47,16 +48,16 @@ export class ActionBrew {
 
     /** 开始酿造一份配方 */
     brew(recipeId: string): ActionResult {
-        if (!this.isBuilt()) return { success: false, message: '需要先建造酿酒桶' };
+        if (!this.isBuilt()) return { success: false, message: t('需要先建造酿酒桶') };
         const recipe = ALCO_DATA[recipeId];
-        if (!recipe) return { success: false, message: '配方不存在' };
+        if (!recipe) return { success: false, message: t('配方不存在') };
 
         const slots = this._gm.alcoSaveData as BrewSlot[];
         if (slots.length >= ActionBrew.MAX_SLOTS) {
-            return { success: false, message: `酿造槽已满（最多 ${ActionBrew.MAX_SLOTS} 份）` };
+            return { success: false, message: `${t('酿造槽已满（最多 ')}${ActionBrew.MAX_SLOTS}${t(' 份）')}` };
         }
         if (!this._gm.checkHaveResource(recipe.require || {})) {
-            return { success: false, message: '材料不足' };
+            return { success: false, message: t('材料不足') };
         }
 
         const ts = this._ts;
@@ -72,21 +73,21 @@ export class ActionBrew {
 
         slots.push(slot);
         this._eventBus.emit(GameEvents.UI_REFRESH);
-        return { success: true, message: `开始酿造 ${ITEM_DATA[recipe.itemGet]?.name || recipe.itemGet}` };
+        return { success: true, message: `${t('开始酿造 ')}${ITEM_DATA[recipe.itemGet]?.name || recipe.itemGet}` };
     }
 
     /** 收获已完成的酿造 */
     harvestBrew(slotIndex: number): ActionResult {
         const slots = this._gm.alcoSaveData as BrewSlot[];
         const slot = slots[slotIndex];
-        if (!slot) return { success: false, message: '槽位不存在' };
+        if (!slot) return { success: false, message: t('槽位不存在') };
 
         const recipe = ALCO_DATA[slot.recipeId];
-        if (!recipe) return { success: false, message: '配方数据异常' };
+        if (!recipe) return { success: false, message: t('配方数据异常') };
 
         const elapsed = (this._ts.day - slot.plantDay) * 24 + (this._ts.hour - slot.plantHour);
         if (elapsed < slot.timeMax) {
-            return { success: false, message: '尚未酿成' };
+            return { success: false, message: t('尚未酿成') };
         }
 
         // 产出：itemAmount × (1 + 酿酒技巧等级 × 15%)
@@ -98,7 +99,7 @@ export class ActionBrew {
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
         this._eventBus.emit(GameEvents.UI_REFRESH);
         const name = ITEM_DATA[recipe.itemGet]?.name || recipe.itemGet;
-        return { success: true, message: `收获了 ${name} ×${amount}` };
+        return { success: true, message: `${t('收获了 ')}${name} ×${amount}` };
     }
 
     /** 当前所有酿造槽信息（供 UI 展示） */

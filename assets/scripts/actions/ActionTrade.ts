@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionTrade.ts - 贸易系统动作（还原原版纯以物易物）
  *
@@ -125,7 +126,7 @@ export class ActionTrade {
      */
     trade(traderId: string, basket: Record<string, number>): ActionResult {
         const detail = TRADE_DATA[traderId];
-        if (!detail) return { success: false, message: '商人不存在' };
+        if (!detail) return { success: false, message: t('商人不存在') };
         const give = detail.give;
         const bag = this._gm.boxSaveData['bag'] || {};
 
@@ -135,15 +136,15 @@ export class ActionTrade {
             const q = basket[id];
             if (q <= 0) continue;
             if ((bag[id] || 0) < q) {
-                return { success: false, message: `背包中 ${ITEM_DATA[id]?.name || id} 不足 ${q}` };
+                return { success: false, message: `${t('背包中 ')}${ITEM_DATA[id]?.name || id}${t(' 不足 ')}${q}` };
             }
             offers[id] = q;
         }
-        if (Object.keys(offers).length === 0) return { success: false, message: '易货篮是空的' };
+        if (Object.keys(offers).length === 0) return { success: false, message: t('易货篮是空的') };
 
         const { giveQty, capped } = this.previewBasket(traderId, offers);
         if (giveQty < 1) {
-            return { success: false, message: capped ? `${detail.name} 库存不足` : '付出的价值不足以交换（兑换率 75%）' };
+            return { success: false, message: capped ? `${detail.name}${t(' 库存不足')}` : t('付出的价值不足以交换（兑换率 75%）') };
         }
 
         // 一次性结算：扣付出 + 给 give（changeItem 支持单调用混合正负增减）
@@ -155,6 +156,6 @@ export class ActionTrade {
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
 
         const offerStr = Object.keys(offers).map(id => `${ITEM_DATA[id]?.name || id}×${offers[id]}`).join('、');
-        return { success: true, message: `用 ${offerStr} 换得 ${ITEM_DATA[give]?.name || give} ×${giveQty}` };
+        return { success: true, message: `${t('用 ')}${offerStr}${t(' 换得 ')}${ITEM_DATA[give]?.name || give} ×${giveQty}` };
     }
 }

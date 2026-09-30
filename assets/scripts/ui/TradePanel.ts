@@ -15,6 +15,7 @@
 
 import { ModalPanel, C } from './ModalPanel';
 import { Color, Node } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { ModalRow, ModalScrollList, UINode } from './widgets';
 import { ITEM_DATA, TRADE_DATA } from '../data/data';
 import { ActionTrade } from '../actions/ActionTrade';
@@ -60,7 +61,7 @@ export class TradePanel extends ModalPanel {
         const d = TRADE_DATA[traderId];
         this._give = d?.give || '';
         this._gName = ITEM_DATA[this._give]?.name || this._give;
-        super.show(d?.name || '商人');
+        super.show(d?.name || t('商人'));
     }
 
     // ════ 全量渲染 ════
@@ -72,14 +73,14 @@ export class TradePanel extends ModalPanel {
         const preview = ActionTrade.instance.previewBasket(this._tid, this._basket);
 
         // ════ Header (y=0 ~ 100) ════
-        this._tx(0, `[交易] ${TRADE_DATA[this._tid]?.name || '商人'}`, 26, C.title, true);
-        this._tx(34, `出售：${this._gName} · 兑换率 75%`, 21, C.body);
-        const st = stock.soldOut ? `已售罄，${stock.restockHours}h 后补货` : `库存：剩余 ${stock.available}/${stock.max}`;
+        this._tx(0, `${t('[交易] ')}${TRADE_DATA[this._tid]?.name || t('商人')}`, 26, C.title, true);
+        this._tx(34, `${t('出售：')}${this._gName}${t(' · 兑换率 75%')}`, 21, C.body);
+        const st = stock.soldOut ? `${t('已售罄，')}${stock.restockHours}${t('h 后补货')}` : `${t('库存：剩余 ')}${stock.available}/${stock.max}`;
         this._tx(66, st, 21, stock.soldOut ? C.warn : C.sub);
         // 实时换算摘要
         const summary = preview.giveQty >= 1
-            ? `付出估值 ${preview.offeredValue} → 可换 ${this._gName} ×${preview.giveQty}${preview.capped ? '（库存已满）' : ''}`
-            : `付出估值 ${preview.offeredValue} → 还不足以交换`;
+            ? `${t('付出估值 ')}${preview.offeredValue}${t(' → 可换 ')}${this._gName} ×${preview.giveQty}${preview.capped ? '（库存已满）' : ''}`
+            : `${t('付出估值 ')}${preview.offeredValue}${t(' → 还不足以交换')}`;
         this._tx(100, summary, 20, preview.giveQty >= 1 ? C.accent2 : C.sub, true);
 
         // ════ Body: 单一滚动列表（易货篮 + 背包）═════
@@ -87,10 +88,10 @@ export class TradePanel extends ModalPanel {
         const rows: UINode[] = [];
 
         // —— 易货篮分区 ——
-        rows.push(this._headerRow('易货篮（点条目可移除）'));
+        rows.push(this._headerRow(t('易货篮（点条目可移除）')));
         const basketIds = Object.keys(this._basket).filter(id => this._basket[id] > 0);
         if (basketIds.length === 0) {
-            rows.push(this._hintRow('点下方物品加入易货篮'));
+            rows.push(this._hintRow(t('点下方物品加入易货篮')));
         } else {
             for (const id of basketIds) {
                 const q = this._basket[id];
@@ -100,7 +101,7 @@ export class TradePanel extends ModalPanel {
                     name: `${nm} ×${q}`,
                     align: 'left',
                     bg: C.white, stroke: C.panelBorder, radius: 10,
-                    meta: '移除',
+                    meta: t('移除'),
                     metaColor: C.warn,
                     onTap: () => this._removeFromBasket(id),
                 }));
@@ -108,12 +109,12 @@ export class TradePanel extends ModalPanel {
         }
 
         // —— 背包分区 ——
-        rows.push(this._headerRow('背包物品（点选加入易货篮）'));
+        rows.push(this._headerRow(t('背包物品（点选加入易货篮）')));
         const bagIds = Object.keys(bag)
             .filter(id => (bag[id] || 0) > 0)
             .sort((a, b) => (bag[b] || 0) - (bag[a] || 0));
         if (bagIds.length === 0) {
-            rows.push(this._hintRow('背包是空的'));
+            rows.push(this._hintRow(t('背包是空的')));
         } else {
             for (const id of bagIds) {
                 const q = bag[id] || 0;
@@ -125,7 +126,7 @@ export class TradePanel extends ModalPanel {
                     name: `${nm} ×${q}`,
                     align: 'left',
                     bg: C.white, stroke: C.panelBorder, radius: 10,
-                    meta: inB > 0 ? `篮+${inB}` : (remain > 0 ? '加入' : '已满'),
+                    meta: inB > 0 ? `${t('篮+')}${inB}` : (remain > 0 ? t('加入') : t('已满')),
                     metaColor: inB > 0 ? C.accent2 : C.sub,
                     disabled: remain <= 0,
                     onTap: () => this._addPrompt(id, remain),
@@ -152,8 +153,8 @@ export class TradePanel extends ModalPanel {
         // 滚动区顶贴在 Header 下方；按钮紧贴滚动区底部下方
         list.view.setPosition(0, -headerH, 0);
         const by = headerH + actualViewH + gapToBtn + btnH / 2;
-        this._btn(by, 280, 72, '成交', C.accent, () => this._deal(), -150);
-        this._btn(by, 200, 72, '清空', C.panelBorder, () => this._clearBasket(), 170);
+        this._btn(by, 280, 72, t('成交'), C.accent, () => this._deal(), -150);
+        this._btn(by, 200, 72, t('清空'), C.panelBorder, () => this._clearBasket(), 170);
     }
 
     // ════ 易货篮操作 ════
@@ -173,14 +174,14 @@ export class TradePanel extends ModalPanel {
         const nm = ITEM_DATA[id]?.name || id;
         const inB = this._basket[id] || 0;
         const opts: QtyOptions = {
-            infoLines: [`持有 ${remain + inB} 个（篮内 ${inB}）`],
-            confirmLabel: '加入易货篮',
+            infoLines: [`${t('持有 ')}${remain + inB}${t(' 个（篮内 ')}${inB}）`],
+            confirmLabel: t('加入易货篮'),
             getPreview: (q) => [
-                `加入：${nm} ×${q}`,
-                `篮内合计：${inB + q}`,
+                `${t('加入：')}${nm} ×${q}`,
+                `${t('篮内合计：')}${inB + q}`,
             ],
         };
-        this._getQty().show(`加入：${nm}`, remain, (q) => {
+        this._getQty().show(`${t('加入：')}${nm}`, remain, (q) => {
             this._basket[id] = (this._basket[id] || 0) + q;
             this.render();
         }, opts);

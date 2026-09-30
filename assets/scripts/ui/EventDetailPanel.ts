@@ -15,6 +15,7 @@
  */
 
 import { _decorator, Color, view } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { ModalPanel } from './ModalPanel';
 import { C, S, BtnStyle } from './theme';
 import { ITEM_DATA } from '../data/data';
@@ -125,34 +126,34 @@ export class EventDetailPanel extends ModalPanel {
         // ── 2. 需求行 ──
         if (Object.keys(p.want).length > 0) {
             const wantStr = Object.entries(p.want).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
-            stack.add(new ModalInfoRow(cw, '需求', wantStr, { valueColor: p.canTrigger ? C.body : C.warn }));
+            stack.add(new ModalInfoRow(cw, t('需求'), wantStr, { valueColor: p.canTrigger ? C.body : C.warn }));
         }
 
         // ── 3. 奖励行 ──
         if (p.reward) {
             const getStr = Object.entries(p.reward).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join('、');
-            stack.add(new ModalInfoRow(cw, '奖励', getStr, { valueColor: C.accent2 }));
+            stack.add(new ModalInfoRow(cw, t('奖励'), getStr, { valueColor: C.accent2 }));
         }
 
         // ── 4. 已完成标记 ──
         if (p.experienced) {
-            stack.add(new ModalInfoRow(cw, '', '(已完成)', { valueColor: C.sub }));
+            stack.add(new ModalInfoRow(cw, '', t('(已完成)'), { valueColor: C.sub }));
         }
 
         // ── 5. 底部按钮区 ──
         const btnRow = new UIHStack().gap(24).padding(10, 0, 0, 0);
         const hasTalk = p.dialogs.length > 0;
         if (hasTalk) {
-            btnRow.add(new UIButton(p.experienced ? '回顾对话' : '交谈', TALK_STYLE, () => {
+            btnRow.add(new UIButton(p.experienced ? t('回顾对话') : t('交谈'), TALK_STYLE, () => {
                 this._p?.onTalk?.();
             }));
         }
         if (p.experienced) {
-            btnRow.add(new UIButton('已完成', DISABLED_STYLE).setEnabled(false));
+            btnRow.add(new UIButton(t('已完成'), DISABLED_STYLE).setEnabled(false));
         } else if (!p.canTrigger) {
-            btnRow.add(new UIButton('触发(不足)', DISABLED_STYLE).setEnabled(false));
+            btnRow.add(new UIButton(t('触发(不足)'), DISABLED_STYLE).setEnabled(false));
         } else {
-            btnRow.add(new UIButton('触发交付', TRIGGER_STYLE, () => {
+            btnRow.add(new UIButton(t('触发交付'), TRIGGER_STYLE, () => {
                 this._p?.onTrigger?.();
                 this.hide();
             }));

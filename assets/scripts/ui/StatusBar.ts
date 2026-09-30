@@ -109,13 +109,13 @@ export class StatusBar extends Component {
     /** 获取体温描述 */
     private getTempDesc(temp: number): string {
         // temp 范围大约 -50 ~ +50，映射到温度状态
-        if (temp >= 30) return TEMP_DATA.veryHot?.name || '酷暑';
-        if (temp >= 15) return TEMP_DATA.hot?.name || '炎热';
-        if (temp >= 5) return TEMP_DATA.warm?.name || '温暖';
-        if (temp >= -5) return TEMP_DATA.nice?.name || '舒适';
-        if (temp >= -15) return TEMP_DATA.cool?.name || '微凉';
-        if (temp >= -30) return TEMP_DATA.cold?.name || '寒冷';
-        return TEMP_DATA.veryCold?.name || '极寒';
+        if (temp >= 30) return TEMP_DATA.veryHot?.name || t('酷暑');
+        if (temp >= 15) return TEMP_DATA.hot?.name || t('炎热');
+        if (temp >= 5) return TEMP_DATA.warm?.name || t('温暖');
+        if (temp >= -5) return TEMP_DATA.nice?.name || t('舒适');
+        if (temp >= -15) return TEMP_DATA.cool?.name || t('微凉');
+        if (temp >= -30) return TEMP_DATA.cold?.name || t('寒冷');
+        return TEMP_DATA.veryCold?.name || t('极寒');
     }
 
     private setLabel(label: UILabel | null, text: string, color?: Color): void {

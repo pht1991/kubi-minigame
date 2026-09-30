@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionCombat.ts - 回合制战斗状态机
  * 将 ActionDungeon.battle 的自动解算改为单回合驱动，供 BattlePanel 交互式调用。
@@ -121,7 +122,7 @@ export class ActionCombat {
             playerCurHp: curHp,
             pHit,
             turn: 0,
-            log: [`遭遇了 ${prefixName}${mst.name}！`],
+            log: [`${t('遭遇了 ')}${prefixName}${mst.name}！`],
             ended: false,
             win: false,
             rewards: [],
@@ -220,7 +221,7 @@ export class ActionCombat {
         if (next <= 0) {
             delete gm.currentEquip['hand'];
             delete gm.durableSaveData[id];
-            if (log) log.push(`${ITEM_DATA[id]?.name || id} 损坏了！`);
+            if (log) log.push(`${ITEM_DATA[id]?.name || id}${t(' 损坏了！')}`);
         } else {
             gm.durableSaveData[id] = next;
         }
@@ -239,7 +240,7 @@ export class ActionCombat {
             if (next <= 0) {
                 delete gm.currentEquip[slot];
                 delete gm.durableSaveData[id];
-                if (log) log.push(`${ITEM_DATA[id]?.name || id} 损坏了！`);
+                if (log) log.push(`${ITEM_DATA[id]?.name || id}${t(' 损坏了！')}`);
             } else {
                 gm.durableSaveData[id] = next;
             }
@@ -270,9 +271,9 @@ export class ActionCombat {
                 if (s.guard) dmg *= 0.5;
                 dmg = Math.round(dmg);
                 s.playerCurHp -= dmg;
-                counterMsg = `${s.mstName} 反击，造成 ${dmg} 伤害。`;
+                counterMsg = `${s.mstName}${t(' 反击，造成 ')}${dmg}${t(' 伤害。')}`;
             } else {
-                counterMsg = `${s.mstName} 攻击落空了！`;
+                counterMsg = `${s.mstName}${t(' 攻击落空了！')}`;
             }
             ActionCombat.decayArmor(this._gm, this.state?.log);
         }
@@ -297,7 +298,7 @@ export class ActionCombat {
      * 0.8s 后再调 monsterCounter() 让反击生效。
      */
     playerAttack(): string {
-        if (!this.state || this.state.ended) return '战斗已结束';
+        if (!this.state || this.state.ended) return t('战斗已结束');
         const s = this.state;
         s.turn++;
         s.playerAtk = ActionCombat.calcPlayerAtk(this._gm);
@@ -306,9 +307,9 @@ export class ActionCombat {
         if (Math.random() < s.pHit) {
             const dmg = Math.round(s.playerAtk * pdm * (0.85 + Math.random() * 0.3));
             s.mstHp -= dmg;
-            msg += `你攻击了 ${s.mstName}，造成 ${dmg} 伤害。`;
+            msg += `${t('你攻击了 ')}${s.mstName}${t('，造成 ')}${dmg}${t(' 伤害。')}`;
         } else {
-            msg += '你的攻击落空了！';
+            msg += t('你的攻击落空了！');
         }
         ActionCombat.decayWeapon(this._gm, this.state?.log);
         s.log.push(msg);
@@ -338,13 +339,13 @@ export class ActionCombat {
 
     /** 使用技能（独立效果 + 冷却） */
     useSkill(skillId: string): string {
-        if (!this.state || this.state.ended) return '战斗已结束';
+        if (!this.state || this.state.ended) return t('战斗已结束');
         const s = this.state;
         const skill = this._gm.skill;
         const lv = skill[skillId] || 0;
-        if (lv <= 0) return '你还未学会该技能';
+        if (lv <= 0) return t('你还未学会该技能');
         if ((s.cds[skillId] || 0) > 0) {
-            return `${this.skillName(skillId)}冷却中（剩 ${s.cds[skillId]} 回合）`;
+            return `${this.skillName(skillId)}${t('冷却中（剩 ')}${s.cds[skillId]}${t(' 回合）')}`;
         }
 
         s.turn++;
@@ -357,39 +358,39 @@ export class ActionCombat {
         switch (skillId) {
             case 'melee': {
                 const dmg = Math.round(s.playerAtk * (1 + 0.6 * lv) * pdm * roll());
-                if (Math.random() < s.pHit) { s.mstHp -= dmg; msg = `格斗猛击 ${s.mstName}，造成 ${dmg} 伤害。`; }
-                else msg = '格斗攻击落空了！';
+                if (Math.random() < s.pHit) { s.mstHp -= dmg; msg = `${t('格斗猛击 ')}${s.mstName}${t('，造成 ')}${dmg}${t(' 伤害。')}`; }
+                else msg = t('格斗攻击落空了！');
                 s.cds[skillId] = SKILL_CD.melee;
                 break;
             }
             case 'magic': {
                 const dmg = Math.round(s.playerAtk * (1 + 0.6 * lv) * pdm * (1 - magicResist) * roll());
-                if (Math.random() < s.pHit) { s.mstHp -= dmg; msg = `魔法爆发命中 ${s.mstName}，造成 ${dmg} 伤害。`; }
-                else msg = '魔法吟唱失败！';
+                if (Math.random() < s.pHit) { s.mstHp -= dmg; msg = `${t('魔法爆发命中 ')}${s.mstName}${t('，造成 ')}${dmg}${t(' 伤害。')}`; }
+                else msg = t('魔法吟唱失败！');
                 s.cds[skillId] = SKILL_CD.magic;
                 break;
             }
             case 'shot': {
                 const dmg = Math.round(s.playerAtk * (1 + 0.6 * lv) * pdm * roll());
-                if (Math.random() < 0.95) { s.mstHp -= dmg; msg = `精准射击 ${s.mstName}，造成 ${dmg} 伤害。`; }
-                else msg = '射击偏离了目标！';
+                if (Math.random() < 0.95) { s.mstHp -= dmg; msg = `${t('精准射击 ')}${s.mstName}${t('，造成 ')}${dmg}${t(' 伤害。')}`; }
+                else msg = t('射击偏离了目标！');
                 s.cds[skillId] = SKILL_CD.shot;
                 break;
             }
             case 'def': {
                 s.guard = true;
-                msg = '你摆出防御姿态，下次受击伤害减半。';
+                msg = t('你摆出防御姿态，下次受击伤害减半。');
                 s.cds[skillId] = SKILL_CD.def;
                 break;
             }
             case 'agile': {
                 s.dodge = true;
-                msg = '你进入闪避姿态，本次怪物极难命中。';
+                msg = t('你进入闪避姿态，本次怪物极难命中。');
                 s.cds[skillId] = SKILL_CD.agile;
                 break;
             }
             default:
-                return '未知技能';
+                return t('未知技能');
         }
 
         // 仅攻击类技能消耗武器耐久；防御/敏捷姿态不磨损武器
@@ -400,20 +401,20 @@ export class ActionCombat {
 
     /** 使用道具（回复类） */
     useItem(itemId: string): string {
-        if (!this.state || this.state.ended) return '战斗已结束';
+        if (!this.state || this.state.ended) return t('战斗已结束');
         const item = ITEM_DATA[itemId];
-        if (!item) return '物品不存在';
+        if (!item) return t('物品不存在');
 
         const s = this.state;
         s.turn++;
 
-        let msg = `使用了 ${item.name}。`;
+        let msg = `${t('使用了 ')}${item.name}。`;
         const bag = this._gm.boxSaveData['bag'] || {};
-        if (!bag[itemId] || bag[itemId] <= 0) return `背包中没有 ${item.name}`;
+        if (!bag[itemId] || bag[itemId] <= 0) return `${t('背包中没有 ')}${item.name}`;
 
         this._gm.changeItem({ [itemId]: -1 }, 'bag');
 
-        if (item.heal) { s.playerCurHp = Math.min(s.playerCurHp + item.heal, s.playerMaxHp); msg += ` 回复 ${item.heal} HP。`; }
+        if (item.heal) { s.playerCurHp = Math.min(s.playerCurHp + item.heal, s.playerMaxHp); msg += `${t(' 回复 ')}${item.heal} HP。`; }
         if (item.effect) {
             for (const k in item.effect) {
                 if (k === 'hp') { s.playerCurHp = Math.min(s.playerCurHp + item.effect[k], s.playerMaxHp); msg += ` ${item.effect[k] > 0 ? '+' : '-'}${Math.abs(item.effect[k])} HP。`; }
@@ -443,7 +444,7 @@ export class ActionCombat {
             }
             if (charged > 0) {
                 EventBus.instance.emit(GameEvents.EQUIP_CHANGE, this._gm.currentEquip);
-                msg += ` 为 ${charged} 把武器恢复了耐久。`;
+                msg += `${t(' 为 ')}${charged}${t(' 把武器恢复了耐久。')}`;
             }
         }
 
@@ -453,7 +454,7 @@ export class ActionCombat {
             const gain = (d.value as number) || 1;
             this._gm.skill[up] = this._gm.getSkillLevel(up) + gain;
             EventBus.instance.emit(GameEvents.SKILL_CHANGE, this._gm.skill);
-            msg += ` 永久提升【${up}】技能 +${gain}。`;
+            msg += `${t(' 永久提升【')}${up}${t('】技能 +')}${gain}。`;
         }
 
         s.log.push(msg);   // 玩家使用道具独立一行
@@ -464,18 +465,18 @@ export class ActionCombat {
 
     /** 逃跑 */
     flee(): string {
-        if (!this.state || this.state.ended) return '战斗已结束';
+        if (!this.state || this.state.ended) return t('战斗已结束');
         const s = this.state;
         if (Math.random() < 0.5) {
             s.ended = true;
             s.win = false;
             this._onWin = null;   // 战斗结束（逃跑），清空胜利回调
-            s.log.push('你成功逃跑了！');
+            s.log.push(t('你成功逃跑了！'));
             this._eventBus.emit(GameEvents.BATTLE_END, { win: false, mst: s.mstId, fled: true });
-            return '成功逃跑了！';
+            return t('成功逃跑了！');
         }
         s.turn++;
-        let msg = '逃跑失败！';
+        let msg = t('逃跑失败！');
         s.log.push(msg);   // 逃跑失败独立一行
         const counterMsg = this.rollCounterMsg();
         if (counterMsg) s.log.push(counterMsg);   // 怪物趁机攻击独立一行
@@ -484,7 +485,7 @@ export class ActionCombat {
 
     /** 技能中文名 */
     private skillName(id: string): string {
-        const map: Record<string, string> = { melee: '格斗', magic: '魔法', shot: '射击', def: '防御', agile: '敏捷' };
+        const map: Record<string, string> = { melee: t('格斗'), magic: t('魔法'), shot: t('射击'), def: t('防御'), agile: t('敏捷') };
         return map[id] || id;
     }
 
@@ -499,9 +500,9 @@ export class ActionCombat {
             this._onWin = null;   // 战斗结束（死亡），清空胜利回调
             const oldHp = this._gm.playerState.hp;
             this._gm.playerStateChange({ hp: -oldHp });
-            s.log.push('你被击败了！');
+            s.log.push(t('你被击败了！'));
             this._eventBus.emit(GameEvents.BATTLE_END, { win: false, mst: s.mstId });
-            return '你被击败了！';
+            return t('你被击败了！');
         }
 
         if (s.mstHp <= 0) {
@@ -544,9 +545,9 @@ export class ActionCombat {
             const onWin = this._onWin;
             this._onWin = null;
             if (onWin) onWin();
-            s.log.push(`击败了 ${s.mstName}！`);
-            if (rewardItems.length > 0) s.log.push(`获得：${rewardItems.join(' ')}`);
-            return `击败了 ${s.mstName}！`;
+            s.log.push(`${t('击败了 ')}${s.mstName}！`);
+            if (rewardItems.length > 0) s.log.push(`${t('获得：')}${rewardItems.join(' ')}`);
+            return `${t('击败了 ')}${s.mstName}！`;
         }
 
         return s.log[s.log.length - 1] || '';

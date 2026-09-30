@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionEvent.ts - 事件系统动作
  * 对齐原 EventComponent / GiveComponent：
@@ -46,13 +47,13 @@ export class ActionEvent {
     /** 触发一个事件 */
     trigger(eventId: string): ActionResult {
         const data = EVENT_DATA[eventId];
-        if (!data) return { success: false, message: '事件不存在' };
+        if (!data) return { success: false, message: t('事件不存在') };
         if (this._gm.eventSaveData[eventId]?.experienced) {
-            return { success: false, message: '已经经历过了' };
+            return { success: false, message: t('已经经历过了') };
         }
         // 需求物资
         if (data.want && !this._gm.checkHaveResource(data.want)) {
-            return { success: false, message: '不满足需求' };
+            return { success: false, message: t('不满足需求') };
         }
 
         const r = this._exec.execute({}, data.want || {}, 0.1, {
@@ -97,10 +98,10 @@ export class ActionEvent {
         const canTrigger = !experienced && this._gm.checkHaveResource(want);
         const wantStr = Object.keys(want).length > 0
             ? Object.entries(want).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
+            : t('无');
         const getStr = data.get
             ? Object.entries(data.get).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
+            : t('无');
         // d_1 / d_2 可能是字符串或数组
         const d1 = data.d_1 ? (Array.isArray(data.d_1) ? data.d_1 : [data.d_1]) : [];
         const d2 = data.d_2 ? (Array.isArray(data.d_2) ? data.d_2 : [data.d_2]) : [];
@@ -127,7 +128,7 @@ export class ActionEvent {
     /** 执行转生 */
     doReincarnation(): ActionResult {
         if (!this.canReincarnate()) {
-            return { success: false, message: '条件不足，无法转生' };
+            return { success: false, message: t('条件不足，无法转生') };
         }
         const oldMaouLevel = this._gm.maouLevel;
         // 转生：魔王等级+1，重置部分进度但保留技能
@@ -138,6 +139,6 @@ export class ActionEvent {
         this._gm.setPlayerState({ hp: 100, full: 100, moist: 100, ps: 100, san: 100 });
         this._eventBus.emit(GameEvents.STATE_CHANGE, this._gm.playerState);
         this._eventBus.emit('dungeon_change', this._gm.dungeonSaveData);
-        return { success: true, message: `转生成功！当前轮回：第 ${this._gm.maouLevel} 世` };
+        return { success: true, message: `${t('转生成功！当前轮回：第 ')}${this._gm.maouLevel}${t(' 世')}` };
     }
 }

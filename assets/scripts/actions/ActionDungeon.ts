@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionDungeon.ts - 地牢与战斗系统动作
  *
@@ -74,22 +75,22 @@ export class ActionDungeon {
             stairData: {},
         };
         this._eventBus.emit('dungeon_change', this._gm.dungeonSaveData);
-        return { success: true, message: '进入了地牢第 1 层' };
+        return { success: true, message: t('进入了地牢第 1 层') };
     }
 
     /** 下楼：消耗 1 把地牢钥匙（对齐原版 handleChoice.downStair 的 useItem({dungeonKey:1})） */
     descend(): ActionResult {
         const ds = this._gm.dungeonSaveData;
-        if (!ds || !ds.stairCount) return { success: false, message: '尚未进入地牢' };
+        if (!ds || !ds.stairCount) return { success: false, message: t('尚未进入地牢') };
         const keys = this._gm.boxSaveData['bag']?.['dungeonKey'] || 0;
-        if (keys <= 0) return { success: false, message: '下楼需要地牢钥匙' };
+        if (keys <= 0) return { success: false, message: t('下楼需要地牢钥匙') };
         this._gm.changeItem({ dungeonKey: -1 }, 'bag');
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
         ds.stairCount += 1;
         ds.roomCount = 0;
         ds.deepest = Math.max(ds.deepest, ds.stairCount);
         this._eventBus.emit('dungeon_change', ds);
-        return { success: true, message: `下到了第 ${ds.stairCount} 层` };
+        return { success: true, message: `${t('下到了第 ')}${ds.stairCount}${t(' 层')}` };
     }
 
     /**
@@ -99,16 +100,16 @@ export class ActionDungeon {
      */
     ropeGo(toFloor: number): ActionResult {
         const ds = this._gm.dungeonSaveData;
-        if (!ds || !ds.stairCount) return { success: false, message: '尚未进入地牢' };
+        if (!ds || !ds.stairCount) return { success: false, message: t('尚未进入地牢') };
         const ropes = this._gm.boxSaveData['bag']?.['dungeonRope'] || 0;
-        if (ropes <= 0) return { success: false, message: '需要地牢绳索' };
-        if (toFloor <= ds.stairCount || toFloor >= ds.deepest) return { success: false, message: '目标层无效' };
+        if (ropes <= 0) return { success: false, message: t('需要地牢绳索') };
+        if (toFloor <= ds.stairCount || toFloor >= ds.deepest) return { success: false, message: t('目标层无效') };
         this._gm.changeItem({ dungeonRope: -1 }, 'bag');
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
         ds.stairCount = toFloor;
         ds.roomCount = 1;
         this._eventBus.emit('dungeon_change', ds);
-        return { success: true, message: `空降到了第 ${toFloor} 层` };
+        return { success: true, message: `${t('空降到了第 ')}${toFloor}${t(' 层')}` };
     }
 
     /** 绳索穿越耗时（对齐原版 time = |Δ|^0.7，上限 20） */
@@ -348,7 +349,7 @@ export class ActionDungeon {
      */
     battle(mstId: string, prefix?: string): ActionResult {
         const mst = MST_DATA[mstId];
-        if (!mst) return { success: false, message: '怪物不存在' };
+        if (!mst) return { success: false, message: t('怪物不存在') };
 
         // 怪物血量 + 前缀修正（与 ActionCombat.init 同一公式）
         const pf = ActionCombat.applyPrefix(prefix, mst);
@@ -364,7 +365,7 @@ export class ActionDungeon {
         const mRange = mst.range || 1;
         const pHit = wRange >= mRange ? 0.9 : 0.6;
 
-        const log: string[] = [`与 ${prefixName}${mst.name} 交战中…`];
+        const log: string[] = [`${t('与 ')}${prefixName}${mst.name}${t(' 交战中…')}`];
         let curHp = this._gm.playerState.hp;
         let mstHp = mstHp0;
         let turns = 0;
@@ -390,7 +391,7 @@ export class ActionDungeon {
             // 玩家阵亡
             this._gm.playerStateChange({ hp: -oldHp });
             this._eventBus.emit(GameEvents.BATTLE_END, { win: false, mst: mstId });
-            return { success: false, message: `你被 ${prefixName}${mst.name} 击败了` };
+            return { success: false, message: `${t('你被 ')}${prefixName}${mst.name}${t(' 击败了')}` };
         }
 
         // 胜利：扣除失血
@@ -413,6 +414,6 @@ export class ActionDungeon {
 
         this._eventBus.emit(GameEvents.ITEM_CHANGE, 'bag');
         this._eventBus.emit(GameEvents.BATTLE_END, { win: true, mst: mstId });
-        return { success: true, message: `击败了 ${prefixName}${mst.name}` };
+        return { success: true, message: `${t('击败了 ')}${prefixName}${mst.name}` };
     }
 }

@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionMap.ts - 地图探索系统动作
  * 覆盖：资源采集（gather）、拾荒（scavenge）、狩猎（hunt→战斗）
@@ -36,14 +37,14 @@ export class ActionMap {
     gather(placeId: string, resourceName: string): ActionResult {
         const placeData = PLACE_DATA[placeId];
         const res = placeData?.resource?.[resourceName];
-        if (!res) return { success: false, message: '资源点不存在' };
+        if (!res) return { success: false, message: t('资源点不存在') };
 
         // 与 UI (buildPlaceDetailPage) 保持一致的 fallback 链：
         //   saveData.resource[name].amount → PLACE_DATA.resource[name].initAmount → 0
         // 避免存档缺少 resource 子字段时误判"资源已耗尽"
         const psd = this._gm.placeSaveData[placeId]?.resource?.[resourceName];
         const amount = psd?.amount ?? res.initAmount ?? 0;
-        if (amount <= 0) return { success: false, message: '资源已耗尽' };
+        if (amount <= 0) return { success: false, message: t('资源已耗尽') };
 
         const require = res.require || {};
         const canGet = res.things || {};
@@ -51,7 +52,7 @@ export class ActionMap {
 
         // 产出不直接入背包：进度结束后弹「收获」弹窗，由玩家自行取舍（参照原版取全部/取部分交互）
         const r = this._exec.execute({ ...canGet }, { ...require }, timeNeed, {
-            title: '采集中',
+            title: t('采集中'),
             skipOutput: true,
             silent: true,
             onDone: () => {
@@ -64,7 +65,7 @@ export class ActionMap {
                 }
                 this._eventBus.emit('place_change', placeId);
                 // 弹出收获选择弹窗（携带完整 loot，不裁剪）
-                this._eventBus.emit(GameEvents.HARVEST_READY, { title: `采集 · ${res.name || resourceName}`, loot: { ...canGet } });
+                this._eventBus.emit(GameEvents.HARVEST_READY, { title: `${t('采集 · ')}${res.name || resourceName}`, loot: { ...canGet } });
             },
         });
         return r.success ? { success: true, message: '' } : r;
@@ -75,7 +76,7 @@ export class ActionMap {
         const placeData = PLACE_DATA[placeId];
         const things = placeData?.things;
         if (!things || Object.keys(things).length === 0) {
-            return { success: false, message: '这里没有可拾取的东西' };
+            return { success: false, message: t('这里没有可拾取的东西') };
         }
         const pickReq = placeData.pickRequire || { ps: 3 };
 
@@ -90,12 +91,12 @@ export class ActionMap {
 
         // 产出不直接入背包：进度结束后弹「收获」弹窗，由玩家自行取舍
         const r = this._exec.execute({ ...canGet }, { ...pickReq }, PICK_TIME, {
-            title: '拾荒中',
+            title: t('拾荒中'),
             skipOutput: true,
             silent: true,
             onDone: () => {
                 this._eventBus.emit('place_change', placeId);
-                this._eventBus.emit(GameEvents.HARVEST_READY, { title: '拾荒收获', loot: { ...canGet } });
+                this._eventBus.emit(GameEvents.HARVEST_READY, { title: t('拾荒收获'), loot: { ...canGet } });
             },
         });
         return r.success ? { success: true, message: '' } : r;
@@ -105,7 +106,7 @@ export class ActionMap {
     hunt(placeId: string): ActionResult {
         const mstList = this._gm.placeSaveData[placeId]?.mst;
         const keys = mstList ? Object.keys(mstList).filter(k => (mstList[k].amount ?? 0) > 0) : [];
-        if (keys.length === 0) return { success: false, message: '附近没有怪物' };
+        if (keys.length === 0) return { success: false, message: t('附近没有怪物') };
         const mstId = keys[Math.floor(Math.random() * keys.length)];
         const r = this._dungeon.battle(mstId);
         // 胜利后递减该地点怪物数量（与资源枯竭设计自洽；玩家阵亡则不扣减）

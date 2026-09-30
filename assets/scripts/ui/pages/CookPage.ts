@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * CookPage.ts - 烹饪系统页面模块
  *
@@ -20,7 +21,7 @@ export class CookPage extends BasePage {
     openCookPanel(): void {
         // 未建造炊具箱不可进入
         if (!this.gm.buildingSaveData['cooker']?.own) {
-            this.setMsg('需要先建造【炊具箱】');
+            this.setMsg(t('需要先建造【炊具箱】'));
             return;
         }
         this.navigator.push(this.buildCookHubPage());
@@ -55,7 +56,7 @@ export class CookPage extends BasePage {
                 const outName = ITEM_DATA[name]?.name || name;
                 cells.push({
                     id: `mk_${name}`,
-                    name: `${outName}  可做${bestQty}`,
+                    name: `${outName}${t('  可做')}${bestQty}`,
                     state: 'normal',
                     type: 'list',
                     data: { recipe: bestVariant },
@@ -63,24 +64,24 @@ export class CookPage extends BasePage {
             }
         }
         if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '背包没有可烹饪的食材组合', state: 'disabled', type: 'list' });
+            cells.push({ id: 'empty', name: t('背包没有可烹饪的食材组合'), state: 'disabled', type: 'list' });
         }
-        cells.push({ id: 'book', name: '菜谱书', state: 'normal' });
+        cells.push({ id: 'book', name: t('菜谱书'), state: 'normal' });
         return cells;
     }
 
     /** 烹饪主页：构建完整 GridPage（cells 用 buildCookHubCells，rebuild 复用以保证完成刷新） */
     private buildCookHubPage(): GridPage {
         return {
-            title: '烹饪',
-            breadcrumb: '烹饪',
+            title: t('烹饪'),
+            breadcrumb: t('烹饪'),
             columns: 1,
             cells: this.buildCookHubCells(),
             rebuild: () => this.buildCookHubCells(),
             // 升级按钮走公共标题栏接口
             ...this.makeUpgradeInfo('cookerUpdate', {
-                title: '炊具升级',
-                effectText: '烹饪耗时 ×0.8（每级提速约20%）',
+                title: t('炊具升级'),
+                effectText: t('烹饪耗时 ×0.8（每级提速约20%）'),
                 onUpgraded: () => this.navigator.replace(this.buildCookHubPage()),
             }),
             onCellClick: (index, cell) => {
@@ -120,15 +121,15 @@ export class CookPage extends BasePage {
         for (const key of Object.keys(byName)) {
             const info = byName[key];
             const outName = ITEM_DATA[key]?.name || key;
-            const effStr = info.effect ? this.formatEffect(info.effect) : '（无食用效果）';
+            const effStr = info.effect ? this.formatEffect(info.effect) : t('（无食用效果）');
             const recipeStr = info.variants.join('  /  ');
-            const text = `${outName}\n效果: ${effStr}\n配方: ${recipeStr}`;
+            const text = `${outName}\n${t('效果: ')}${effStr}\n${t('配方: ')}${recipeStr}`;
             cells.push({ id: `rb_${key}`, name: text, state: 'disabled', type: 'list' });
         }
 
         this.navigator.push({
-            title: '菜谱书',
-            breadcrumb: '菜谱书',
+            title: t('菜谱书'),
+            breadcrumb: t('菜谱书'),
             columns: 1,
             cells,
             onCellClick: () => {},
@@ -137,7 +138,7 @@ export class CookPage extends BasePage {
 
     /** 把 effect 对象格式化为中文串，如 {full:15, san:25} → "满腹+15 精神+25" */
     private formatEffect(effect: Record<string, number>): string {
-        const cn: Record<string, string> = { full: '满腹', moist: '水分', temp: '体温', san: '精神', hp: '生命', ps: '体力' };
+        const cn: Record<string, string> = { full: t('满腹'), moist: t('水分'), temp: t('体温'), san: t('精神'), hp: t('生命'), ps: t('体力') };
         const parts: string[] = [];
         for (const k of ['full', 'moist', 'temp', 'san', 'hp', 'ps']) {
             if (effect[k] !== undefined) {

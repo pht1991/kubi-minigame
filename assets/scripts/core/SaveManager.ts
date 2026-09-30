@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/core/i18n';
 /**
  * SaveManager.ts - 存档管理
  * 替代原项目 Cookie/localStorage，使用微信小游戏 wx.setStorageSync
@@ -103,7 +104,7 @@ export class SaveManager {
         try {
             const data: SaveData = JSON.parse(json);
             if (!data.version || typeof data.playerState?.hp !== 'number' || Number.isNaN(data.playerState.hp)) {
-                console.warn('[SaveManager] 云端存档格式不兼容，已忽略');
+                console.warn(t('[SaveManager] 云端存档格式不兼容，已忽略'));
                 return false;
             }
             this._setStorage(SAVE_KEY, json);
@@ -129,12 +130,12 @@ export class SaveManager {
 
     /** 云存档状态文本（用于菜单展示） */
     cloudStatusText(): string {
-        if (!CloudSaveProvider.instance.enabled) return '云存档未启用';
+        if (!CloudSaveProvider.instance.enabled) return t('云存档未启用');
         const err = CloudSaveProvider.instance.lastError;
-        if (err) return '云存档出错';
+        if (err) return t('云存档出错');
         const t = CloudSaveProvider.instance.lastSyncAt;
-        if (t) return `已同步 ${this._fmtTime(t)}`;
-        return '云存档就绪';
+        if (t) return `${t('已同步 ')}${this._fmtTime(t)}`;
+        return t('云存档就绪');
     }
 
     private _fmtTime(t: number): string {
@@ -151,7 +152,7 @@ export class SaveManager {
             const data: SaveData = JSON.parse(raw);
             // 存档格式校验：playerState.hp 必须是数字，且不能是 NaN
             if (!data.version || typeof data.playerState?.hp !== 'number' || Number.isNaN(data.playerState.hp)) {
-                console.warn('[SaveManager] 存档格式不兼容，删除旧存档');
+                console.warn(t('[SaveManager] 存档格式不兼容，删除旧存档'));
                 this.deleteSave();
                 return false;
             }

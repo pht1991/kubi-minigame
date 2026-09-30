@@ -129,3 +129,7 @@ UI 层 (Cocos 预制体)  ←  GridComponent / GridCell / StatusBar
 - [ ] 事件系统（触发条件/任务链）
 - [ ] 贸易系统（商人刷新/交易）
 - [ ] 地牢系统（楼层推进/专属事件）
+
+---
+
+📝 更多关于 Cocos Creator / 独立游戏开发的实战拆解，请看我的博客 **[phtbyte.com](https://phtbyte.com)**。

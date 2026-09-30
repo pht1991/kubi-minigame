@@ -7,6 +7,7 @@
  */
 
 import { _decorator, Node } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { ModalPanel, C } from './ModalPanel';
 import { Btn } from './theme';
 import { Tutorial } from './Tutorial';
@@ -19,7 +20,7 @@ export class TutorialPanel extends ModalPanel {
     protected panelH = 940;
 
     public show(title?: string): void {
-        super.show(title ?? '新手引导');
+        super.show(title ?? t('新手引导'));
     }
 
     /** 任意方式关闭（遮罩 / × / 按钮）都标记完成，避免回访者重复弹 */
@@ -36,19 +37,19 @@ export class TutorialPanel extends ModalPanel {
         let y = -8;
 
         // 欢迎语
-        this.mkText(c, 0, y, W, 30, '欢迎来到《库比》——硬核生存，先活下来！', 24, C.title,
+        this.mkText(c, 0, y, W, 30, t('欢迎来到《库比》——硬核生存，先活下来！'), 24, C.title,
             { bold: true, align: 'center', anchorX: 0.5, anchorY: 1 });
         y -= 46;
 
         // ① 状态释义
-        y = this._section(c, y, W, '① 看懂 6 个状态（归零 / 极端会怎样）');
+        y = this._section(c, y, W, t('① 看懂 6 个状态（归零 / 极端会怎样）'));
         const order: Array<[string, string]> = [
-            ['生命', '归零 = 死亡'],
-            ['满腹', '归零 = 持续掉血，去吃东西'],
-            ['水分', '归零 = 持续掉血，去喝水'],
-            ['体力', '过低 = 受限 / 掉血，注意休息'],
-            ['精神', '过低 = 掉血，归零会失控'],
-            ['体温', '过热 / 过冷 = 持续掉血'],
+            [t('生命'), t('归零 = 死亡')],
+            [t('满腹'), t('归零 = 持续掉血，去吃东西')],
+            [t('水分'), t('归零 = 持续掉血，去喝水')],
+            [t('体力'), t('过低 = 受限 / 掉血，注意休息')],
+            [t('精神'), t('过低 = 掉血，归零会失控')],
+            [t('体温'), t('过热 / 过冷 = 持续掉血')],
         ];
         for (const [n, d] of order) {
             this.mkText(c, 0, y, W, 26, `· ${n}：${d}`, 20, C.body,
@@ -58,23 +59,23 @@ export class TutorialPanel extends ModalPanel {
         y -= 8;
 
         // ② 第一个目标
-        y = this._section(c, y, W, '② 你的第一个目标');
-        this.mkText(c, 0, y, W, 56, '先去【地图】采集或【烹饪】填饱肚子。', 21, C.body,
+        y = this._section(c, y, W, t('② 你的第一个目标'));
+        this.mkText(c, 0, y, W, 56, t('先去【地图】采集或【烹饪】填饱肚子。'), 21, C.body,
             { align: 'left', anchorX: 0.5, anchorY: 1 });
         y -= 64;
 
         // ③ 时间提示
-        y = this._section(c, y, W, '③ 时间会流逝');
-        this.mkText(c, 0, y, W, 56, '每次操作都会推进时间，注意状态变化。', 21, C.body,
+        y = this._section(c, y, W, t('③ 时间会流逝'));
+        this.mkText(c, 0, y, W, 56, t('每次操作都会推进时间，注意状态变化。'), 21, C.body,
             { align: 'left', anchorX: 0.5, anchorY: 1 });
         y -= 64;
 
         // 按钮区（跳过 / 开始游戏）
         const by = -540;
         const bw = 240, bh = 60, gap = 30;
-        this.mkBtn(c, -bw / 2 - gap / 2, by, bw, bh, '跳过',
+        this.mkBtn(c, -bw / 2 - gap / 2, by, bw, bh, t('跳过'),
             { ...Btn.neutral, bg: C.barBtnBg }, () => this.hide());
-        this.mkBtn(c, bw / 2 + gap / 2, by, bw, bh, '开始游戏',
+        this.mkBtn(c, bw / 2 + gap / 2, by, bw, bh, t('开始游戏'),
             Btn.primary, () => this.hide());
     }
 

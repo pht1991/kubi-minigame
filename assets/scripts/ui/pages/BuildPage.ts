@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * BuildPage.ts - 建造/主页域页面模块
  *
@@ -27,18 +28,18 @@ export class BuildPage extends BasePage {
 
         // 1. 已建设施动态入口（建了什么出现什么）
         const facilityMap: Record<string, { label: string; id: string; icon: string }> = {
-            makeTable:  { label: '制造台', id: 'home_craft', icon: '制' },
-            alchemyTable: { label: '炼金台', id: 'home_alchemy', icon: '炼' },
-            magicTable:  { label: '秘术台', id: 'home_magic', icon: '秘' },
-            scienceTable:{ label: '科研台', id: 'home_science', icon: '科' },
-            cooker:     { label: '炊具箱', id: 'home_cook', icon: '炊' },
-            farm:       { label: '农田',   id: 'home_farm', icon: '农' },
-            alco:       { label: '酿酒桶', id: 'home_alco', icon: '酿' },
-            trap:       { label: '陷阱',   id: 'home_trap', icon: '陷' },
-            bigBox:     { label: '大箱子', id: 'home_box', icon: '箱' },
-            well:       { label: '水井',   id: 'home_well', icon: '井' },
-            toilet:     { label: '厕所',   id: 'home_toilet', icon: '厕' },
-            sleepPlace: { label: '床铺',   id: 'home_sleep', icon: '床' },
+            makeTable:  { label: t('制造台'), id: 'home_craft', icon: t('制') },
+            alchemyTable: { label: t('炼金台'), id: 'home_alchemy', icon: t('炼') },
+            magicTable:  { label: t('秘术台'), id: 'home_magic', icon: t('秘') },
+            scienceTable:{ label: t('科研台'), id: 'home_science', icon: t('科') },
+            cooker:     { label: t('炊具箱'), id: 'home_cook', icon: t('炊') },
+            farm:       { label: t('农田'),   id: 'home_farm', icon: t('农') },
+            alco:       { label: t('酿酒桶'), id: 'home_alco', icon: t('酿') },
+            trap:       { label: t('陷阱'),   id: 'home_trap', icon: t('陷') },
+            bigBox:     { label: t('大箱子'), id: 'home_box', icon: t('箱') },
+            well:       { label: t('水井'),   id: 'home_well', icon: t('井') },
+            toilet:     { label: t('厕所'),   id: 'home_toilet', icon: t('厕') },
+            sleepPlace: { label: t('床铺'),   id: 'home_sleep', icon: t('床') },
         };
         for (const [key, info] of Object.entries(facilityMap)) {
             if (this.gm.buildingSaveData[key]?.own) {
@@ -56,11 +57,11 @@ export class BuildPage extends BasePage {
         }
 
         // 3. 固定动作按钮（出门/菜单已移到底栏快捷入口，不再重复）
-        cells.push({ id: 'build', name: '建造', state: 'normal' });
+        cells.push({ id: 'build', name: t('建造'), state: 'normal' });
 
         return {
-            title: '超苦逼冒险者',
-            breadcrumb: '主页',
+            title: t('超苦逼冒险者'),
+            breadcrumb: t('主页'),
             columns: 4,
             cells,
             home: true,
@@ -98,13 +99,13 @@ export class BuildPage extends BasePage {
         }
 
         if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '所有建筑均已建造', state: 'disabled', type: 'list' });
+            cells.push({ id: 'empty', name: t('所有建筑均已建造'), state: 'disabled', type: 'list' });
         }
 
 
         this.navigator.push({
-            title: '建造',
-            breadcrumb: '主页 > 建造',
+            title: t('建造'),
+            breadcrumb: t('主页 > 建造'),
             columns: 1,  // 单列：每行一个建筑，横向撑满展示完整信息
             cells,
             onCellClick: (index, cell) => {

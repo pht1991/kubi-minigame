@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 /**
  * BasePage.ts - 所有页面模块的抽象基类
  *
@@ -76,21 +77,21 @@ export abstract class BasePage {
 
         return {
             upgradeInfo: {
-                label: opts.buttonLabel || '升级',
+                label: opts.buttonLabel || t('升级'),
                 state: canMake ? 'normal' : 'disabled',
             },
             onUpgradeClick: () => {
                 const options: DialogOption[] = [];
                 options.push({ label: nextName, data: null, disabled: true });
                 if (nextItem?.desc) options.push({ label: nextItem.desc, data: null, disabled: true });
-                if (opts.effectText) options.push({ label: `升级效果: ${opts.effectText}`, data: null, disabled: true, noTruncate: true });
-                options.push({ label: `需求: ${reqParts}`, data: null, disabled: true, noTruncate: true });
+                if (opts.effectText) options.push({ label: `${t('升级效果: ')}${opts.effectText}`, data: null, disabled: true, noTruncate: true });
+                options.push({ label: `${t('需求: ')}${reqParts}`, data: null, disabled: true, noTruncate: true });
                 if (canMake) {
-                    options.push({ label: '[确认升级]', data: { action: 'confirm', targetId: nextLevelId } });
+                    options.push({ label: t('[确认升级]'), data: { action: 'confirm', targetId: nextLevelId } });
                 } else {
-                    options.push({ label: '材料不足', data: null, disabled: true });
+                    options.push({ label: t('材料不足'), data: null, disabled: true });
                 }
-                options.push({ label: '取消', data: null });
+                options.push({ label: t('取消'), data: null });
                 this.dialogPanel?.show(
                     opts.title,
                     options,

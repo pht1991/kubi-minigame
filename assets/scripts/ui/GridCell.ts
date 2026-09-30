@@ -14,6 +14,7 @@
  */
 
 import { _decorator, Component, Node, Label, UIOpacity, Vec3, tween, Color, UITransform, Graphics } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { GridCellData } from '../data/types';
 import type { ResolvedCellLayout } from './cellLayout';
 import { charUnits } from './textMetrics';
@@ -206,7 +207,7 @@ export class GridCell extends Component {
         ltf.setAnchorPoint(0.5, 0.5);
         lblNode.setPosition(0, 0, 0);
         const lbl = lblNode.addComponent(Label);
-        lbl.string = '新';
+        lbl.string = t('新');
         lbl.fontSize = 17;
         lbl.color = C.white;
         lbl.horizontalAlign = Label.HorizontalAlign.CENTER;

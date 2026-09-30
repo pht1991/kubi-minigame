@@ -5,6 +5,7 @@
  */
 
 import { Node, Label, UITransform, Color, Graphics, ScrollView, view } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { ModalPanel, C } from './ModalPanel';
 import { S, Btn, BtnStyle } from './theme';
 import { UIShape, UIVStack, UIHStack, UILabel, UIButton } from './widgets';
@@ -57,7 +58,7 @@ export class BattlePanel extends ModalPanel {
     /** 开始战斗（prefix 为地牢前缀怪物 key 或前缀对象，可选；onWin 为胜利一次性回调） */
     startBattle(mstId: string, prefix?: string | Record<string, boolean>, onWin?: () => void): void {
         if (!this._combat.init(mstId, prefix, onWin)) return;
-        if (this._titleLbl) this._titleLbl.string = '战斗';
+        if (this._titleLbl) this._titleLbl.string = t('战斗');
         this.refreshUI();
         this.node.active = true;
         this.node.setSiblingIndex(this.node.parent!.children.length - 1);
@@ -118,7 +119,7 @@ export class BattlePanel extends ModalPanel {
         this._playerHpBar.setPosition(-250, 0, 0);
         this._playerHpBarGfx = this._playerHpBar.addComponent(Graphics);
 
-        this.mkCenter(plSection, 0, Y.plName, 640, 30, '玩家', 22, C.battleName);
+        this.mkCenter(plSection, 0, Y.plName, 640, 30, t('玩家'), 22, C.battleName);
 
         // —— 分隔线（怪/日志、日志/玩）——
         const sepUp = new UIShape('SepUp').line(-310, Y.sepUp, 310, Y.sepUp, C.battleSep, 2);
@@ -147,17 +148,17 @@ export class BattlePanel extends ModalPanel {
         this._resultLabel.node.active = false;
 
         // —— 继续按钮（战斗结束时显示）——
-        const contBtn = new UIButton('继续', Btn.confirm, () => this.close(), 200, 60);
+        const contBtn = new UIButton(t('继续'), Btn.confirm, () => this.close(), 200, 60);
         contBtn.mount(panel).pos(0, Y.contBtn, 0);
         this._continueBtn = contBtn.node;
         this._continueBtn.active = false;
 
         // —— 操作按钮行（统一暖底色 + 类型彩色描边，扁按钮 72 高）——
         const actions = [
-            { id: 'attack', name: '攻击', color: C.actAttack },
-            { id: 'skill', name: '技能', color: C.actSkill },
-            { id: 'item', name: '道具', color: C.actItem },
-            { id: 'flee', name: '逃跑', color: C.actFlee },
+            { id: 'attack', name: t('攻击'), color: C.actAttack },
+            { id: 'skill', name: t('技能'), color: C.actSkill },
+            { id: 'item', name: t('道具'), color: C.actItem },
+            { id: 'flee', name: t('逃跑'), color: C.actFlee },
         ];
         const actStyle: BtnStyle = { bg: C.btnActionBg, border: C.battleActBorder, borderW: 3, text: C.body, radius: S.btnRadius, fontSize: 24 };
         const actRow = new UIHStack().gap(16);
@@ -215,29 +216,29 @@ export class BattlePanel extends ModalPanel {
         const cds = this._combat.state.cds || {};
 
         const allSkills: { id: string; name: string }[] = [
-            { id: 'melee', name: '格斗' },
-            { id: 'magic', name: '魔法' },
-            { id: 'shot', name: '射击' },
-            { id: 'def', name: '防御' },
-            { id: 'agile', name: '敏捷' },
+            { id: 'melee', name: t('格斗') },
+            { id: 'magic', name: t('魔法') },
+            { id: 'shot', name: t('射击') },
+            { id: 'def', name: t('防御') },
+            { id: 'agile', name: t('敏捷') },
         ];
         const availableSkills = allSkills.filter(s => (skill[s.id] || 0) > 0);
 
         if (availableSkills.length === 0) {
             const dialogPanel = this._findDialog();
-            if (dialogPanel) dialogPanel.show('提示', [{ label: '你没有可用的战斗技能', data: null }], () => {});
+            if (dialogPanel) dialogPanel.show(t('提示'), [{ label: t('你没有可用的战斗技能'), data: null }], () => {});
             return;
         }
 
         const options = availableSkills.map(s => {
             const lv = skill[s.id];
             const cd = cds[s.id] || 0;
-            const label = cd > 0 ? `${s.name} 等级${lv} (冷却${cd})` : `${s.name} 等级${lv}`;
+            const label = cd > 0 ? `${s.name}${t(' 等级')}${lv}${t(' (冷却')}${cd})` : `${s.name}${t(' 等级')}${lv}`;
             return { label, data: s.id, disabled: cd > 0 };
         });
 
         const dialogPanel = this._findDialog();
-        if (dialogPanel) dialogPanel.show('选择技能', options, (data: string) => {
+        if (dialogPanel) dialogPanel.show(t('选择技能'), options, (data: string) => {
             this._combat.useSkill(data);
             this.refreshUI();
         });
@@ -265,14 +266,14 @@ export class BattlePanel extends ModalPanel {
         }
 
         if (usableItems.length === 0) {
-            this._combat.state.log.push('背包中没有战斗可用道具！');
+            this._combat.state.log.push(t('背包中没有战斗可用道具！'));
             this.refreshUI();
             return;
         }
 
         const options = usableItems.map(h => ({ label: h.name, data: h.id }));
         const dialogPanel = this._findDialog();
-        if (dialogPanel) dialogPanel.show('使用道具', options, (data: string) => {
+        if (dialogPanel) dialogPanel.show(t('使用道具'), options, (data: string) => {
             this._combat.useItem(data);
             this.refreshUI();
         });
@@ -290,10 +291,10 @@ export class BattlePanel extends ModalPanel {
         if (!s) { this.close(); return; }
 
         if (this._mstNameLabel) this._mstNameLabel.string = s.mstName;
-        if (this._mstHpLabel) this._mstHpLabel.string = `生命 ${Math.max(0, Math.round(s.mstHp))} / ${s.mstMaxHp}`;
+        if (this._mstHpLabel) this._mstHpLabel.string = `${t('生命 ')}${Math.max(0, Math.round(s.mstHp))} / ${s.mstMaxHp}`;
         this.updateHpBar(this._mstHpBar!, this._mstHpBarGfx!, Math.max(0, s.mstHp), s.mstMaxHp, C.hpEnemy);
 
-        if (this._playerHpLabel) this._playerHpLabel.string = `生命 ${Math.max(0, Math.round(s.playerCurHp))} / ${s.playerMaxHp}`;
+        if (this._playerHpLabel) this._playerHpLabel.string = `${t('生命 ')}${Math.max(0, Math.round(s.playerCurHp))} / ${s.playerMaxHp}`;
         this.updateHpBar(this._playerHpBar!, this._playerHpBarGfx!, Math.max(0, s.playerCurHp), s.playerMaxHp, C.hpPlayer);
 
         this.refreshLog(s);
@@ -302,7 +303,7 @@ export class BattlePanel extends ModalPanel {
             if (this._actionGrid) this._actionGrid.active = false;
             if (this._resultLabel) {
                 this._resultLabel.node.active = true;
-                this._resultLabel.string = s.win ? '胜利！' : '被击败了…';
+                this._resultLabel.string = s.win ? t('胜利！') : t('被击败了…');
                 this._resultLabel.color = s.win ? C.win : C.lose;
             }
             if (this._continueBtn) this._continueBtn.active = true;

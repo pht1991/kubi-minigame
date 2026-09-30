@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionScience.ts - 科研台研究动作
  *
@@ -38,19 +39,19 @@ export class ActionScience {
      */
     research(recipeId: string, recipeData: Record<string, any>, count: number = 1): ActionResult {
         const recipe = recipeData[recipeId];
-        if (!recipe) return { success: false, message: '配方不存在' };
+        if (!recipe) return { success: false, message: t('配方不存在') };
 
         // 已研究过（科技为一次性解锁）
         if (this._gm.skill[recipeId]) {
-            return { success: false, message: '已经研究过了' };
+            return { success: false, message: t('已经研究过了') };
         }
         // 前置建筑
         if (recipe.building && !this._gm.buildingSaveData[recipe.building]) {
-            return { success: false, message: `需要先建造${BUILDING_DATA[recipe.building]?.name || recipe.building}` };
+            return { success: false, message: `${t('需要先建造')}${BUILDING_DATA[recipe.building]?.name || recipe.building}` };
         }
         // 前置科技
         if (recipe.science && this._gm.getScienceLevel(recipe.science) <= 0) {
-            return { success: false, message: '需要先研究前置科技' };
+            return { success: false, message: t('需要先研究前置科技') };
         }
 
         // 批量材料
@@ -61,13 +62,13 @@ export class ActionScience {
             }
         }
         if (!this._gm.checkHaveResource(scaledRequire)) {
-            return { success: false, message: '材料不足' };
+            return { success: false, message: t('材料不足') };
         }
 
         const name = ITEM_DATA[recipeId]?.name || recipe.name || recipeId;
         return this._exec.execute({}, scaledRequire, recipe.timeNeed * count, {
-            title: `研究 ${name}`,
-            successMessage: `研究完成：${name}`,
+            title: `${t('研究 ')}${name}`,
+            successMessage: `${t('研究完成：')}${name}`,
             onDone: () => {
                 this._gm.skill[recipeId] = (this._gm.skill[recipeId] || 0) + 1;
                 this._eventBus.emit(GameEvents.SKILL_CHANGE, this._gm.skill);

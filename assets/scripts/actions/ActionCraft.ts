@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionCraft.ts - 制造系统动作
  * 覆盖：普通制造(MAKE)、炼金(ALCHEMY)、魔法(MAGIC)
@@ -32,15 +33,15 @@ export class ActionCraft {
      */
     make(recipeId: string, recipeData: Record<string, MakeData>, count: number = 1): ActionResult {
         const recipe = recipeData[recipeId];
-        if (!recipe) return { success: false, message: '配方不存在' };
+        if (!recipe) return { success: false, message: t('配方不存在') };
 
         // 前置建筑
         if (recipe.building && !this._gm.buildingSaveData[recipe.building]) {
-            return { success: false, message: '需要先建造对应建筑' };
+            return { success: false, message: t('需要先建造对应建筑') };
         }
         // 前置科技（科技技能统一存于 skill map，由 ActionSkill.learn 写入）
         if (recipe.science && !this._gm.skill[recipe.science]) {
-            return { success: false, message: '需要先研究对应科技' };
+            return { success: false, message: t('需要先研究对应科技') };
         }
 
         // 批量材料
@@ -51,7 +52,7 @@ export class ActionCraft {
             }
         }
         if (!this._gm.checkHaveResource(scaledRequire)) {
-            return { success: false, message: '材料不足' };
+            return { success: false, message: t('材料不足') };
         }
 
         // 执行：产出 = 配方的输出物品。
@@ -62,8 +63,8 @@ export class ActionCraft {
         canGet[outKey] = (recipe.amount || 1) * count;
         const outName = ITEM_DATA[recipeId]?.name || recipeId;
         return this._exec.execute(canGet, scaledRequire, recipe.timeNeed * count, {
-            title: `制造 ${outName}`,
-            successMessage: `制造了 ${outName} ×${(recipe.amount || 1) * count}`,
+            title: `${t('制造 ')}${outName}`,
+            successMessage: `${t('制造了 ')}${outName} ×${(recipe.amount || 1) * count}`,
         });
     }
 }

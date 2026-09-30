@@ -9,6 +9,7 @@
 import { _decorator, Component, Node, UITransform, Graphics } from 'cc';
 import { C } from './theme';
 import { UIShape, UILabel } from './widgets';
+import { t } from '../i18n';
 
 const { ccclass } = _decorator;
 
@@ -33,7 +34,7 @@ export class SaveIndicator extends Component {
         bg.mount(this.node);
         this._gfx = bg.gfx;
 
-        const lbl = new UILabel('保存于 --:--', { size: 16, color: C.title, align: 'center', width: 130 });
+        const lbl = new UILabel(t('ui.save.savedAt', '保存于 --:--'), { size: 16, color: C.title, align: 'center', width: 130 });
         lbl.mount(this.node);
         this._label = lbl;
     }
@@ -45,7 +46,7 @@ export class SaveIndicator extends Component {
     /** 设置初始文案（启动时立即显示，无延迟） */
     setInitial(timeStr?: string): void {
         if (!this._label) return;
-        this._label.setText(timeStr ? `保存于 ${timeStr}` : '保存于 --:--');
+        this._label.setText(timeStr ? t('ui.save.savedAt', '保存于 {t}', { t: timeStr }) : t('ui.save.savedAt', '保存于 --:--'));
         this._label.setColor(C.title);
         if (this._gfx) this._gfx.fillColor = C.saveBg;
     }
@@ -53,7 +54,7 @@ export class SaveIndicator extends Component {
     /** 保存完成：立即静默刷新时间（无「保存中」闪烁、无延迟切换） */
     showSaved(timeStr?: string): void {
         if (!this._label || !timeStr) return; // 失败/无时间则保持原样，不跳动
-        this._label.setText(`保存于 ${timeStr}`);
+        this._label.setText(t('ui.save.savedAt', '保存于 {t}', { t: timeStr }));
         this._label.setColor(C.title);
         if (this._gfx) this._gfx.fillColor = C.saveBg;
     }

@@ -4,6 +4,7 @@
  */
 
 import { _decorator, Component, Node, Label, ScrollView, Vec3, UITransform, Sprite, ScrollBar, Color, Widget, Graphics } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { UIShape, UILabel } from './widgets';
 import { GridPage, GridCellData } from '../data/types';
 import { GridCell } from './GridCell';
@@ -241,7 +242,7 @@ export class GridComponent extends Component {
             const depth = this._navigator.depth;
             const lbl = this.backButton.getComponentInChildren(Label);
             if (lbl) {
-                lbl.string = depth === 2 ? '主页' : '返回';
+                lbl.string = depth === 2 ? t('主页') : t('返回');
             }
         }
         // 列数覆盖
@@ -480,7 +481,7 @@ export class GridComponent extends Component {
             this._upgradeLabel.node.setParent(btn);
         }
         const ulabel = this._upgradeLabel!;
-        ulabel.setText(info.state === 'maxed' ? '已满级' : info.label);
+        ulabel.setText(info.state === 'maxed' ? t('已满级') : info.label);
         if (info.state === 'maxed') {
             ulabel.setColor(C.cellTextDisabled);          // 深灰（已满级）
         } else if (info.state === 'disabled') {

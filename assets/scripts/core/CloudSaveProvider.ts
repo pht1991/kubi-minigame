@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/core/i18n';
 /**
  * CloudSaveProvider.ts - 云存档提供方（微信云开发）
  *
@@ -43,7 +44,7 @@ export class CloudSaveProvider {
         }
         if (!this._hasWxCloud) {
             this._enabled = false;
-            console.warn('[CloudSave] 已启用但当前环境无 wx.cloud（非微信或基础库过低）');
+            console.warn(t('[CloudSave] 已启用但当前环境无 wx.cloud（非微信或基础库过低）'));
             return;
         }
         try {

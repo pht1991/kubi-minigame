@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * BrewPage.ts - 酿酒管理域页面模块
  *
@@ -16,7 +17,7 @@ export class BrewPage extends BasePage {
     /** 公开入口：打开酿酒管理面板 */
     public openBrewPanel(): void {
         if (!ActionBrew.instance.isBuilt()) {
-            this.setMsg('需要先建造【酿酒桶】');
+            this.setMsg(t('需要先建造【酿酒桶】'));
             this.navigator.replace(this.ctx.outdoorPage?.buildBuildingDetailPage('alco'));
             return;
         }
@@ -28,22 +29,22 @@ export class BrewPage extends BasePage {
         const slots = ActionBrew.instance.getBrewSlots();
         const cells: GridCellData[] = [];
 
-        cells.push({ id: 'start', name: '[开始酿造]', state: 'normal', type: 'list', noTruncate: true });
-        cells.push({ id: 'slot_label', name: `── 酿造中 (${slots.length}/${ActionBrew.MAX_SLOTS}) ──`, state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
+        cells.push({ id: 'start', name: t('[开始酿造]'), state: 'normal', type: 'list', noTruncate: true });
+        cells.push({ id: 'slot_label', name: `${t('── 酿造中 (')}${slots.length}/${ActionBrew.MAX_SLOTS}) ──`, state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
         if (slots.length === 0) {
-            cells.push({ id: 'empty', name: '暂无酿造', state: 'disabled', type: 'list', noTruncate: true });
+            cells.push({ id: 'empty', name: t('暂无酿造'), state: 'disabled', type: 'list', noTruncate: true });
         }
         slots.forEach((s, i) => {
             if (s.ready) {
-                cells.push({ id: `harvest_${i}`, name: `[收获]  ${s.recipeDesc} 已就绪`, state: 'normal', type: 'list', noTruncate: true });
+                cells.push({ id: `harvest_${i}`, name: `${t('[收获]  ')}${s.recipeDesc}${t(' 已就绪')}`, state: 'normal', type: 'list', noTruncate: true });
             } else {
-                cells.push({ id: `slot_${i}`, name: `${s.recipeDesc} 酿造 ${s.progress}% (剩余 ${Math.ceil(s.remaining)}h)`, state: 'disabled', type: 'list', noTruncate: true });
+                cells.push({ id: `slot_${i}`, name: `${s.recipeDesc}${t(' 酿造 ')}${s.progress}${t('% (剩余 ')}${Math.ceil(s.remaining)}h)`, state: 'disabled', type: 'list', noTruncate: true });
             }
         });
 
         return {
-            title: '酿酒管理',
-            breadcrumb: '酿酒',
+            title: t('酿酒管理'),
+            breadcrumb: t('酿酒'),
             columns: 1,
             cells,
             onCellClick: (index, cell) => {
@@ -66,7 +67,7 @@ export class BrewPage extends BasePage {
             const canBrew = this.gm.checkHaveResource(recipe.require || {});
             const reqStr = recipe.require && Object.keys(recipe.require).length > 0
                 ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-                : '无';
+                : t('无');
             const outName = ITEM_DATA[recipe.itemGet]?.name || recipe.itemGet;
             return {
                 label: `${recipe.desc} ${outName} [${reqStr}]`,
@@ -75,7 +76,7 @@ export class BrewPage extends BasePage {
             };
         });
         this.dialogPanel.show(
-            '选择酿造配方',
+            t('选择酿造配方'),
             options,
             (data: string) => {
                 const r = ActionBrew.instance.brew(data);

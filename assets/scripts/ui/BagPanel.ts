@@ -1,4 +1,5 @@
 import { _decorator, Color } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { ModalPanel, C } from './ModalPanel';
 import { S } from './theme';
 import { GridCellData } from '../data/types';
@@ -99,8 +100,8 @@ export class BagPanel extends ModalPanel {
             let subText: string | undefined;
             if (!isDisabled) {
                 const parts: string[] = [];
-                if (isEquipped) parts.push('[已装备]');
-                if (hasDur) parts.push(`耐久 ${Math.max(0, cell.durability!.cur)}/${cell.durability!.max}`);
+                if (isEquipped) parts.push(t('[已装备]'));
+                if (hasDur) parts.push(`${t('耐久 ')}${Math.max(0, cell.durability!.cur)}/${cell.durability!.max}`);
                 else if (item?.desc) parts.push(this.getTypeLabel(itemType));
                 if (parts.length > 0) subText = parts.join(' · ');
             }
@@ -139,10 +140,10 @@ export class BagPanel extends ModalPanel {
     /** 取类型中文短标签（用于副标题显示） */
     private getTypeLabel(type: string): string {
         const map: Record<string, string> = {
-            weapon: '武器', equip: '装备', head: '头部', body: '身体',
-            foot: '足部', neck: '颈部', tool: '工具', food: '食物',
-            cooked: '熟食', mat: '材料', met: '材料', material: '材料',
-            quest: '任务道具', special: '特殊', art: '艺术品',
+            weapon: t('武器'), equip: t('装备'), head: t('头部'), body: t('身体'),
+            foot: t('足部'), neck: t('颈部'), tool: t('工具'), food: t('食物'),
+            cooked: t('熟食'), mat: t('材料'), met: t('材料'), material: t('材料'),
+            quest: t('任务道具'), special: t('特殊'), art: t('艺术品'),
         };
         return map[type] || type || '';
     }

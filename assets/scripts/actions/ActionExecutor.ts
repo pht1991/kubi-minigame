@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionExecutor.ts - 通用动作执行器
  * 从原 main.js ActionComponent.act 提取的通用范式：
@@ -121,7 +122,7 @@ export class ActionExecutor {
 
         // 普通材料检查（背包）
         if (Object.keys(matRequire).length > 0 && !this._gm.checkHaveResource(matRequire)) {
-            return { success: false, message: '材料不足' };
+            return { success: false, message: t('材料不足') };
         }
         // 工具检查（需已装备且有足够耐久）
         const toolCheck = this._gm.canUseTools(toolRequire);
@@ -131,7 +132,7 @@ export class ActionExecutor {
         // 状态消耗检查（如采集要扣体力 ps）
         for (const k in stateRequire) {
             if ((this._gm.playerState as any)[k] < stateRequire[k]) {
-                return { success: false, message: '状态不足' };
+                return { success: false, message: t('状态不足') };
             }
         }
 
@@ -147,8 +148,8 @@ export class ActionExecutor {
         }
 
         const outputBox = options.outputBox || 'bag';
-        const title = options.title || '操作中';
-        const successMessage = options.successMessage || '完成';
+        const title = options.title || t('操作中');
+        const successMessage = options.successMessage || t('完成');
         const modal = !!options.resultModal;
 
         // 真正应用产出/消耗的逻辑（同步执行，供两种路径复用）

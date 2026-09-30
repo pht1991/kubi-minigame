@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * EventPage.ts - 事件域页面模块
  *
@@ -61,11 +62,11 @@ export class EventPage extends BasePage {
                 state: 'normal',
                 data: id,
             }));
-        if (cells.length === 0) cells.push({ id: 'none', name: '暂无可触发事件', state: 'disabled' });
+        if (cells.length === 0) cells.push({ id: 'none', name: t('暂无可触发事件'), state: 'disabled' });
 
         return {
-            title: '事件',
-            breadcrumb: '事件',
+            title: t('事件'),
+            breadcrumb: t('事件'),
             columns: 4,
             cells,
             onCellClick: (index, cell) => this.openEventDetail(cell.id),
@@ -98,7 +99,7 @@ export class EventPage extends BasePage {
             onClose: () => {
                 // 关闭详情时刷新事件列表（若当前仍在事件网格）
                 const cur = this.navigator.current;
-                if (cur && cur.title === '事件') this.navigator.replace(this.buildQuestPage());
+                if (cur && cur.title === t('事件')) this.navigator.replace(this.buildQuestPage());
             },
         });
     }
@@ -112,28 +113,28 @@ export class EventPage extends BasePage {
             : (data?.desc ? [data.desc] : []);
         const options: DialogOption[] = [];
         // 需求 / 奖励摘要（让玩家在对话里明确知道要交付什么、将获得什么）
-        if (dialogInfo.wantStr && dialogInfo.wantStr !== '无') {
-            options.push({ label: `需求：${dialogInfo.wantStr}`, data: null, disabled: true });
+        if (dialogInfo.wantStr && dialogInfo.wantStr !== t('无')) {
+            options.push({ label: `${t('需求：')}${dialogInfo.wantStr}`, data: null, disabled: true });
         }
-        if (dialogInfo.getStr && dialogInfo.getStr !== '无') {
-            options.push({ label: `奖励：${dialogInfo.getStr}`, data: null, disabled: true });
+        if (dialogInfo.getStr && dialogInfo.getStr !== t('无')) {
+            options.push({ label: `${t('奖励：')}${dialogInfo.getStr}`, data: null, disabled: true });
         }
         // 对话文本
         talkTexts.forEach(text => {
             options.push({ label: text, data: null, disabled: true });
         });
         if (!dialogInfo.experienced && dialogInfo.canTrigger) {
-            options.push({ label: '→ 交付并触发', data: { action: 'trigger' } });
+            options.push({ label: t('→ 交付并触发'), data: { action: 'trigger' } });
         }
         if (dialogInfo.experienced && dialogInfo.dialogAfter.length > 0) {
             dialogInfo.dialogAfter.forEach(text => {
                 options.push({ label: text, data: null, disabled: true });
             });
         }
-        options.push({ label: '关闭', data: { action: 'close' } });
+        options.push({ label: t('关闭'), data: { action: 'close' } });
 
         this.dialogPanel?.show(
-            data?.name || '事件',
+            data?.name || t('事件'),
             options,
             (d) => {
                 if (d?.action === 'trigger' && !dialogInfo.experienced) {
@@ -150,7 +151,7 @@ export class EventPage extends BasePage {
         this.setMsg(r.message);
         // 触发后立即刷新底层事件列表（已触发事件移出），无论详情面板是否仍开
         const cur = this.navigator.current;
-        if (cur && cur.title === '事件') this.navigator.replace(this.buildQuestPage());
+        if (cur && cur.title === t('事件')) this.navigator.replace(this.buildQuestPage());
         this.eventBus.emit(GameEvents.UI_REFRESH);
         // 触发后展示 d_2 后续对话
         if (dialogInfo?.dialogAfter.length > 0) {
@@ -166,9 +167,9 @@ export class EventPage extends BasePage {
             data: null,
             disabled: true,
         }));
-        options.push({ label: '继续', data: { action: 'close' } });
+        options.push({ label: t('继续'), data: { action: 'close' } });
         this.dialogPanel?.show(
-            `${data?.name || '事件'} - 完成`,
+            `${data?.name || t('事件')}${t(' - 完成')}`,
             options,
             () => {},
             () => {}

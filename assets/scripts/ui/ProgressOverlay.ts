@@ -16,6 +16,7 @@
 import { _decorator, Component, Node, UITransform, Graphics, tween, Color, NodeEventType, view } from 'cc';
 import { C, S } from './theme';
 import { UIShape, UILabel } from './widgets';
+import { t } from '../i18n';
 
 const { ccclass } = _decorator;
 
@@ -109,7 +110,7 @@ export class ProgressOverlay extends Component {
     play(title: string, durationMs: number, onComplete: () => void): void {
         if (this._playing) return; // 防重入：进行中忽略新请求
         this._playing = true;
-        if (this._titleLbl) this._titleLbl.setText(title || '操作中…');
+        if (this._titleLbl) this._titleLbl.setText(title || t('ui.progress.working', '操作中…'));
         this._drawBar(0);
         if (this._pctLbl) this._pctLbl.node.active = this.showPercent;
         if (this.showPercent && this._pctLbl) this._pctLbl.setText('0%');

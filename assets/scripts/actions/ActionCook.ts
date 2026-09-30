@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionCook.ts - 烹饪系统动作
  * 原项目用独立 cooker 箱匹配配方：把食材放入炊具箱，再从箱内凑齐配方烹饪。
@@ -41,7 +42,7 @@ export class ActionCook {
      */
     cook(recipe: CookRecipe, count: number = 1, from: 'bag' | 'cooker' = 'bag'): ActionResult {
         if (!recipe || !recipe.require || recipe.require.length === 0) {
-            return { success: false, message: '配方无效' };
+            return { success: false, message: t('配方无效') };
         }
         // require 数组 → 材料字典（每个 ×1 ×份数）
         const require: Record<string, number> = {};
@@ -49,7 +50,7 @@ export class ActionCook {
             require[item] = (require[item] || 0) + count;
         }
         if (!this._gm.checkHaveResource(require, from)) {
-            return { success: false, message: from === 'cooker' ? '炊具中食材不足' : '背包食材不足' };
+            return { success: false, message: from === 'cooker' ? t('炊具中食材不足') : t('背包食材不足') };
         }
 
         // 耗时：基础耗时 × 份数 × 烹饪速度系数（升级 cooker 后更快）
@@ -63,8 +64,8 @@ export class ActionCook {
         const r = this._exec.execute(canGet, {}, timeNeed, {
             outputBox: 'bag',
             refreshUI: false,
-            title: `烹饪 ${dishName}`,
-            successMessage: `烹饪了 ${dishName} ×${count}`,
+            title: `${t('烹饪 ')}${dishName}`,
+            successMessage: `${t('烹饪了 ')}${dishName} ×${count}`,
             onDone: () => {
                 // 从来源箱扣除食材
                 const neg: Record<string, number> = {};

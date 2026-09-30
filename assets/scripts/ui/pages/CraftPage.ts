@@ -6,6 +6,7 @@
  */
 
 import { Node } from 'cc';
+import { t } from '../../i18n';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionCraft } from '../../actions/ActionCraft';
@@ -31,7 +32,7 @@ export class CraftPage extends BasePage {
             const built = !!this.gm.buildingSaveData[wb]?.own;
             cells.push({
                 id: wb,
-                name: `${BUILDING_DATA[wb]?.name || wb}${built ? '' : ' [未建造]'}`,
+                name: `${BUILDING_DATA[wb]?.name || wb}${built ? '' : t(' [未建造]')}`,
                 state: built ? 'normal' : 'disabled',
                 data: wb,
             });
@@ -49,14 +50,14 @@ export class CraftPage extends BasePage {
 
         this.setMsg(''); // 进入制造时清空旧反馈，防止跨系统串显
         this.navigator.push({
-            title: '制造',
-            breadcrumb: '制造',
+            title: t('制造'),
+            breadcrumb: t('制造'),
             columns: 4,
             cells: this.buildCraftCells(),
             rebuild: () => this.buildCraftCells(),
             onCellClick: (index, cell) => {
                 // 未建造的工作台不可进入
-                if (cell.state === 'disabled') { this.setMsg('该工作台尚未建造'); return; }
+                if (cell.state === 'disabled') { this.setMsg(t('该工作台尚未建造')); return; }
                 this.openRecipeGrid(cell.id);
             },
         });
@@ -78,7 +79,7 @@ export class CraftPage extends BasePage {
     private openRecipeGrid(workbench: string): void {
         // 防御性校验：未建造的工作台不可进入配方页
         if (!this.gm.buildingSaveData[workbench]?.own) {
-            this.setMsg(`需要先建造 ${BUILDING_DATA[workbench]?.name || workbench}`);
+            this.setMsg(`${t('需要先建造 ')}${BUILDING_DATA[workbench]?.name || workbench}`);
             return;
         }
         this.navigator.push(this.buildRecipePage(workbench));
@@ -86,7 +87,7 @@ export class CraftPage extends BasePage {
 
     /** 构建配方列表导航页（push / rebuild / replace 共用） */
     private buildRecipePage(workbench: string): GridPage {
-        const wbName = BUILDING_DATA[workbench]?.name || '制造';
+        const wbName = BUILDING_DATA[workbench]?.name || t('制造');
         return {
             title: wbName,
             breadcrumb: wbName,
@@ -120,13 +121,13 @@ export class CraftPage extends BasePage {
             const canMake = !researched && this.gm.checkHaveResource(recipe.require || {});
             const reqStr = recipe.require && Object.keys(recipe.require).length > 0
                 ? Object.entries(recipe.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-                : '无';
+                : t('无');
             const label = isScience
                 ? (recipe.name || ITEM_DATA[key]?.name || key)
                 : (ITEM_DATA[key]?.name || key);
             cells.push({
                 id: key,
-                name: `${label}${researched ? ' ✓已研究' : ''}\n需求: ${reqStr}`,
+                name: `${label}${researched ? ' ✓已研究' : ''}\n${t('需求: ')}${reqStr}`,
                 state: canMake ? 'normal' : 'disabled',
                 type: 'list',
                 data: key,
@@ -140,7 +141,7 @@ export class CraftPage extends BasePage {
         const recipeData = this.getRecipeData(workbench);
         const recipe = recipeData[recipeId];
         if (!recipe) return;
-        if (!this.gm.checkHaveResource(recipe.require || {})) { this.setMsg('材料不足'); return; }
+        if (!this.gm.checkHaveResource(recipe.require || {})) { this.setMsg(t('材料不足')); return; }
 
         const isScience = workbench === 'scienceTable';
 
@@ -153,13 +154,13 @@ export class CraftPage extends BasePage {
                 max = Math.min(max, Math.floor((bag[k] || 0) / recipe.require[k]));
             }
         }
-        if (!isFinite(max) || max < 1) { this.setMsg('材料不足'); return; }
+        if (!isFinite(max) || max < 1) { this.setMsg(t('材料不足')); return; }
 
         const itemName = isScience
             ? (recipe.name || ITEM_DATA[recipeId]?.name || recipeId)
             : (ITEM_DATA[recipeId]?.name || recipeId);
         this.ensureQtyPanel().show(
-            isScience ? `研究【${itemName}】` : `制造【${itemName}】`,
+            isScience ? `${t('研究【')}${itemName}】` : `${t('制造【')}${itemName}】`,
             max,
             (qty) => {
                 const r = isScience
@@ -170,13 +171,13 @@ export class CraftPage extends BasePage {
                 this.eventBus.emit(GameEvents.UI_REFRESH); // 失败/即时动作立即刷新；成功也会在进度结束后再刷一次
             },
             {
-                confirmLabel: isScience ? '研究' : '制造',
+                confirmLabel: isScience ? t('研究') : t('制造'),
                 getPreview: (qty) => {
                     const lines: string[] = [];
                     for (const k in (recipe.require || {})) {
-                        lines.push(`消耗 ${ITEM_DATA[k]?.name || k} ×${recipe.require[k] * qty}`);
+                        lines.push(`${t('消耗 ')}${ITEM_DATA[k]?.name || k} ×${recipe.require[k] * qty}`);
                     }
-                    if (isScience) lines.push(`→ 解锁科技：${itemName}`);
+                    if (isScience) lines.push(`${t('→ 解锁科技：')}${itemName}`);
                     return lines;
                 },
             }

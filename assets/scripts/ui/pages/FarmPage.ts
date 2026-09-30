@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * FarmPage.ts - 农田管理域页面模块
  *
@@ -15,7 +16,7 @@ export class FarmPage extends BasePage {
     public openFarmPanel(): void {
         // 未建造不可进入
         if (!this.gm.buildingSaveData['farm']?.own) {
-            this.setMsg('需要先建造【农田】');
+            this.setMsg(t('需要先建造【农田】'));
             return;
         }
         this.setMsg('');
@@ -28,20 +29,20 @@ export class FarmPage extends BasePage {
         const cells: GridCellData[] = [];
 
         // 已种植的作物（可收获/查看进度）
-        cells.push({ id: 'slot_label', name: `── 已种植 (${slots.length}/${farmData?.size || 2}) ──`, state: 'disabled' });
+        cells.push({ id: 'slot_label', name: `${t('── 已种植 (')}${slots.length}/${farmData?.size || 2}) ──`, state: 'disabled' });
         for (let i = 0; i < slots.length; i++) {
             const s = slots[i];
             if (s.ready) {
-                cells.push({ id: `harvest_${i}`, name: `${s.cropDesc} [可收获]`, state: 'normal' });
+                cells.push({ id: `harvest_${i}`, name: `${s.cropDesc}${t(' [可收获]')}`, state: 'normal' });
             } else {
                 const pct = Math.floor(s.progress * 100);
-                cells.push({ id: `slot_${i}`, name: `${s.cropDesc} 生长${pct}% (${Math.ceil(s.remaining)}h)`, state: 'disabled' });
+                cells.push({ id: `slot_${i}`, name: `${s.cropDesc}${t(' 生长')}${pct}% (${Math.ceil(s.remaining)}h)`, state: 'disabled' });
             }
         }
 
         // 可种植的作物列表
         if (slots.length < (farmData?.size || 2)) {
-            cells.push({ id: 'plant_label', name: '── 可种植 ──', state: 'disabled' });
+            cells.push({ id: 'plant_label', name: t('── 可种植 ──'), state: 'disabled' });
             for (const cropId in CROP_DATA) {
                 const crop = CROP_DATA[cropId];
                 const canPlant = this.gm.checkHaveResource(crop.require);
@@ -56,8 +57,8 @@ export class FarmPage extends BasePage {
         }
 
         return {
-            title: '农田管理',
-            breadcrumb: '农田',
+            title: t('农田管理'),
+            breadcrumb: t('农田'),
             columns: 4,
             cells,
             rebuild: () => this.buildFarmPage().cells,

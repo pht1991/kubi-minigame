@@ -8,6 +8,7 @@
  */
 
 import { Node } from 'cc';
+import { t } from '../../i18n';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ITEM_DATA, BIG_BOX_BASE_SIZE } from '../../data/data';
@@ -28,12 +29,12 @@ export class BigBoxPage extends BasePage {
         if (!hasBigBox) {
             // 未建造 → 提示去建造（对齐 RestPage「床铺」未建范式）
             return {
-                title: '大箱子',
-                breadcrumb: '大箱子',
+                title: t('大箱子'),
+                breadcrumb: t('大箱子'),
                 columns: 1,
                 cells: [
-                    { id: 'hint', name: '你还没有大箱子\n请先在「建造」中建造', state: 'disabled', type: 'list' },
-                    { id: 'goBuild', name: '前往建造', state: 'normal', type: 'list' },
+                    { id: 'hint', name: t('你还没有大箱子\n请先在「建造」中建造'), state: 'disabled', type: 'list' },
+                    { id: 'goBuild', name: t('前往建造'), state: 'normal', type: 'list' },
                 ],
                 onCellClick: (idx, cell) => {
                     if (cell.id === 'goBuild') {
@@ -48,8 +49,8 @@ export class BigBoxPage extends BasePage {
         const cells = this.buildBigBoxCells();
 
         return {
-            title: `大箱子 (${this.bigBoxCount()}/${this.bigBoxCap()})`,
-            breadcrumb: '大箱子',
+            title: `${t('大箱子 (')}${this.bigBoxCount()}/${this.bigBoxCap()})`,
+            breadcrumb: t('大箱子'),
             columns: 4,
             cells,
             rebuild: () => this.buildBigBoxCells(),
@@ -65,9 +66,9 @@ export class BigBoxPage extends BasePage {
      */
     private buildUpgradeInfo(): Partial<Pick<GridPage, 'upgradeInfo' | 'onUpgradeClick'>> {
         return this.makeUpgradeInfo('bigBoxUpdate', {
-            title: '大箱子升级',
-            buttonLabel: '升级',
-            effectText: '容量 +4',
+            title: t('大箱子升级'),
+            buttonLabel: t('升级'),
+            effectText: t('容量 +4'),
             onUpgraded: () => this.navigator.replace(this.buildBigBoxPage()),
         });
     }
@@ -111,8 +112,8 @@ export class BigBoxPage extends BasePage {
         const options: DialogOption[] = [];
         options.push({ label: itemData.name, data: null, disabled: true });
         if (itemData.desc) options.push({ label: itemData.desc, data: null, disabled: true });
-        options.push({ label: `数量: ${count}`, data: null, disabled: true });
-        options.push({ label: '取出到背包', data: { action: 'takeOut', itemId } });
+        options.push({ label: `${t('数量: ')}${count}`, data: null, disabled: true });
+        options.push({ label: t('取出到背包'), data: { action: 'takeOut', itemId } });
 
         this.dialogPanel?.show(
             `${itemData.name} ×${count}`,
@@ -129,11 +130,11 @@ export class BigBoxPage extends BasePage {
     /** 数量选择后取出（bigBox → bag）：弹出 QuantityPanel 选 N 个 */
     private openTakeOut(itemId: string): void {
         const have = this.gm.boxSaveData['bigBox']?.[itemId] || 0;
-        if (have < 1) { this.setMsg('大箱子中没有该物品'); return; }
+        if (have < 1) { this.setMsg(t('大箱子中没有该物品')); return; }
         const itemName = ITEM_DATA[itemId]?.name || itemId;
         const panel = this.ensureQtyPanel();
         panel.show(
-            `取出【${itemName}】到背包`,
+            `${t('取出【')}${itemName}${t('】到背包')}`,
             have,
             (qty) => {
                 const r = this.takeOut(itemId, qty);
@@ -143,8 +144,8 @@ export class BigBoxPage extends BasePage {
             },
             {
                 getPreview: (qty) => [
-                    `大箱子剩余：${Math.max(0, have - qty)}`,
-                    `背包新增：${qty}`,
+                    `${t('大箱子剩余：')}${Math.max(0, have - qty)}`,
+                    `${t('背包新增：')}${qty}`,
                 ],
             }
         );
@@ -154,11 +155,11 @@ export class BigBoxPage extends BasePage {
     private takeOut(itemId: string, qty: number): { success: boolean; message: string } {
         const src = this.gm.boxSaveData['bigBox'] || {};
         const have = src[itemId] || 0;
-        if (have < qty) return { success: false, message: '数量不足' };
+        if (have < qty) return { success: false, message: t('数量不足') };
         this.gm.changeItem({ [itemId]: -qty }, 'bigBox');
         this.gm.changeItem({ [itemId]: qty }, 'bag');
         this.eventBus.emit(GameEvents.UI_REFRESH);
-        return { success: true, message: `已取出 ${qty} 个到背包` };
+        return { success: true, message: `${t('已取出 ')}${qty}${t(' 个到背包')}` };
     }
 
     /** 懒创建数量选择弹窗（挂在 modalLayer，盖住底栏） */

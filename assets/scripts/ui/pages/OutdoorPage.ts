@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * OutdoorPage.ts - 户外域页面模块
  *
@@ -110,15 +111,15 @@ export class OutdoorPage extends BasePage {
             let resHint = '';
             if (p.resource) {
                 const resCount = Object.keys(p.resource).length;
-                if (resCount >= 3) resHint = '资源丰富';
-                else if (resCount >= 2) resHint = '资源较多';
-                else if (resCount >= 1) resHint = '有资源';
+                if (resCount >= 3) resHint = t('资源丰富');
+                else if (resCount >= 2) resHint = t('资源较多');
+                else if (resCount >= 1) resHint = t('有资源');
             }
-            if (p.mst && Object.keys(p.mst).length > 0) resHint += resHint ? ' 有怪' : '危险';
+            if (p.mst && Object.keys(p.mst).length > 0) resHint += resHint ? t(' 有怪') : t('危险');
 
             cells.push({
                 id: `place_${key}`,
-                name: `${p.name}\n${resHint || '未知'} 耗时${timeNeed}h`,
+                name: `${p.name}\n${resHint || t('未知')}${t(' 耗时')}${timeNeed}h`,
                 state: 'normal',
                 type: 'list',
                 isNew: !visited,
@@ -130,12 +131,12 @@ export class OutdoorPage extends BasePage {
         for (const key of this.rolledTraders) {
             const d = TRADE_DATA[key];
             const giveName = ITEM_DATA[d.give]?.name || d.give;
-            const refresh = d.time ? ` 每${d.time}h补货` : '';
+            const refresh = d.time ? `${t(' 每')}${d.time}${t('h补货')}` : '';
             const stock = ActionTrade.instance.getStock(key);
-            const stockStr = `剩余${stock.available}/${stock.max}`;
+            const stockStr = `${t('剩余')}${stock.available}/${stock.max}`;
             cells.push({
                 id: `trader_${key}`,
-                name: `${d.name}\n出售:${giveName} · ${stockStr}${refresh}`,
+                name: `${d.name}\n${t('出售:')}${giveName} · ${stockStr}${refresh}`,
                 state: 'normal',
                 type: 'list',
                 data: { traderId: key },
@@ -143,12 +144,12 @@ export class OutdoorPage extends BasePage {
         }
 
         if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '还没有可前往的地点', state: 'disabled', type: 'list' });
+            cells.push({ id: 'empty', name: t('还没有可前往的地点'), state: 'disabled', type: 'list' });
         }
 
         this.navigator.push({
-            title: '出门',
-            breadcrumb: '主页 > 出门',
+            title: t('出门'),
+            breadcrumb: t('主页 > 出门'),
             columns: 1,
             cells,
             onCellClick: (index, cell) => {
@@ -192,8 +193,8 @@ export class OutdoorPage extends BasePage {
             });
 
         this.navigator.push({
-            title: '建筑',
-            breadcrumb: '建筑',
+            title: t('建筑'),
+            breadcrumb: t('建筑'),
             columns: 4,
             cells,
             onCellClick: (index, cell) => this.openBuildingDetail(cell.id),
@@ -214,7 +215,7 @@ export class OutdoorPage extends BasePage {
         const built = this.gm.buildingSaveData[buildingId]?.own;
         const reqStr = d.require && Object.keys(d.require).length > 0
             ? Object.entries(d.require).map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ')
-            : '无';
+            : t('无');
         const timeNeed = d.timeNeed || 4;
 
         const cells: GridCellData[] = [];
@@ -231,12 +232,12 @@ export class OutdoorPage extends BasePage {
             const canBuild = (!preName || this.gm.buildingSaveData[d.building]?.own)
                 && this.gm.checkHaveResource(d.require || {});
             if (preName) {
-                cells.push({ id: 'pre', name: `前置：${preName}`, state: 'disabled', type: 'list' });
+                cells.push({ id: 'pre', name: `${t('前置：')}${preName}`, state: 'disabled', type: 'list' });
             }
             cells.push(
-                { id: 'req', name: `材料：${reqStr}`, state: 'disabled', type: 'list' },
-                { id: 'time', name: `耗时：${timeNeed} 小时`, state: 'disabled', type: 'list' },
-                { id: 'build', name: '[建造]', state: canBuild ? 'normal' : 'disabled', type: 'list', noTruncate: true },
+                { id: 'req', name: `${t('材料：')}${reqStr}`, state: 'disabled', type: 'list' },
+                { id: 'time', name: `${t('耗时：')}${timeNeed}${t(' 小时')}`, state: 'disabled', type: 'list' },
+                { id: 'build', name: t('[建造]'), state: canBuild ? 'normal' : 'disabled', type: 'list', noTruncate: true },
             );
         } else {
             // === 操作区（仿床铺页 [睡觉] 前缀风格，动作+上下文同行）===
@@ -246,7 +247,7 @@ export class OutdoorPage extends BasePage {
                 const readyCount = slots.filter(s => s.ready).length;
                 cells.push({
                     id: 'farm_manage',
-                    name: `[农田管理]  ${slots.length}/${farmData?.size || 2}${readyCount > 0 ? ` · ${readyCount}可收` : ''}`,
+                    name: `${t('[农田管理]  ')}${slots.length}/${farmData?.size || 2}${readyCount > 0 ? ` · ${readyCount}可收` : ''}`,
                     state: 'normal', type: 'list', noTruncate: true,
                 });
             }
@@ -256,7 +257,7 @@ export class OutdoorPage extends BasePage {
                 const canCheckCount = slots.filter(s => s.canCheck).length;
                 cells.push({
                     id: 'trap_manage',
-                    name: `[陷阱管理]  ${slots.length}/${trapData?.size || 2}${canCheckCount > 0 ? ` · ${canCheckCount}可查` : ''}`,
+                    name: `${t('[陷阱管理]  ')}${slots.length}/${trapData?.size || 2}${canCheckCount > 0 ? ` · ${canCheckCount}可查` : ''}`,
                     state: 'normal', type: 'list', noTruncate: true,
                 });
             }
@@ -265,7 +266,7 @@ export class OutdoorPage extends BasePage {
                 const readyCount = slots.filter(s => s.ready).length;
                 cells.push({
                     id: 'brew_manage',
-                    name: `[酿酒管理]  ${slots.length}/${ActionBrew.MAX_SLOTS}${readyCount > 0 ? ` · ${readyCount}可收` : ''}`,
+                    name: `${t('[酿酒管理]  ')}${slots.length}/${ActionBrew.MAX_SLOTS}${readyCount > 0 ? ` · ${readyCount}可收` : ''}`,
                     state: 'normal', type: 'list', noTruncate: true,
                 });
             }
@@ -273,7 +274,7 @@ export class OutdoorPage extends BasePage {
                 const frozen = this.timeSys.isWinter();
                 cells.push({
                     id: 'well_collect',
-                    name: frozen ? '[取水]  冬季封冻' : '[取水]  清水×8',
+                    name: frozen ? t('[取水]  冬季封冻') : t('[取水]  清水×8'),
                     state: frozen ? 'disabled' : 'normal', type: 'list', noTruncate: true,
                 });
             }
@@ -283,18 +284,18 @@ export class OutdoorPage extends BasePage {
                 const canShit = this.timeSys.day > (this.gm.coolDownSaveData['shit'] || 0);
                 cells.push({
                     id: 'toilet_shit',
-                    name: canShit ? '[排便]  精神+2 粪便×4' : '[排便]  冷却中',
+                    name: canShit ? t('[排便]  精神+2 粪便×4') : t('[排便]  冷却中'),
                     state: canShit ? 'normal' : 'disabled', type: 'list', noTruncate: true,
                 });
                 if (level > 0) {
-                    const reqStr = winter ? '清水×4 木×2' : '清水×4';
+                    const reqStr = winter ? t('清水×4 木×2') : t('清水×4');
                     cells.push({
                         id: 'toilet_shower',
-                        name: `[洗澡]  精神+30 体温${winter ? '+20' : '-10'} 需${reqStr}`,
+                        name: `${t('[洗澡]  精神+30 体温')}${winter ? '+20' : '-10'}${t(' 需')}${reqStr}`,
                         state: 'normal', type: 'list', noTruncate: true,
                     });
                 } else {
-                    cells.push({ id: 'toilet_shower_lock', name: '[洗澡]  需升级卫生间解锁', state: 'disabled', type: 'list', noTruncate: true });
+                    cells.push({ id: 'toilet_shower_lock', name: t('[洗澡]  需升级卫生间解锁'), state: 'disabled', type: 'list', noTruncate: true });
                 }
                 if (level > 1) {
                     const tank = this.gm.boxSaveData['marshGasTank'] || {};
@@ -303,11 +304,11 @@ export class OutdoorPage extends BasePage {
                     const pitAmt = bag['shit'] || 0;
                     cells.push({
                         id: 'toilet_biogas',
-                        name: `[沼气池]  粪便×${pitAmt} 池内×${tankAmt}`,
+                        name: `${t('[沼气池]  粪便×')}${pitAmt}${t(' 池内×')}${tankAmt}`,
                         state: pitAmt > 0 ? 'normal' : 'disabled', type: 'list', noTruncate: true,
                     });
                 } else {
-                    cells.push({ id: 'toilet_biogas_lock', name: '[沼气池]  需升级卫生间解锁', state: 'disabled', type: 'list', noTruncate: true });
+                    cells.push({ id: 'toilet_biogas_lock', name: t('[沼气池]  需升级卫生间解锁'), state: 'disabled', type: 'list', noTruncate: true });
                 }
             }
         }
@@ -316,8 +317,8 @@ export class OutdoorPage extends BasePage {
 
         // 各建筑升级效果描述（仅作确认弹窗内的说明文案，不塞进按钮）
         const EFFECT_BY_UP: Record<string, string> = {
-            wellUpdate: '每次取水 +2 清水（基础 8 + 等级×2）',
-            toiletUpdate: '解锁/改善淋浴：洗澡可恢复精神，保持卫生',
+            wellUpdate: t('每次取水 +2 清水（基础 8 + 等级×2）'),
+            toiletUpdate: t('解锁/改善淋浴：洗澡可恢复精神，保持卫生'),
         };
 
         return {
@@ -327,7 +328,7 @@ export class OutdoorPage extends BasePage {
             cells,
             // 升级按钮走公共标题栏接口（与所有可升级建筑统一），替代旧内联升级格
             ...this.makeUpgradeInfo(upType, {
-                title: `${d.name}升级`,
+                title: `${d.name}${t('升级')}`,
                 effectText: EFFECT_BY_UP[upType],
                 onUpgraded: () => this.navigator.replace(this.buildBuildingDetailPage(buildingId)),
             }),
@@ -370,14 +371,14 @@ export class OutdoorPage extends BasePage {
         if (!require || Object.keys(require).length === 0) return { ok: true, msg: '' };
         for (const [key, need] of Object.entries(require)) {
             if (key === 'ps') {
-                if (this.gm.playerState.ps < need) return { ok: false, msg: `体力不足（需要 ${need}）` };
+                if (this.gm.playerState.ps < need) return { ok: false, msg: `${t('体力不足（需要 ')}${need}）` };
             } else if (this.gm.isToolItem(key)) {
                 const toolCheck = this.gm.canUseTools({ [key]: need });
                 if (!toolCheck.ok) return { ok: false, msg: toolCheck.msg };
             } else {
                 if (!this.gm.checkHaveResource({ [key]: need })) {
                     const name = ITEM_DATA[key]?.name || key;
-                    return { ok: false, msg: `缺少材料【${name}】` };
+                    return { ok: false, msg: `${t('缺少材料【')}${name}】` };
                 }
             }
         }
@@ -386,21 +387,21 @@ export class OutdoorPage extends BasePage {
 
     /** 根据资源 circle 值返回生长状态文本 */
     private growthStatus(circle: number, amount: number): string {
-        if (amount <= 0) return '枯竭';
-        if (circle <= 0) return '停止';
-        if (circle >= 1) return '较快';
-        if (circle >= 0.5) return '正常';
-        if (circle >= 0.2) return '较慢';
-        return '非常慢';
+        if (amount <= 0) return t(t('枯竭'));
+        if (circle <= 0) return t(t('停止'));
+        if (circle >= 1) return t(t('较快'));
+        if (circle >= 0.5) return t(t('正常'));
+        if (circle >= 0.2) return t(t('较慢'));
+        return t(t('非常慢'));
     }
 
     /** 格式化需求字段：{ps:5, axe:1} → "体力5 斧头1" */
     private formatRequire(require: Record<string, number> | undefined): string {
-        if (!require || Object.keys(require).length === 0) return '无';
+        if (!require || Object.keys(require).length === 0) return t(t('无'));
         const parts: string[] = [];
         for (const [k, v] of Object.entries(require)) {
             if (k === 'ps') {
-                parts.push(`体力${v}`);
+                parts.push(`${t('体力')}${v}`);
             } else {
                 const itemName = ITEM_DATA[k]?.name || k;
                 parts.push(`${itemName}${v > 1 ? v : ''}`);
@@ -427,9 +428,9 @@ export class OutdoorPage extends BasePage {
         const req = this.formatRequire(res.require);
 
         const lines: string[] = [];
-        lines.push(`总量:${amount}  ${growth}`);
-        if (things) lines.push(`获得: ${things}`);
-        lines.push(`需要: ${req}`);
+        lines.push(`${t('总量:')}${amount}  ${growth}`);
+        if (things) lines.push(`${t('获得: ')}${things}`);
+        lines.push(`${t('需要: ')}${req}`);
 
         return lines.join('\n');
     }
@@ -475,12 +476,12 @@ export class OutdoorPage extends BasePage {
         }
 
         if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '没有可探索的地点', state: 'disabled' });
+            cells.push({ id: 'empty', name: t('没有可探索的地点'), state: 'disabled' });
         }
 
         this.navigator.push({
-            title: '地图',
-            breadcrumb: '地图',
+            title: t('地图'),
+            breadcrumb: t('地图'),
             columns: 4,
             cells,
             onCellClick: (index, cell) => {
@@ -519,13 +520,13 @@ export class OutdoorPage extends BasePage {
         }
 
         if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '该筛选下无地点', state: 'disabled' });
+            cells.push({ id: 'empty', name: t('该筛选下无地点'), state: 'disabled' });
         }
 
-        const filterNames: Record<string, string> = { all: '全部', visited: '已探索', new: '未探索' };
+        const filterNames: Record<string, string> = { all: t('全部'), visited: t('已探索'), new: t('未探索') };
 
         this.navigator.push({
-            title: `地图·${filterNames[filter] || filter}`,
+            title: `${t('地图·')}${filterNames[filter] || filter}`,
             breadcrumb: filterNames[filter] || filter,
             columns: 4,
             cells,
@@ -566,7 +567,7 @@ export class OutdoorPage extends BasePage {
                     const amount = psd.resource?.[resName]?.amount ?? res.initAmount ?? 0;
                     const depleted = amount <= 0;
                     const lines = this.formatResourceRow(res, amount);
-                    const actionLabel = res.action || '采集';
+                    const actionLabel = res.action || t('采集');
                     cells.push({
                         id: `gather_${resName}`,
                         name: `${res.name}  [${actionLabel}]\n${lines}`,
@@ -581,12 +582,12 @@ export class OutdoorPage extends BasePage {
                 const thingParts = Object.entries(p.things).map(([id, cnt]) => {
                     const n = cnt as number;
                     const itemName = ITEM_DATA[id]?.name || id;
-                    const qtyDesc = n >= 10 ? '大量' : n >= 5 ? '较多' : n >= 3 ? '少量' : '较少';
+                    const qtyDesc = n >= 10 ? t('大量') : n >= 5 ? t('较多') : n >= 3 ? t('少量') : t('较少');
                     return `${itemName}${qtyDesc}`;
                 });
                 cells.push({
                     id: 'scavenge',
-                    name: `拾荒  [拾荒]\n获得: ${thingParts.join('  ') || '未知'}`,
+                    name: `${t('拾荒  [拾荒]\n获得: ')}${thingParts.join('  ') || t('未知')}`,
                     state: 'normal',
                     type: 'list',
                 });
@@ -600,15 +601,15 @@ export class OutdoorPage extends BasePage {
                     if ((m.amount ?? 0) > 0) {
                         const mstName = MST_DATA[mstId]?.name || mstId;
                         const qty = m.amount ?? 0;
-                        const qtyDesc = qty >= 10 ? '大量' : qty >= 5 ? '较多' : '较少';
+                        const qtyDesc = qty >= 10 ? t('大量') : qty >= 5 ? t('较多') : t('较少');
                         activeMonsters.push(`${mstName}${qtyDesc}`);
                     }
                 }
             }
             if (activeMonsters.length > 0) {
-                cells.push({ id: 'hunt', name: `狩猎  [狩猎]\n发现: ${activeMonsters.join('  ')}`, state: 'normal', type: 'list' });
+                cells.push({ id: 'hunt', name: `${t('狩猎  [狩猎]\n发现: ')}${activeMonsters.join('  ')}`, state: 'normal', type: 'list' });
             } else {
-                cells.push({ id: 'hunt', name: `狩猎  [狩猎]\n附近没有怪物`, state: 'disabled', type: 'list' });
+                cells.push({ id: 'hunt', name: `${t('狩猎  [狩猎]\n附近没有怪物')}`, state: 'disabled', type: 'list' });
             }
 
             if (p.event) {
@@ -620,7 +621,7 @@ export class OutdoorPage extends BasePage {
                         if (ev.event && !this.gm.eventSaveData[ev.event]?.experienced) continue;
                         cells.push({
                             id: `event_${evId}`,
-                            name: `事件·${ev.name}  [对话]\n${ev.desc ? this.truncate(ev.desc, 40) : ''}`,
+                            name: `${t('事件·')}${ev.name}${t('  [对话]\n')}${ev.desc ? this.truncate(ev.desc, 40) : ''}`,
                             state: 'normal',
                             type: 'list',
                             data: { action: 'event', evId },
@@ -664,7 +665,7 @@ export class OutdoorPage extends BasePage {
                 } else if (cell.id === 'hunt') {
                     const hunted = ActionMap.instance.probeHunt(placeId);
                     if (hunted.mstId) {
-                        this.setMsg(`遭遇了 ${hunted.mstName}！`);
+                        this.setMsg(`${t('遭遇了 ')}${hunted.mstName}！`);
                         this.navigator.replace(this.buildPlaceDetailPage(placeId));
                         // 交互式战斗胜利后扣减该地点怪物数量（与资源枯竭设计自洽）：
                         // 通过 ActionCombat 的 onWin 一次性回调注入，避免覆写 battlePanel.onEnd
@@ -673,7 +674,7 @@ export class OutdoorPage extends BasePage {
                             () => ActionMap.instance.consumeHuntedMonster(placeId, hunted.mstId!));
                         return;
                     }
-                    this.setMsg('附近没有怪物');
+                    this.setMsg(t('附近没有怪物'));
                     this.navigator.replace(this.buildPlaceDetailPage(placeId));
                 } else if (data?.action === 'event') {
                     // 与主页「事件」入口一致：打开事件详情页（NPC 对话 + 需求/奖励 + 触发按钮，

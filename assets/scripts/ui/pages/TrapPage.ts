@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 /**
  * TrapPage.ts - 陷阱管理域页面模块
  *
@@ -15,7 +16,7 @@ export class TrapPage extends BasePage {
     public openTrapPanel(): void {
         // 未建造不可进入
         if (!this.gm.buildingSaveData['trap']?.own) {
-            this.setMsg('需要先建造【陷阱】');
+            this.setMsg(t('需要先建造【陷阱】'));
             return;
         }
         this.setMsg('');
@@ -28,22 +29,22 @@ export class TrapPage extends BasePage {
         const cells: GridCellData[] = [];
 
         // 已放置的陷阱
-        cells.push({ id: 'slot_label', name: `── 已放置 (${slots.length}/${trapData?.size || 2}) ──`, state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
+        cells.push({ id: 'slot_label', name: `${t('── 已放置 (')}${slots.length}/${trapData?.size || 2}) ──`, state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
         for (let i = 0; i < slots.length; i++) {
             const s = slots[i];
             if (s.canCheck) {
-                cells.push({ id: `check_${i}`, name: `${s.trapDesc} [可检查]`, state: 'normal', type: 'list', noTruncate: true });
+                cells.push({ id: `check_${i}`, name: `${s.trapDesc}${t(' [可检查]')}`, state: 'normal', type: 'list', noTruncate: true });
             } else if (s.checked) {
-                cells.push({ id: `remove_${i}`, name: `${s.trapDesc} [已检查·移除]`, state: 'normal', type: 'list', noTruncate: true });
+                cells.push({ id: `remove_${i}`, name: `${s.trapDesc}${t(' [已检查·移除]')}`, state: 'normal', type: 'list', noTruncate: true });
             } else {
                 const hoursLeft = Math.max(0, 6 - s.elapsed);
-                cells.push({ id: `slot_${i}`, name: `${s.trapDesc} 等待中(${Math.ceil(hoursLeft)}h)`, state: 'disabled', type: 'list', noTruncate: true });
+                cells.push({ id: `slot_${i}`, name: `${s.trapDesc}${t(' 等待中(')}${Math.ceil(hoursLeft)}h)`, state: 'disabled', type: 'list', noTruncate: true });
             }
         }
 
         // 可放置的陷阱列表
         if (slots.length < (trapData?.size || 2)) {
-            cells.push({ id: 'place_label', name: '── 可放置 ──', state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
+            cells.push({ id: 'place_label', name: t('── 可放置 ──'), state: 'disabled', type: 'list', noTruncate: true, layout: { kind: 'header' } });
             for (const trapId in TRAP_DATA) {
                 const trap = TRAP_DATA[trapId];
                 // 科技前置门禁（如 antiRogue 需「防盗术」），未解锁则置灰并提示
@@ -54,10 +55,10 @@ export class TrapPage extends BasePage {
                     .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
                 const getStr = Object.entries(trap.itemGet)
                     .map(([k, v]) => `${ITEM_DATA[k]?.name || k}×${v}`).join(' ');
-                const sciTag = sciBlocked ? ` [需科技:${sciName}]` : '';
+                const sciTag = sciBlocked ? `${t(' [需科技:')}${sciName}]` : '';
                 cells.push({
                     id: `place_${trapId}`,
-                    name: `[放置] ${trap.desc}\n诱饵[${reqStr}] → 产出[${getStr}]${sciTag}`,
+                    name: `${t('[放置] ')}${trap.desc}\n${t('诱饵[')}${reqStr}${t('] → 产出[')}${getStr}]${sciTag}`,
                     state: canPlace ? 'normal' : 'disabled',
                     type: 'list', noTruncate: true,
                 });
@@ -65,8 +66,8 @@ export class TrapPage extends BasePage {
         }
 
         return {
-            title: '陷阱管理',
-            breadcrumb: '陷阱',
+            title: t('陷阱管理'),
+            breadcrumb: t('陷阱'),
             columns: 1,   // 单列 list：每行一个陷阱，全宽展示完整信息（仿卫生间详情页）
             cells,
             rebuild: () => this.buildTrapPage().cells,

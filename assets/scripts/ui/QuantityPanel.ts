@@ -5,18 +5,19 @@
  * 继承 ModalPanel 复用外壳（遮罩 / 面板 / 关闭钮 / 控件助手）。
  *
  * 基础用法（存取）：
- *   qtyPanel.show(`存入【${name}】`, max, (qty) => { ... });
+ *   qtyPanel.show(`${t('存入【')}${name}】`, max, (qty) => { ... });
  *   默认全选；提供 − / +（±1）、全部、确定。
  *
  * 扩展用法（交易）：
  *   qtyPanel.show(title, max, onConfirm, {
  *       infoLines: ['持有 50 金 | 单价 20'],
  *       confirmLabel: '确认购买',
- *       getPreview: (q) => [`花费：${price*q} 金`, `→ 获得：${name}×${q}`],
+ *       getPreview: (q) => [`${t('花费：')}${price*q}${t(' 金')}`, `${t('→ 获得：')}${name}×${q}`],
  *   });
  */
 
 import { _decorator } from 'cc';
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 import { ModalPanel, C } from './ModalPanel';
 import { Btn } from './theme';
 import { UIVStack, UIHStack, UILabel, UIButton } from './widgets';
@@ -81,7 +82,7 @@ export class QuantityPanel extends ModalPanel {
             .add(new UIButton('+', Btn.primary, () => this.setQty(this._qty + 1), 60, 60)));
 
         // ── 全部 ──
-        stack.add(new UIButton('全部', Btn.neutral, () => this.setQty(this._max), 180, 50));
+        stack.add(new UIButton(t('全部'), Btn.neutral, () => this.setQty(this._max), 180, 50));
 
         // ── 预览文本（交易场景：花费/获得）──
         const previewLines = o?.getPreview ? o.getPreview(this._qty) : [];

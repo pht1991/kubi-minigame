@@ -26,7 +26,7 @@ import {
 } from '../data/data';
 // PLACE_INIT 已在 data.ts 末尾初始化（visited/amount/resource/things/mst），与 PLACE_DATA 配套
 
-import { registerAllDataTables, applyLang, defaultLangForPlatform, type Lang } from '../i18n';
+import { registerAllDataTables, applyLang, defaultLangForPlatform, t, type Lang } from '../i18n';
 import { sys } from 'cc';
 
 export class GameManager {
@@ -188,14 +188,14 @@ export class GameManager {
      */
     chooseCamp(camp: 'ice' | 'fire'): { success: boolean; message: string } {
         if (this.campSaveData) {
-            return { success: false, message: '阵营已选择，无法更改' };
+            return { success: false, message: t('阵营已选择，无法更改') };
         }
         if (camp !== 'ice' && camp !== 'fire') {
-            return { success: false, message: '无效阵营' };
+            return { success: false, message: t('无效阵营') };
         }
         this.campSaveData = camp;
         this._eventBus.emit(GameEvents.UI_REFRESH);
-        return { success: true, message: camp === 'fire' ? '你选择了【火之阵营】' : '你选择了【冰之阵营】' };
+        return { success: true, message: camp === 'fire' ? t('你选择了【火之阵营】') : t('你选择了【冰之阵营】') };
     }
 
     /** 玩家死亡后重生：恢复满状态继续游戏（不重置进度/技能） */
@@ -313,7 +313,7 @@ export class GameManager {
             const equippedId = this.currentEquip[slot || ''];
             const name = ITEM_DATA[item]?.name || item;
             if (equippedId !== item) {
-                return { ok: false, msg: `需要先装备【${name}】` };
+                return { ok: false, msg: `${t('需要先装备【')}${name}】` };
             }
             // 耐久兜底：已装备但 durableSaveData 缺失或为 0（旧存档 / 非 equip 路径 / DURABLE_INIT 旧版预置 0）
             // 一律视为「未初始化」并恢复满耐久。注：useTools 在耐久归零时走 delete（而非置 0），故 0 不可能是真实损坏态。
@@ -322,7 +322,7 @@ export class GameManager {
             }
             const cur = this.durableSaveData[item];
             if (cur < require[item]) {
-                return { ok: false, msg: `【${name}】耐久不足` };
+                return { ok: false, msg: `【${name}${t('】耐久不足')}` };
             }
         }
         return { ok: true, msg: '' };

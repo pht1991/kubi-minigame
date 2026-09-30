@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/ui/i18n';
 /**
  * HarvestModal.ts - 采集/拾荒「收获」选择弹窗
  *
@@ -46,7 +47,7 @@ export class HarvestModal extends ModalPanel {
         // 顶部提示（背包容量）
         this.mkText(
             this._content!, 0, -8, this.panelW - 80, 40,
-            `点击材料放入背包（背包 ${used}/${cap}）`, 20, C.sub,
+            `${t('点击材料放入背包（背包 ')}${used}/${cap}）`, 20, C.sub,
             { anchorY: 1, align: 'center' },
         );
 
@@ -56,7 +57,7 @@ export class HarvestModal extends ModalPanel {
         const rows: ModalRow[] = [];
         if (ids.length === 0) {
             rows.push(new ModalRow({
-                width: listW, name: '已全部拾取，可点「背包」整理物品',
+                width: listW, name: t('已全部拾取，可点「背包」整理物品'),
                 align: 'center', bg: C.optionBg, stroke: C.optionStroke,
             }));
         } else {
@@ -66,7 +67,7 @@ export class HarvestModal extends ModalPanel {
                 rows.push(new ModalRow({
                     width: listW, name, align: 'left',
                     meta: `×${qty}`, metaColor: C.sub,
-                    subText: '点击拾取', subColor: C.accent2, subSize: 18,
+                    subText: t('点击拾取'), subColor: C.accent2, subSize: 18,
                     bg: C.optionBg, stroke: C.optionStroke, radius: 12,
                     onTap: () => this.take(id),
                 }));
@@ -92,9 +93,9 @@ export class HarvestModal extends ModalPanel {
         // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)——HStack 自动排布（y 跟随列表实际高度）
         const btnW = (listW - 2 * 12) / 3;
         const btnRow = new UIHStack().gap(12)
-            .add(new UIButton('背包', Btn.neutral, () => this.onOpenBag?.(), btnW, 60))
-            .add(new UIButton('全部拾取', Btn.primary, () => this.takeAll(), btnW, 60))
-            .add(new UIButton('完成', Btn.confirm, () => this.finish(), btnW, 60));
+            .add(new UIButton(t('背包'), Btn.neutral, () => this.onOpenBag?.(), btnW, 60))
+            .add(new UIButton(t('全部拾取'), Btn.primary, () => this.takeAll(), btnW, 60))
+            .add(new UIButton(t('完成'), Btn.confirm, () => this.finish(), btnW, 60));
         btnRow.mount(this._content!);
         btnRow.pos(0, -(listH + 56 + 30), 0);
     }
@@ -117,7 +118,7 @@ export class HarvestModal extends ModalPanel {
             // 延迟到下一帧重建，避免在 touch 事件处理中销毁 ScrollView 节点导致行闪烁
             this.scheduleOnce(() => this.render(), 0);
         } else {
-            Toast.instance?.show(`背包已满，无法拾取 ${ITEM_DATA[id]?.name || id}`);
+            Toast.instance?.show(`${t('背包已满，无法拾取 ')}${ITEM_DATA[id]?.name || id}`);
         }
     }
 
@@ -130,7 +131,7 @@ export class HarvestModal extends ModalPanel {
             else skipped.push(ITEM_DATA[id]?.name || id);
         }
         if (skipped.length) {
-            Toast.instance?.show(`背包已满，以下未拾取：${skipped.join('、')}`);
+            Toast.instance?.show(`${t('背包已满，以下未拾取：')}${skipped.join('、')}`);
         }
         this._eventBus().emit(GameEvents.UI_REFRESH);
         this.scheduleOnce(() => this.render(), 0);
@@ -140,7 +141,7 @@ export class HarvestModal extends ModalPanel {
     private finish(): void {
         const left = Object.keys(this._loot)
             .map(id => `${ITEM_DATA[id]?.name || id}${this._loot[id] > 1 ? this._loot[id] : ''}`);
-        if (left.length) Toast.instance?.show(`未拾取（已留在原地）：${left.join('、')}`);
+        if (left.length) Toast.instance?.show(`${t('未拾取（已留在原地）：')}${left.join('、')}`);
         this._eventBus().emit(GameEvents.UI_REFRESH);
         this.hide();
     }

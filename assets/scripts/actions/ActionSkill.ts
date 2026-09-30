@@ -1,3 +1,4 @@
+import { t } from './../../../../../../../../D:/Projects/demos/front_end/kubi-minigame/assets/scripts/actions/i18n';
 /**
  * ActionSkill.ts - 技能系统动作
  * 两类学习路径，与原项目一致：
@@ -40,12 +41,12 @@ export class ActionSkill {
     /** 学习/升级一个技能 */
     learn(skillId: string): ActionResult {
         const data = SKILL_DATA[skillId];
-        if (!data) return { success: false, message: '技能不存在' };
+        if (!data) return { success: false, message: t('技能不存在') };
         const level = this._gm.skill[skillId] || 0;
 
         // one:true 只能学一次
         if ((data as any).only && level > 0) {
-            return { success: false, message: '已经学会了' };
+            return { success: false, message: t('已经学会了') };
         }
 
         // 计算成本
@@ -63,7 +64,7 @@ export class ActionSkill {
         }
 
         if (!this._gm.checkHaveResource(cost)) {
-            return { success: false, message: '资源不足' };
+            return { success: false, message: t('资源不足') };
         }
 
         const r = this._exec.execute({}, cost, 0.1, {
@@ -72,7 +73,7 @@ export class ActionSkill {
                 this._eventBus.emit(GameEvents.SKILL_CHANGE, this._gm.skill);
             },
         });
-        return r.success ? { success: true, message: `习得 ${data.name} Lv.${level + 1}` } : r;
+        return r.success ? { success: true, message: `${t('习得 ')}${data.name} Lv.${level + 1}` } : r;
     }
 
     /** 公开预览学习成本（已掌握/不可学返回 null），供 UI 展示 */

@@ -9,6 +9,7 @@
  */
 
 import { Node } from 'cc';
+import { t } from '../../i18n';
 import { BasePage } from './BasePage';
 import { GridPage, GridCellData } from '../../data/types';
 import { ActionItem } from '../../actions/ActionItem';
@@ -19,56 +20,56 @@ import { QuantityPanel } from '../QuantityPanel';
 
 /** 物品类型 → 中文显示名（物品详情弹窗中"类型"字段） */
 const ITEM_TYPE_LABEL: Record<string, string> = {
-    tool: '工具',
-    food: '食物',
-    cooked: '熟食',
-    met: '材料',
-    mat: '材料',
-    material: '材料',
-    quest: '任务道具',
-    bullet: '弹药',
-    equip: '装备',
-    weapon: '武器',
-    head: '头部装备',
-    body: '身体装备',
-    foot: '足部装备',
-    poizon: '毒药',
-    securityBox: '保险箱',
-    makeSpeed: '制造加速',
-    collectDec: '采集减耗',
-    trapGet: '陷阱收获',
-    trapChance: '陷阱几率',
-    lockUpdate: '开锁升级',
-    cookerUpdate: '烹饪升级',
-    unknownBonus: '未知加成',
-    durableUpdate: '耐久升级',
-    magicDurableUpdate: '魔法耐久',
-    bagSizeBonus: '背包扩容',
-    trapSizeBonus: '陷阱扩容',
-    farmSizeBonus: '农田扩容',
-    alcoSizeBonus: '酿酒扩容',
-    bigBoxSizeBonus: '大箱扩容',
-    mapBonus: '地图加成',
-    beaconMax: '信标上限',
-    wellBonus: '水井加成',
-    showerPlace: '淋浴场所',
-    sleepPlace: '睡眠场所',
-    art: '艺术品',
-    special: '特殊',
+    tool: t('工具'),
+    food: t('食物'),
+    cooked: t('熟食'),
+    met: t('材料'),
+    mat: t('材料'),
+    material: t('材料'),
+    quest: t('任务道具'),
+    bullet: t('弹药'),
+    equip: t('装备'),
+    weapon: t('武器'),
+    head: t('头部装备'),
+    body: t('身体装备'),
+    foot: t('足部装备'),
+    poizon: t('毒药'),
+    securityBox: t('保险箱'),
+    makeSpeed: t('制造加速'),
+    collectDec: t('采集减耗'),
+    trapGet: t('陷阱收获'),
+    trapChance: t('陷阱几率'),
+    lockUpdate: t('开锁升级'),
+    cookerUpdate: t('烹饪升级'),
+    unknownBonus: t('未知加成'),
+    durableUpdate: t('耐久升级'),
+    magicDurableUpdate: t('魔法耐久'),
+    bagSizeBonus: t('背包扩容'),
+    trapSizeBonus: t('陷阱扩容'),
+    farmSizeBonus: t('农田扩容'),
+    alcoSizeBonus: t('酿酒扩容'),
+    bigBoxSizeBonus: t('大箱扩容'),
+    mapBonus: t('地图加成'),
+    beaconMax: t('信标上限'),
+    wellBonus: t('水井加成'),
+    showerPlace: t('淋浴场所'),
+    sleepPlace: t('睡眠场所'),
+    art: t('艺术品'),
+    special: t('特殊'),
 };
 
 /** 状态键 → 中文显示名（物品"效果"字段，如 full/moist/san/temp/hp） */
 const STATE_LABEL: Record<string, string> = {
-    hp: '生命',
-    full: '饱腹',
-    moist: '水分',
-    san: '精神',
-    temp: '体温',
-    mp: '魔力',
-    str: '力量',
-    def: '防御',
-    agi: '敏捷',
-    luck: '幸运',
+    hp: t('生命'),
+    full: t('饱腹'),
+    moist: t('水分'),
+    san: t('精神'),
+    temp: t('体温'),
+    mp: t('魔力'),
+    str: t('力量'),
+    def: t('防御'),
+    agi: t('敏捷'),
+    luck: t('幸运'),
 };
 
 export class BagPage extends BasePage {
@@ -108,7 +109,7 @@ export class BagPage extends BasePage {
     public openBagPanel(): void {
         this.setMsg('');
         this.bagPanel.show(
-            () => `背包 (${Object.keys(this.gm.boxSaveData['bag'] || {}).length}/${this.gm.boxSize['bag'] || BAG_BASE_SIZE})`,
+            () => `${t('背包 (')}${Object.keys(this.gm.boxSaveData['bag'] || {}).length}/${this.gm.boxSize['bag'] || BAG_BASE_SIZE})`,
             () => this.buildBoxCells('bag'),
             (id) => this.onItemClick(id, 'bag'),
         );
@@ -132,15 +133,15 @@ export class BagPage extends BasePage {
         // 构建物品信息文本
         const infoLines: string[] = [itemData.name];
         if (itemData.desc) infoLines.push(itemData.desc);
-        infoLines.push(`类型: ${ITEM_TYPE_LABEL[type] || type || '未知'}`);
-        if (itemData.attack) infoLines.push(`攻击: ${itemData.attack}`);
-        if (itemData.def) infoLines.push(`防御: ${itemData.def}`);
-        if (itemData.heal) infoLines.push(`回复HP: ${itemData.heal}`);
+        infoLines.push(`${t('类型: ')}${ITEM_TYPE_LABEL[type] || type || t('未知')}`);
+        if (itemData.attack) infoLines.push(`${t('攻击: ')}${itemData.attack}`);
+        if (itemData.def) infoLines.push(`${t('防御: ')}${itemData.def}`);
+        if (itemData.heal) infoLines.push(`${t('回复HP: ')}${itemData.heal}`);
         if ((itemData as any).effect) {
             const eff = (itemData as any).effect as Record<string, number>;
             for (const k in eff) {
                 const sign = eff[k] > 0 ? '+' : '';
-                infoLines.push(`效果·${STATE_LABEL[k] || k}: ${sign}${eff[k]}`);
+                infoLines.push(`${t('效果·')}${STATE_LABEL[k] || k}: ${sign}${eff[k]}`);
             }
         }
 
@@ -153,16 +154,16 @@ export class BagPage extends BasePage {
 
         if (isEquipped) {
             // 已装备：仅提供状态标识与卸下，避免同类型重复装备
-            options.push({ label: '状态：已装备', data: null, disabled: true });
-            options.push({ label: '卸下', data: { action: 'unequip' } });
+            options.push({ label: t('状态：已装备'), data: null, disabled: true });
+            options.push({ label: t('卸下'), data: { action: 'unequip' } });
         } else {
-            if (canUse) options.push({ label: '使用', data: { action: 'use' } });
-            if (canEquip) options.push({ label: '装备', data: { action: 'equip' } });
+            if (canUse) options.push({ label: t('使用'), data: { action: 'use' } });
+            if (canEquip) options.push({ label: t('装备'), data: { action: 'equip' } });
             // 存入大箱子：仅在家、且当前位于背包（bigBox 走 BigBoxPage 独立路径「取出」）
             if (!this.ctx.outdoorPage?.isOutdoors && boxType === 'bag') {
-                options.push({ label: '存入大箱子', data: { action: 'store', boxType } });
+                options.push({ label: t('存入大箱子'), data: { action: 'store', boxType } });
             }
-            options.push({ label: '丢弃', data: { action: 'drop' } });
+            options.push({ label: t('丢弃'), data: { action: 'drop' } });
         }
 
         this.dialogPanel?.show(
@@ -172,9 +173,9 @@ export class BagPage extends BasePage {
                 if (!data) return;
                 // 存入大箱子 / 取出到背包：先选数量，避免一次只转 1 个
                 if (data.action === 'store') {
-                    this.openQuantity(itemId, 'bag', 'bigBox', `存入【${itemData.name}】到大箱子`);
+                    this.openQuantity(itemId, 'bag', 'bigBox', `${t('存入【')}${itemData.name}${t('】到大箱子')}`);
                 } else if (data.action === 'takeOut') {
-                    this.openQuantity(itemId, 'bigBox', 'bag', `取出【${itemData.name}】到背包`);
+                    this.openQuantity(itemId, 'bigBox', 'bag', `${t('取出【')}${itemData.name}${t('】到背包')}`);
                 } else {
                     this.onItemAction(data.action, itemId, boxType);
                 }
@@ -186,7 +187,7 @@ export class BagPage extends BasePage {
     /** 数量选择后转移（store/takeOut 共用）：弹出 QuantityPanel 让用户选 N 个 */
     private openQuantity(itemId: string, from: 'bag' | 'bigBox', to: 'bag' | 'bigBox', title: string): void {
         const have = this.gm.boxSaveData[from]?.[itemId] || 0;
-        if (have < 1) { this.setMsg('没有该物品'); return; }
+        if (have < 1) { this.setMsg(t('没有该物品')); return; }
 
         // 大箱子容量限制：仅当目标为新种类（大箱子尚无该物品）时受限
         let capLimit = have;
@@ -198,7 +199,7 @@ export class BagPage extends BasePage {
                 capLimit = Math.min(have, Math.max(0, cap - used));
             }
         }
-        if (capLimit < 1) { this.setMsg('大箱子已满，请先扩容'); return; }
+        if (capLimit < 1) { this.setMsg(t('大箱子已满，请先扩容')); return; }
 
         const panel = this.ensureQtyPanel();
         panel.show(title, capLimit, (qty) => {
@@ -261,19 +262,19 @@ export class BagPage extends BasePage {
     private transfer(itemId: string, from: 'bag' | 'bigBox', to: 'bag' | 'bigBox', qty = 1): { success: boolean; message: string } {
         const src = this.gm.boxSaveData[from] || {};
         const have = src[itemId] || 0;
-        if (have < qty) return { success: false, message: '数量不足' };
+        if (have < qty) return { success: false, message: t('数量不足') };
         if (to === 'bigBox') {
             // 仅当大箱子尚无该物品（新种类）时受容量限制；已有则只累加数量
             if (!(this.gm.boxSaveData['bigBox'] || {})[itemId]) {
                 const cap = this.gm.boxSize['bigBox'] || BIG_BOX_BASE_SIZE;
                 const used = Object.keys(this.gm.boxSaveData['bigBox'] || {}).length;
-                if (used >= cap) return { success: false, message: '大箱子已满，请先扩容' };
+                if (used >= cap) return { success: false, message: t('大箱子已满，请先扩容') };
             }
         }
         this.gm.changeItem({ [itemId]: -qty }, from);
         this.gm.changeItem({ [itemId]: qty }, to);
         this.eventBus.emit(GameEvents.UI_REFRESH);
-        return { success: true, message: `已转移 ${qty} 个` };
+        return { success: true, message: `${t('已转移 ')}${qty}${t(' 个')}` };
     }
 
     // ===== 装备栏 =====
@@ -283,11 +284,11 @@ export class BagPage extends BasePage {
 
         // 武器攻击汇总（含轮回加成）
         const handId = this.gm.currentEquip['hand'];
-        let atkInfo = '徒手（攻击 5）';
+        let atkInfo = t('徒手（攻击 5）');
         if (handId) {
             const w = ITEM_DATA[handId];
             const base = (w?.damage ?? w?.attack ?? 0) + (w?.reiToDmg ? w.reiToDmg * this.gm.maouLevel : 0);
-            atkInfo = `武器攻击：${base}`;
+            atkInfo = `${t('武器攻击：')}${base}`;
         }
 
         const cells: GridCellData[] = [
@@ -299,8 +300,8 @@ export class BagPage extends BasePage {
             const item = itemId ? ITEM_DATA[itemId] : null;
             const maxDur = item?.durable;
             const dur = itemId ? (this.gm.durableSaveData[itemId] ?? maxDur) : undefined;
-            const durStr = (item && maxDur !== undefined) ? ` [耐久 ${dur}/${maxDur}]` : '';
-            const name = item ? item.name : '（空）';
+            const durStr = (item && maxDur !== undefined) ? `${t(' [耐久 ')}${dur}/${maxDur}]` : '';
+            const name = item ? item.name : t('（空）');
             cells.push({
                 id: `equip_${slot}`,
                 name: `${EQUIP_TYPE_DATA[slot]}：${name}${durStr}`,
@@ -325,19 +326,19 @@ export class BagPage extends BasePage {
             { label: item?.name || '', data: null, disabled: true },
         ];
         if (item?.desc) options.push({ label: item.desc, data: null, disabled: true });
-        options.push({ label: '卸下', data: { action: 'unequip', slot } });
-        options.push({ label: '返回', data: null });
+        options.push({ label: t('卸下'), data: { action: 'unequip', slot } });
+        options.push({ label: t('返回'), data: null });
 
         this.dialogPanel?.show(
-            item?.name || '装备',
+            item?.name || t('装备'),
             options,
             (data) => {
                 if (data && data.action === 'unequip') {
                     const r = ActionItem.instance.unequip(slot);
                     this.setMsg(r.message);
                     this.navigator.replace({
-                        title: '装备',
-                        breadcrumb: '装备',
+                        title: t('装备'),
+                        breadcrumb: t('装备'),
                         columns: 1,
                         cells: this.buildEquipCells(),
                         onCellClick: (index, c) => this.onEquipCellClick(c),
@@ -352,8 +353,8 @@ export class BagPage extends BasePage {
     public openEquipPanel(): void {
         this.setMsg('');
         this.navigator.push({
-            title: '装备',
-            breadcrumb: '装备',
+            title: t('装备'),
+            breadcrumb: t('装备'),
             columns: 1,
             cells: this.buildEquipCells(),
             onCellClick: (index, cell) => this.onEquipCellClick(cell),
