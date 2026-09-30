@@ -1,0 +1,175 @@
+assets/scripts/ui/pages/MenuPage.ts
+  s_f8b3b7f5531622::t_9882c0ec8116d3 107,200-202,213,217,230-233,264-275,290-304
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,206-207,237-238,279-280,308-309
+assets/scripts/ui/pages/OutdoorPage.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,151-152,196-197,483-484
+  s_f8b3b7f5531622::t_8ba036813459b7 114-116,122,134,136,139,147,218,235,238-240,250,260,269,294,298,307,311,320-321,331,374,381,390-395,400,404,431-433,479,523,526,529,570,668,677
+  s_f8b3b7f5531622::t_5394efd91c9a46 590,610,612,624
+  s_f8b3b7f5531622::t_63404aae465190 604
+  s_f8b3b7f5531622::t_c099b20fb23374 118
+  s_f8b3b7f5531622::t_f07ae8c8dd820f 277,287,291
+  s_f8b3b7f5531622::t_3d4563da27ca29 585
+assets/scripts/ui/SaveIndicator.ts
+  s_f8b3b7f5531622::t_d6095e5c096431 37
+  s_f8b3b7f5531622::t_bde27f49eab8b3 49
+  s_f8b3b7f5531622::t_ca71fcfed8d11c 12
+  s_f8b3b7f5531622::t_b77a7b4d16776e 57
+assets/scripts/ui/ProgressOverlay.ts
+  s_f8b3b7f5531622::t_9d306b4766c456 113
+  s_f8b3b7f5531622::t_e13be4e9a380f5 19
+assets/scripts/ui/pages/CraftPage.ts
+  s_f8b3b7f5531622::t_e927500823db2a 35,60,82,90,124,130,144,157,163,178,180
+  s_f8b3b7f5531622::t_0b437ff250bf50 9,53-54
+  s_f8b3b7f5531622::t_d05bb0dd43703a 174
+assets/scripts/actions/ActionEvent.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,50,52,56,101,104,131,142
+assets/scripts/i18n/en/ui.ts
+  s_f8b3b7f5531622::t_47134a3aa4bc99 703
+  s_f8b3b7f5531622::t_88f0cd9a044892 989-1012
+  s_f8b3b7f5531622::t_5ba25a4ff943e5 705
+  s_f8b3b7f5531622::t_dcf210cbccf44a 38-39
+  s_f8b3b7f5531622::t_263e54e59d7a56 523,755,937-939
+  s_f8b3b7f5531622::t_e0869ea3a65b68 935-936,940-988
+  s_f8b3b7f5531622::t_1d2d3f440deca3 1013-1021
+  s_f8b3b7f5531622::t_720f6b271b424b 2,4-7,9,11,78-522,524-702,704,706-754,756-934
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 1126-1127,1145-1146
+  s_f8b3b7f5531622::t_b59130347c8afc 262,269,278,280,520,549,561-563,565,567,571-572,584,586,588-589,594,597,602,850,962,1118-1123,1142,1186-1189,1193,1195,1198,1221-1225
+assets/scripts/ui/ResultModal.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 1,30
+assets/scripts/ui/pages/EventPage.ts
+  s_f8b3b7f5531622::t_7f11654a8351d6 154
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,68-69
+  s_f8b3b7f5531622::t_aed4eaf299d595 65,102,116-117,119-120,127,134,137,170,172
+assets/scripts/ui/HarvestModal.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 1,50,60,70,96-98,121,134,144
+assets/scripts/ui/pages/RestPage.ts
+  s_f8b3b7f5531622::t_462fac36bfd702 45-46,74,83,100,127,132-133,135,140-141,163
+  s_f8b3b7f5531622::t_9a9959c7e3eee5 116-117
+  s_f8b3b7f5531622::t_0b437ff250bf50 15,41-42,93-94,99,171
+assets/scripts/ui/TutorialPanel.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 10,23,40,45,62-63,68-69,76,78
+  s_f8b3b7f5531622::t_c53f7a02ddd7e6 47-52
+assets/scripts/core/GameManager.ts
+  s_f8b3b7f5531622::t_726626745a3fac 198
+  s_f8b3b7f5531622::t_f0378d2f415f0a 29
+  s_f8b3b7f5531622::t_ca0154bc3a1618 191,194,316,325
+assets/scripts/actions/ActionBrew.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,51,53,57,60,76,83,86,90,102
+assets/scripts/ui/pages/BrewPage.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,46-47
+  s_f8b3b7f5531622::t_35403ac0206b16 20,32-33,35,39,41,70,79
+assets/scripts/core/SaveManager.ts
+  s_f8b3b7f5531622::t_ca0154bc3a1618 1,107,133,135,137-138,155
+assets/scripts/actions/ActionCook.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1
+  s_f8b3b7f5531622::t_a24895002b6c2c 45,53,67-68
+assets/scripts/actions/ActionScience.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,42,46,50,54,65,70-71
+assets/scripts/ui/StatusBar.ts
+  s_f8b3b7f5531622::t_e82a7bd35cdd98 112-118
+assets/scripts/ui/TradePanel.ts
+  s_f8b3b7f5531622::t_b58fcd23e6ab9b 64,76-78,82-83,91,94,104,112,117,129,156-157,177-178,180-181,184
+  s_f8b3b7f5531622::t_35403ac0206b16 18
+assets/scripts/ui/pages/CookPage.ts
+  s_f8b3b7f5531622::t_79ae6ed2373913 24,59,67,69,84,124,126,141
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,76-77,83,131-132
+assets/scripts/actions/ActionExecutor.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,125,135,151-152
+assets/scripts/actions/ActionItem.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,33,40,48,51,63,83,94,99,118,120,124,128-131,141,147,152
+assets/scripts/ui/pages/FarmPage.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,60-61
+  s_f8b3b7f5531622::t_35403ac0206b16 19,32,36,39,45
+assets/scripts/ui/pages/DungeonPage.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,57-58
+  s_f8b3b7f5531622::t_e80bf008dabcc4 30,38-40,42,44,48-50,53,90,117,120,124-125,131,140,148,151,158-159,169,179,184-185,187,190,192,201-202,204,211,229-232,234,236,243-244,259,261,272,275,300,303
+assets/scripts/ui/pages/BasePage.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 1,80,87-88,90,92,94
+assets/scripts/actions/ActionCraft.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,36,40,44,55,66-67
+assets/scripts/actions/ActionMap.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,40,47,55,68,79,94,99,109
+.gitignore
+  s_f8b3b7f5531622::t_ff7cfe8421e641 31-33
+assets/scripts/ui/pages/BagPage.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 12,340-341,356-357
+  s_f8b3b7f5531622::t_35403ac0206b16 23-58,63-72,112,136-139,144,157-158,160-161,164,166,176,178,190,202,265,271,277,287,291,303-304,329-330,333
+assets/scripts/ui/pages/BigBoxPage.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 36-37,52,70-71,115-116,133,137,147-148,158,162
+  s_f8b3b7f5531622::t_0b437ff250bf50 11,32-33,53,69
+assets/scripts/actions/ActionBuilding.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1
+  s_f8b3b7f5531622::t_996fa5fc35953e 34,36,40,44,48,53-54,68,73,76,81-82,101-102,104-106,109-110,128-129,131,133,139,150,179-180,184,192,200,202,205,207-208,211-212,230,232-233,235,241,254,257,263,265,268,297,300,303-304,319,321,329,333-334,345,347,350,355
+assets/scripts/actions/ActionCombat.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,125,224,243,274,276,301,310,312,342,346,348,361-362,368-369,375-376,382,388,393,404,406,411,413,417,447,457,468,474,476,479,488,503,505,548-550
+assets/scripts/actions/ActionTrade.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,129,139,143,147,159
+assets/scripts/ui/EventDetailPanel.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 18
+  s_f8b3b7f5531622::t_3ac5103b1bdbb1 129,135,140,147,152,154,156
+README.md
+  s_2421242316b263::t_8bcb8b8a6f4c2c 132-135
+assets/scripts/ui/QuantityPanel.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 8,15,20,85
+assets/scripts/ui/BagPanel.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 2,103-104,143-146
+assets/scripts/core/CloudSaveProvider.ts
+  s_f8b3b7f5531622::t_ca0154bc3a1618 1,47
+assets/scripts/ui/BattlePanel.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 8
+  s_f8b3b7f5531622::t_ee9e356a266530 61,122,151,158-161,219-223,229,236,241,269,276,294,297,306
+assets/scripts/i18n/en/data.ts
+  s_f8b3b7f5531622::t_a26f5f42d91fc7 895-906
+  s_f8b3b7f5531622::t_713bc79a6f3be5 907-1507
+assets/scripts/ui/pages/SkillPage.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,38
+  s_f8b3b7f5531622::t_e326dab3db7c89 22,33,37,56,62,64,69-70,74-75
+assets/scripts/ui/pages/TrapPage.ts
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,69-70
+  s_f8b3b7f5531622::t_5d510f1e759c88 19,32,36,38,41,47,58,61
+assets/scripts/actions/ActionDungeon.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,78,84,86,93,103,105-106,112,352,368,394,417
+assets/scripts/ui/GridCell.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 17,210
+assets/scripts/ui/Tutorial.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 1,29-34,39-51
+assets/scripts/ui/GridComponent.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 7
+  s_f8b3b7f5531622::t_f01ef23f566311 245,484
+assets/scripts/actions/ActionSkill.ts
+  s_f8b3b7f5531622::t_7eff991d9fa23b 1,44,49,67,76
+assets/scripts/ui/pages/BuildPage.ts
+  s_f8b3b7f5531622::t_35403ac0206b16 31-42,60,102
+  s_f8b3b7f5531622::t_0b437ff250bf50 1,63-64,107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "af83c0957c7f62cb0c274d6e21c638073fdd688d",
+  "prompts": {},
+  "sessions": {
+    "s_2421242316b263": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "00aab39a-69ad-452b-9fd5-60d74b193a0a",
+        "model": "hy3-x"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    },
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3-x"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
