@@ -1,0 +1,38 @@
+assets/scripts/ui/OfflineModal.ts
+  s_f8b3b7f5531622::t_ab5cd03ffc7663 12
+  s_f8b3b7f5531622::t_8a10737ee9f563 81-85,88
+assets/scripts/ui/ModalPanel.ts
+  s_f8b3b7f5531622::t_a8c9010d00cad8 259-263
+  s_f8b3b7f5531622::t_13559dd782ad89 216-217
+  s_f8b3b7f5531622::t_c5e9d1fa1beb61 24,144-145
+  s_f8b3b7f5531622::t_24793385660830 104-105,120,125-128,130-142
+  s_f8b3b7f5531622::t_7ac66a8a57c475 411
+  s_f8b3b7f5531622::t_16667afdd457a5 407-410,412
+  s_f8b3b7f5531622::t_8f3439dc4a625f 106-119,121-124,129,143
+  s_f8b3b7f5531622::t_4042c4c2bd28f7 279-280
+  s_f8b3b7f5531622::t_538ba1d2234142 287-288
+assets/scripts/ui/layoutConfig.ts
+  s_f8b3b7f5531622::t_d9e1bfd821722d 29-33
+  s_f8b3b7f5531622::t_2e714c22bbd48a 28
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_4c77266ae4da3d 304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "d34a5882230df959a32f40f5b57748fe25286542",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3-x"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
