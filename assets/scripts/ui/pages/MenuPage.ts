@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 /**
  * MenuPage.ts - 菜单域页面模块
  *
