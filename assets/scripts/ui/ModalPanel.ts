@@ -21,6 +21,7 @@ import {
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment, view,
 } from 'cc';
 import { C, S, Btn, BtnStyle } from './theme';
+import { Layout } from './layoutConfig';
 import { UIButton } from './widgets';
 import { ModalScrollList, ModalScrollListOpts } from './widgets/ModalScrollList';
 import { GameManager } from '../core/GameManager';
@@ -100,6 +101,48 @@ export abstract class ModalPanel extends Component {
         this.buildSkeleton();
     }
 
+    // ──── 横屏视口适配（竖屏全部零回归）────
+
+    /**
+     * 横屏：把面板整体等比缩放装入「视口 − 顶栏让位」区域并下移居中。
+     * 用缩放而非改 panelW/panelH：固定布局弹窗（Battle/Tutorial 等）内部坐标
+     * 按 authored 面板尺寸写死，改尺寸会让内部元素被 Mask 裁掉；等比缩放内部原样保留。
+     * 列表型弹窗的高度已由 createScrollList 的 maxPanelH 钳制自然收缩，scale 通常为 1。
+     */
+    protected _fitPanel(): void {
+        if (!this._panel) return;
+        if (!Layout.landscape) {
+            this._panel.setScale(1, 1, 1);
+            this._panel.setPosition(0, 0, 0);
+            return;
+        }
+        const maxW = Math.max(320, this._vsW - 40);
+        const maxH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
+        const s = Math.min(1, maxW / this.panelW, maxH / this.panelH);
+        this._panel.setScale(s, s, 1);
+        // 面板下移到 HTML 顶栏之下、在剩余竖向空间内居中（topReserve=inset+16, bottomPad=16 → 偏移=inset/2）
+        this._panel.setPosition(0, -Math.round(Layout.webNavInsetDesign / 2), 0);
+    }
+
+    /**
+     * show 时刷新可见尺寸（防 onLoad 时设计分辨率/窗口尚未就位导致的陈旧值）。
+     * 尺寸变了就同步根节点/遮罩尺寸，并重新适配面板缩放/位置。
+     */
+    private _refreshViewport(): void {
+        const vs = view.getVisibleSize();
+        if (!vs || vs.width <= 0) return;
+        if (Math.abs(vs.width - this._vsW) <= 1 && Math.abs(vs.height - this._vsH) <= 1) return;
+        this._vsW = vs.width;
+        this._vsH = vs.height;
+        const rt = this.node.getComponent(UITransform);
+        if (rt) rt.setContentSize(this._vsW, this._vsH);
+        if (this._mask) {
+            const mt = this._mask.getComponent(UITransform);
+            if (mt) mt.setContentSize(this._vsW, this._vsH);
+        }
+        this._fitPanel();
+    }
+
     // ──── 骨架（只创建一次）────
     protected buildSkeleton(): void {
         // 全屏遮罩（点击关闭 / 拦截穿透）。用 Graphics 绘制——
@@ -170,6 +213,8 @@ export abstract class ModalPanel extends Component {
         }
 
         this.node.active = false;
+        // 横屏：按视口适配面板缩放/位置（竖屏 scale=1 位置居中，零回归）
+        this._fitPanel();
     }
 
     private _buildClose(): void {
@@ -211,6 +256,11 @@ export abstract class ModalPanel extends Component {
 
     /** 自适应高度：重绘面板 + 重定位标题/关闭按钮/内容容器。返回可用滚动可视高度推导用的面板高 */
     protected resizePanel(h: number): void {
+        // 横屏：钳制高度装入视口（顶部给 HTML 顶栏让位 + 上下边距）；竖屏零回归
+        if (Layout.landscape) {
+            const maxH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
+            if (h > maxH) h = Math.round(maxH);
+        }
         this.panelH = h;
         // 同步 _panel 和 _panelBg 的 UITransform 尺寸
         const pt = this._panel.getComponent(UITransform);
@@ -226,12 +276,16 @@ export abstract class ModalPanel extends Component {
             if (ct) ct.setContentSize(this.panelW - 48, h - 140);
             this._content.setPosition(0, h / 2 - 90, 0);
         }
+        // 横屏：高度变了，重新适配缩放/位置
+        this._fitPanel();
     }
 
     // ════ 对外接口 ════
     // 首参用 any：子类（Bag/Dialog/Quantity）按需用更多参数包装自己的 show，
     // 调用 super.show(title) 即可；any 让子类签名与基类兼容，避免 TS2416。
     public show(title: any): void {
+        // 先刷新视口（防 onLoad 时分辨率/窗口未就位的陈旧尺寸），再渲染
+        this._refreshViewport();
         if (this._titleLbl) this._titleLbl.string = title;
         this.node.active = true;
         // 置顶：确保盖住底栏与同级其它弹窗
@@ -350,6 +404,12 @@ export abstract class ModalPanel extends Component {
      * render 时调用 controller.setRows(rows) 即可自动装载 + 自适应高度（去重 updateLayout 数学）。
      */
     protected createScrollList(o: { parent: Node; x?: number; y?: number } & ModalScrollListOpts): ModalScrollList {
+        // 横屏：把 maxPanelH 钳到视口可用高，保证滚动区与钳制后的面板几何一致（竖屏零回归）
+        if (Layout.landscape) {
+            const maxH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
+            o.maxPanelH = Math.min(o.maxPanelH ?? 1040, Math.round(maxH));
+            o.minPanelH = Math.min(o.minPanelH ?? 380, Math.round(maxH));
+        }
         const s = this.mkScroll(o.parent, o.x ?? 0, o.y ?? 0, o.width, o.viewH ?? 600);
         return new ModalScrollList(
             { view: s.view, content: s.content, sv: s.sv },

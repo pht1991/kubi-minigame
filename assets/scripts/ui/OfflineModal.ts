@@ -9,6 +9,7 @@
 
 import { ModalPanel } from './ModalPanel';
 import { C, Btn } from './theme';
+import { Layout } from './layoutConfig';
 import { ModalRow, ModalScrollList, UIButton, UIHStack } from './widgets';
 import { OfflineReport } from '../systems/TimeSystem';
 
@@ -77,9 +78,14 @@ export class OfflineModal extends ModalPanel {
             }));
         }
 
+        // 横屏：列表可视高随视口收缩（面板钳制后 targetH=listH+200 仍须装入，
+        // 否则底部「知道了」按钮被面板 Mask 裁掉）；竖屏保持 360 零回归
+        const maxPanelH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
+        const viewH = Layout.landscape ? Math.max(200, Math.min(360, maxPanelH - 232)) : 360;
+
         this._list = this.createScrollList({
             parent: this._content!, x: 0, y: -56,
-            width: listW, viewH: 360, gap: 10,
+            width: listW, viewH, gap: 10,
             autoResizePanel: false, repositionScroll: false, align: 'center',
         });
         const listH = this._list.setRows(rows);

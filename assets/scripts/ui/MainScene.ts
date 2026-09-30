@@ -301,6 +301,7 @@ export class MainScene extends Component {
             const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : Layout.designW;
             const navInsetDesign = Math.round(Layout.webNavTopPx * Layout.designW / Math.max(winW, 1));
             this._safeTop += navInsetDesign;
+            Layout.webNavInsetDesign = navInsetDesign; // 供 ModalPanel 弹窗钳制/下移使用
             console.log('[WebNav] innerWidth=', winW, 'navInsetDesign=', navInsetDesign);
         }
 
