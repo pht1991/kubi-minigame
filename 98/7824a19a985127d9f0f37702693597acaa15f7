@@ -1,0 +1,74 @@
+assets/scripts/ui/TradePanel.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 18
+assets/scripts/ui/ResultModal.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionCraft.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionSkill.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/ui/TutorialPanel.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 10
+assets/scripts/actions/ActionTrade.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionBuilding.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionScience.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionEvent.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/ui/EventDetailPanel.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 18
+assets/scripts/ui/QuantityPanel.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 20
+assets/scripts/actions/ActionItem.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionExecutor.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/ui/Tutorial.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/ui/pages/BasePage.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionCook.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/ui/GridComponent.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 7
+assets/scripts/ui/HarvestModal.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionCombat.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionDungeon.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/ui/BagPanel.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 2
+assets/scripts/actions/ActionMap.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/actions/ActionBrew.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/core/CloudSaveProvider.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/core/SaveManager.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 1
+assets/scripts/ui/BattlePanel.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 8
+assets/scripts/ui/GridCell.ts
+  s_f8b3b7f5531622::t_0c657119a5dba1 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "987824a19a985127d9f0f37702693597acaa15f7",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
