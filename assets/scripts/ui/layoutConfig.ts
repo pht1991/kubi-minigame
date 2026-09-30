@@ -7,7 +7,7 @@
  *
  * 设计约束（铁律）：
  * - 手机 / 微信 / 移动端浏览器 必须保持原 750×1334 竖屏，像素级不变 → 已有构建零回归。
- * - 仅「桌面浏览器（sys.platform==='WEB' 且非移动设备）」切换为横屏。
+ * - 仅「桌面浏览器（sys.platform==='DESKTOP_BROWSER'）」切换为横屏。
  * - 本模块不依赖任何 Cocos 运行时，纯数据；由 MainScene 在 onLoad 早期写入。
  */
 export const Layout = {

@@ -116,12 +116,21 @@ export abstract class ModalPanel extends Component {
             this._panel.setPosition(0, 0, 0);
             return;
         }
-        const maxW = Math.max(320, this._vsW - 40);
-        const maxH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
+        // 横屏：把面板整体等比缩放成「带舒适边距的居中卡片」，而非尽量撑满。
+        // 顶部预留=HTML 导航让位+8% 视口；底部/两侧各留 8% 视口，保证明显留白、不像贴边满屏。
+        const sideMargin = Math.round(this._vsW * 0.07);
+        const topMargin = Math.round(Layout.webNavInsetDesign + this._vsH * 0.08);
+        const bottomMargin = Math.round(this._vsH * 0.08);
+        const maxW = Math.max(280, this._vsW - sideMargin * 2);
+        const maxH = Math.max(280, this._vsH - topMargin - bottomMargin);
         const s = Math.min(1, maxW / this.panelW, maxH / this.panelH);
         this._panel.setScale(s, s, 1);
-        // 面板下移到 HTML 顶栏之下、在剩余竖向空间内居中（topReserve=inset+16, bottomPad=16 → 偏移=inset/2）
-        this._panel.setPosition(0, -Math.round(Layout.webNavInsetDesign / 2), 0);
+        // 在「顶栏之下 ~ 底栏之上」的可用竖向区间内居中（而非死板下移 inset/2）
+        const bandTop = -(this._vsH / 2 - topMargin);      // 区间上缘（负值）
+        const bandBottom = this._vsH / 2 - bottomMargin;   // 区间下缘（正值）
+        const centerY = Math.round((bandTop + bandBottom) / 2);
+        this._panel.setPosition(0, centerY, 0);
+        console.log(`[Modal] fit s=${s.toFixed(3)} panel=${this.panelW}x${this.panelH} vs=${this._vsW}x${this._vsH} centerY=${centerY}`);
     }
 
     /**

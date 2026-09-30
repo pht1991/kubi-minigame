@@ -273,15 +273,20 @@ export class MainScene extends Component {
     };
 
     onLoad(): void {
-        // 响应式设计分辨率：桌面浏览器（WEB 且非移动设备）→ 横屏 1280×720；
+        // 响应式设计分辨率：桌面浏览器 → 横屏 1280×720；
         // 手机 / 微信 / 移动端浏览器 → 保持竖屏 750×1334（字节级不变，零回归）。
-        const isDesktopWeb = sys.platform === 'WEB' && !sys.isMobile;
+        // ⚠️ Cocos 3.8 sys.platform 在网页端返回 'DESKTOP_BROWSER'/'MOBILE_BROWSER'，
+        //    微信小游戏为 'WECHAT_GAME'——没有 'WEB' 这个值（此前误判导致横屏分支永不生效）。
+        const plat = sys.platform;
+        const isWeb = plat === 'DESKTOP_BROWSER' || plat === 'MOBILE_BROWSER';
+        const isDesktopWeb = plat === 'DESKTOP_BROWSER';
+        console.log('[Layout] sys.platform =', plat, 'isDesktopWeb =', isDesktopWeb);
         Layout.designW = isDesktopWeb ? 1280 : 750;
         Layout.designH = isDesktopWeb ? 720 : 1334;
         Layout.landscape = isDesktopWeb;
         // 横屏壳层缩放：状态栏/底栏/标题/字号统一压小（竖屏 1 = 零回归）
         Layout.uiScale = isDesktopWeb ? 0.7 : 1;
-        Layout.isWeb = sys.platform === 'WEB';
+        Layout.isWeb = isWeb;
         // FIXED_WIDTH 保持设计宽度不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
         view.setDesignResolutionSize(Layout.designW, Layout.designH, ResolutionPolicy.FIXED_WIDTH);
