@@ -279,30 +279,34 @@ export class GridComponent extends Component {
         let barWidth = this.barWidth;
         let barHeight = this.barHeight;
         // 横屏桌面：格子整体缩小（竖屏 160 搬到 1280 宽显得笨重），列数从可用宽度推导
-        // （最多 8 列）；横条/页脚宽限制在视口内，不撑满整屏。竖屏保持原尺寸与列数（零回归）。
+        // （最多 8 列）；横条/页脚宽钳到 520 不撑满整屏；字号 ×0.8 同步缩小。
+        // 竖屏保持原尺寸与列数（零回归）。
         if (Layout.landscape) {
-            const k = 0.78;                                  // 横屏格子缩放系数
-            tileW = Math.round(this.cellWidth * k);           // 160 → 125
-            tileH = Math.round(this.cellHeight * k);          // 160 → 125
+            const k = 0.6;                                   // 横屏格子缩放系数
+            tileW = Math.round(this.cellWidth * k);           // 160 → 96
+            tileH = Math.round(this.cellHeight * k);          // 160 → 96
             spacing = Math.round(this.cellSpacing * k);
-            barHeight = Math.round(this.barHeight * k);
+            barHeight = Math.round(this.barHeight * k);       // 120 → 72
             if (columns > 1) {
                 const availInnerW = Layout.designW - 32;     // 两侧各留 16
                 const fit = Math.floor(availInnerW / (tileW + spacing));
                 columns = Math.min(Math.max(fit, columns), 8);  // 至少保持原列数，最多 8 列
             }
-            // 横条/页脚宽限制在视口内（避免单方格页被撑到全宽、抬高 contentInnerW 致首格贴左溢出）
-            barWidth = Math.min(this.barWidth, Layout.designW - 80);
+            // 横条/页脚宽钳到 520（避免撑满整屏、也避免单方格页被抬高致首格贴左溢出）
+            barWidth = Math.min(this.barWidth, 520);
         }
         const tileGridW = columns * tileW + (columns - 1) * spacing;
         // 先用占位 contentInnerW 解析各格布局（bar/header 宽=barWidth，与 contentInnerW 无关），
         // 再按「实际最宽格子」推导 contentInnerW —— 不靠 hasBar 猜测：
         // 旧法漏判 type:'list' 推导出的横条 → 建造列表页 contentInnerW=125、横条整体右漂跑偏。
-        const protoCtx: CellLayoutContext = { columns, tileW, tileH, spacing, contentInnerW: tileGridW, barWidth, barH: barHeight };
+        const protoCtx: CellLayoutContext = {
+            columns, tileW, tileH, spacing, contentInnerW: tileGridW, barWidth, barH: barHeight,
+            fontScale: Layout.landscape ? 0.8 : 1,
+        };
         const items = cells.map(c => ({ data: c, L: resolveCellLayout(c, protoCtx) }));
         const maxCellW = items.reduce((m, it) => Math.max(m, it.L.width), 0);
         const contentInnerW = Math.max(tileGridW, maxCellW);
-        const ctx: CellLayoutContext = { columns, tileW, tileH, spacing, contentInnerW, barWidth, barH: barHeight };
+        const ctx: CellLayoutContext = { ...protoCtx, contentInnerW };
 
         // ── 第一遍：流式定位，算出每格的占位宽度/高度/中心 x / 顶部 y（从 content 顶向下计） ──
         const edgePad = 16;
@@ -511,9 +515,9 @@ export class GridComponent extends Component {
         for (const ch of oldChildren) { if (ch.isValid) ch.destroy(); }
         this._footerCells = [];
 
-        // 页脚参数：单列列表样式；横屏满宽(设计宽-80)、行高压到 56 与缩小后的格子协调，竖屏保持原 700/70
-        const footerW = Layout.landscape ? (Layout.designW - 80) : 700;
-        const rowH = Layout.landscape ? 56 : 70;
+        // 页脚参数：单列列表样式；横屏宽钳 560、行高 48 与缩小后的条目协调，竖屏保持原 700/70
+        const footerW = Layout.landscape ? 560 : 700;
+        const rowH = Layout.landscape ? 48 : 70;
         const gap = 8;
         const totalFooterH = footerCells.length * rowH + (footerCells.length - 1) * gap + 16;
 

@@ -65,6 +65,8 @@ export interface CellLayoutContext {
     barWidth: number;
     /** 横条默认高 */
     barH: number;
+    /** 字号缩放（横屏压缩用，默认 1；只影响预设字号/行高，显式覆盖仍优先生效） */
+    fontScale?: number;
 }
 
 /** 解析后的最终布局（像素已确定） */
@@ -83,12 +85,13 @@ export interface ResolvedCellLayout {
 
 /** 方格预设（依赖 ctx 计算像素宽高） */
 function tilePreset(ctx: CellLayoutContext): Omit<ResolvedCellLayout, 'kind'> {
+    const s = ctx.fontScale ?? 1;
     return {
         span: 1,
         width: ctx.tileW,
         height: ctx.tileH,
-        fontSize: 22,
-        lineHeight: 28,
+        fontSize: Math.round(22 * s),
+        lineHeight: Math.round(28 * s),
         align: 'center',
         wrap: false,
         noTruncate: false,
@@ -98,12 +101,13 @@ function tilePreset(ctx: CellLayoutContext): Omit<ResolvedCellLayout, 'kind'> {
 
 /** 横条预设（整行满宽 = barWidth，左对齐可换行；高度按文本自适应） */
 function barPreset(ctx: CellLayoutContext): Omit<ResolvedCellLayout, 'kind'> {
+    const s = ctx.fontScale ?? 1;
     return {
         span: ctx.columns,
         width: ctx.barWidth,
         height: ctx.barH,
-        fontSize: 20,
-        lineHeight: 26,
+        fontSize: Math.round(20 * s),
+        lineHeight: Math.round(26 * s),
         align: 'left',
         wrap: true,
         noTruncate: false,
@@ -113,12 +117,13 @@ function barPreset(ctx: CellLayoutContext): Omit<ResolvedCellLayout, 'kind'> {
 
 /** 标题预设（整行满宽，居中小字号弱色，用于分组标题） */
 function headerPreset(ctx: CellLayoutContext): Omit<ResolvedCellLayout, 'kind'> {
+    const s = ctx.fontScale ?? 1;
     return {
         span: ctx.columns,
         width: ctx.barWidth,
         height: 56,
-        fontSize: 18,
-        lineHeight: 24,
+        fontSize: Math.round(18 * s),
+        lineHeight: Math.round(24 * s),
         align: 'center',
         wrap: false,
         noTruncate: true,
