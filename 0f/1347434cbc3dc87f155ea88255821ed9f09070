@@ -1,0 +1,18 @@
+assets/scripts/ui/MainScene.ts
+  h_70068c5a17f62a 276,278-283,289
+assets/scripts/ui/ModalPanel.ts
+  h_70068c5a17f62a 119-125,128-133
+assets/scripts/ui/layoutConfig.ts
+  h_70068c5a17f62a 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "0f1347434cbc3dc87f155ea88255821ed9f09070",
+  "prompts": {},
+  "humans": {
+    "h_70068c5a17f62a": {
+      "author": "panhaitao-9ap2u <panhaitao@sdpjw.com>"
+    }
+  }
+}
