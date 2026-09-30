@@ -285,7 +285,7 @@ export class MainScene extends Component {
         Layout.designH = isDesktopWeb ? 720 : 1334;
         Layout.landscape = isDesktopWeb;
         // 横屏壳层缩放：状态栏/底栏/标题/字号统一压小（竖屏 1 = 零回归）
-        Layout.uiScale = isDesktopWeb ? 0.7 : 1;
+        Layout.uiScale = isDesktopWeb ? 0.6 : 1;
         Layout.isWeb = isWeb;
         // FIXED_WIDTH 保持设计宽度不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
