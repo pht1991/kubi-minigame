@@ -40,6 +40,7 @@ import { StatusBar } from './StatusBar';
 import { Tutorial } from './Tutorial';
 import { TutorialPanel } from './TutorialPanel';
 import { GridPage, GridCellData } from '../data/types';
+import { t, isZh, type Lang } from '../i18n';
 import { PageContext } from './pages/PageContext';
 import { C, BtnStyle } from './theme';
 import { UIShape, UILabel, UIButton } from './widgets';
@@ -92,6 +93,15 @@ export class MainScene extends Component {
     private _rolledTraders: string[] = [];
     /** 底栏第3个按钮（出门/回家）的 Label 引用，用于动态改文字 */
     private _goBtnLabel: UILabel | null = null;
+    /** 底栏第1个按钮（背包）Label 引用，随语种刷新 */
+    private _bagBtnLabel: UILabel | null = null;
+    /** 底栏第3个按钮（菜单）Label 引用，随语种刷新 */
+    private _menuBtnLabel: UILabel | null = null;
+    /** 状态栏右上角语言切换按钮的 Label 引用 */
+    private _langBtnLabel: UILabel | null = null;
+
+    /** UI_REFRESH 时同步底栏/语言按钮文案（本游戏切换语种或设置页切语种都要即时反映） */
+    private _onUiRefresh = () => { this.refreshBottomBarLabels(); };
 
     /** 最近一次动作反馈（显示在各面板；赋值时自动弹 Toast + 立即存档） */
     private _lastMsgValue: string = '';
@@ -492,6 +502,10 @@ export class MainScene extends Component {
         // 注册导航变化回调：返回主页时同步底栏「出门/回家」按钮状态
         this._navigator.onChange = () => this.onNavChanged();
 
+        // 语言切换：UI_REFRESH 时同步刷新底栏/语言按钮文案（本游戏或设置页切换语种都要即时反映）
+        this._eventBus.on(GameEvents.UI_REFRESH, this._onUiRefresh);
+        this.refreshBottomBarLabels();
+
         // 启动后检测云端是否有更新的存档（非阻塞）
         void this.checkCloudOnLaunch();
 
@@ -826,6 +840,23 @@ export class MainScene extends Component {
         comp.onStatusClick = (key: string) => this.showStatusDefinition(key);
         comp.bindStatusClicks();
 
+        // 语言切换按钮（状态栏右上角，首页常驻可见）：点按在 中/EN 间切换并即时持久化
+        // 文案显示「将要切换到的目标语言」——当前中文显示 EN，当前英文显示 中
+        // 仅「浏览器」平台展示；微信小游戏（移动端/国内）按需求不展示语言切换。
+        if (Layout.isWeb) {
+            const langBtnW = Math.round(60 * S);
+            const langBtnH = Math.round(32 * S);
+            const langBtn = new UIButton(
+                isZh() ? 'EN' : '中',
+                { bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1, text: C.barBtnText, radius: 10, fontSize: Math.round(18 * S) },
+                () => this.toggleLanguage(),
+                langBtnW, langBtnH,
+            );
+            // 置于顶部「时间行」同高的右侧空白区，避开 6 个属性（底部行）与居中时间标签
+            langBtn.mount(bar).pos(Math.round(SB_W / 2 - 14 * S - langBtnW / 2), Math.round(36 * S), 0);
+            this._langBtnLabel = langBtn.label;
+        }
+
         this._statusBar = bar;
     }
 
@@ -855,8 +886,10 @@ export class MainScene extends Component {
         const S = Layout.uiScale;
         const BAR_W = Layout.designW;            // 拉满画布宽度，不留两侧空隙
         const BAR_H = Math.round(92 * S);        // 底栏高度（原 70 在真机显窄；横屏 ×S 压小）
-        const BTN_W = Math.round(230 * S);       // 3 按钮均分，横屏随 S 缩小
-        const BTN_H = Math.round(72 * S);        // 按钮高度（原 56 在真机显矮）
+        // 按钮在壳层缩放 S 之上再乘 0.85：横屏下 230×72 显笨重，用户反馈再缩小一档
+        const B = S * 0.85;
+        const BTN_W = Math.round(230 * B);       // 3 按钮均分，横屏随 S 缩小
+        const BTN_H = Math.round(72 * B);        // 按钮高度（原 56 在真机显矮）
 
         // 容器
         this._bottomBar = new Node('BottomBar');
@@ -885,15 +918,15 @@ export class MainScene extends Component {
         // 按钮定义（3 个：背包 / 出门(回家) / 菜单）
         // 注：「休息」已移除——休息仅限在家（床铺）使用，不应全局暴露（可卡 bug 随地恢复）
         const buttons: { label: string; action: () => void }[] = [
-            { label: '背包', action: () => this.onBottomAction('bag') },
-            { label: '出门', action: () => this.onBottomAction('goout') },
-            { label: '菜单', action: () => this.onBottomAction('menu') },
+            { label: t('ui.bar.bag', '背包'), action: () => this.onBottomAction('bag') },
+            { label: t('ui.bar.goOut', '出门'), action: () => this.onBottomAction('goout') },
+            { label: t('ui.bar.menu', '菜单'), action: () => this.onBottomAction('menu') },
         ];
 
         // 统一按钮样式（组件库 UIButton：背景 + 圆角 + 文字 + 点击，自带 stopPropagation）
         const btnStyle: BtnStyle = {
             bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1,
-            text: C.barBtnText, radius: 12, fontSize: Math.round(22 * S),
+            text: C.barBtnText, radius: 12, fontSize: Math.round(22 * B),
         };
 
         const spacing = (BAR_W - buttons.length * BTN_W) / (buttons.length + 1);
@@ -907,16 +940,43 @@ export class MainScene extends Component {
             // 原逻辑：TOUCH_CANCEL 同效触发（防长按误触/取消也走动作）
             uiBtn.node.on(Node.EventType.TOUCH_CANCEL, btn.action);
 
-            // 保存第2个按钮（出门/回家）的文字引用，供动态切换
+            // 保存各按钮文字引用，供随语种动态刷新
+            if (i === 0) this._bagBtnLabel = uiBtn.label;
             if (i === 1) this._goBtnLabel = uiBtn.label;
+            if (i === 2) this._menuBtnLabel = uiBtn.label;
         }
     }
 
     /** 刷新底栏第3按钮文字（出门 ↔ 回家） */
     private refreshGoButton(): void {
         if (this._goBtnLabel) {
-            this._goBtnLabel.setText(this._outdoorPage?.isOutdoors ? '回家' : '出门');
+            this._goBtnLabel.setText(this._outdoorPage?.isOutdoors
+                ? t('ui.bar.goHome', '回家')
+                : t('ui.bar.goOut', '出门'));
         }
+    }
+
+    /** 语言切换按钮文案：显示「将要切换到的目标语言」（当前中文→EN，当前英文→中） */
+    private refreshLangButton(): void {
+        if (this._langBtnLabel) {
+            this._langBtnLabel.setText(isZh() ? 'EN' : '中');
+        }
+    }
+
+    /** 随语种刷新底栏全部按钮 + 语言切换按钮（UI_REFRESH 时调用） */
+    private refreshBottomBarLabels(): void {
+        if (this._bagBtnLabel) this._bagBtnLabel.setText(t('ui.bar.bag', '背包'));
+        if (this._menuBtnLabel) this._menuBtnLabel.setText(t('ui.bar.menu', '菜单'));
+        this.refreshGoButton();
+        this.refreshLangButton();
+    }
+
+    /** 点按状态栏语言按钮：在 中/EN 间切换并持久化（设置页的切换走同一套，互相即时同步） */
+    private toggleLanguage(): void {
+        const next: Lang = isZh() ? 'en' : 'zh';
+        this._gm.setLanguage(next);
+        this._saveMgr.save();
+        this.refreshLangButton();
     }
 
     /**
@@ -1173,5 +1233,6 @@ export class MainScene extends Component {
         this._eventBus.off(GameEvents.HARVEST_READY, this._onHarvestReady);
         this._eventBus.off(GameEvents.SEASON_CHANGE, this._onSeasonChange);
         this._eventBus.off(GameEvents.ROBBER_RAID, this._onRobberRaid);
+        this._eventBus.off(GameEvents.UI_REFRESH, this._onUiRefresh);
     }
 }

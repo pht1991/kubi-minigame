@@ -119,6 +119,11 @@ xcopy "%WEB_OUT%\*" "%DEPLOY_TMP%\" /E /Y /I >nul
 REM copy extra static pages (about / privacy) into gh-pages root
 if exist "%ROOT%\web-extra\about.html" xcopy "%ROOT%\web-extra\about.html" "%DEPLOY_TMP%\" /Y >nul
 if exist "%ROOT%\web-extra\privacy.html" xcopy "%ROOT%\web-extra\privacy.html" "%DEPLOY_TMP%\" /Y >nul
+REM copy favicon assets into gh-pages root (source-controlled in web-extra/, not generated)
+if exist "%ROOT%\web-extra\favicon.svg" xcopy "%ROOT%\web-extra\favicon.svg" "%DEPLOY_TMP%\" /Y >nul
+if exist "%ROOT%\web-extra\apple-touch-icon.png" xcopy "%ROOT%\web-extra\apple-touch-icon.png" "%DEPLOY_TMP%\" /Y >nul
+REM drop Cocos default favicon.ico so our brand icon is the only one served at /favicon.ico
+if exist "%DEPLOY_TMP%\favicon.ico" del /f /q "%DEPLOY_TMP%\favicon.ico"
 REM inject top nav bar (Home / About / Privacy) into generated index.html (fixed top, no canvas overlap)
 set "KB_ROOT=%ROOT%"
 set "KB_DEPLOY_TMP=%DEPLOY_TMP%"

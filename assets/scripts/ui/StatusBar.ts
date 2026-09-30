@@ -13,6 +13,7 @@ import { TimeSystem } from '../systems/TimeSystem';
 import { MAX_STATE, TEMP_DATA } from '../data/data';
 import { C } from './theme';
 import { UILabel } from './widgets';
+import { t } from '../i18n';
 
 const { ccclass } = _decorator;
 
@@ -85,17 +86,17 @@ export class StatusBar extends Component {
             this.timeLabel.setColor(C.body);
         }
 
-        // 两行格式：标题\n数值，按百分比着色
-        this.setLabel(this.hpLabel,   `生命\n${Math.round(s.hp)}`,     this.ratioColor(s.hp / MAX_STATE, 0.3));
-        this.setLabel(this.fullLabel, `满腹\n${Math.round(s.full)}`, this.ratioColor(s.full / MAX_STATE, 0.25));
-        this.setLabel(this.moistLabel,`水分\n${Math.round(s.moist)}`, this.ratioColor(s.moist / MAX_STATE, 0.25));
-        this.setLabel(this.psLabel,   `体力\n${Math.round(s.ps)}`,   this.ratioColor(s.ps / MAX_STATE, 0.2));
-        this.setLabel(this.sanLabel,  `精神\n${Math.round(s.san)}`,  this.ratioColor(s.san / MAX_STATE, 0.2));
+        // 两行格式：标题\n数值，按百分比着色（标题走 i18n，温度描述由数据层 TEMP_DATA 本地化）
+        this.setLabel(this.hpLabel,   `${t('ui.status.hp', '生命')}\n${Math.round(s.hp)}`,     this.ratioColor(s.hp / MAX_STATE, 0.3));
+        this.setLabel(this.fullLabel, `${t('ui.status.full', '满腹')}\n${Math.round(s.full)}`, this.ratioColor(s.full / MAX_STATE, 0.25));
+        this.setLabel(this.moistLabel,`${t('ui.status.moist', '水分')}\n${Math.round(s.moist)}`, this.ratioColor(s.moist / MAX_STATE, 0.25));
+        this.setLabel(this.psLabel,   `${t('ui.status.ps', '体力')}\n${Math.round(s.ps)}`,   this.ratioColor(s.ps / MAX_STATE, 0.2));
+        this.setLabel(this.sanLabel,  `${t('ui.status.san', '精神')}\n${Math.round(s.san)}`,  this.ratioColor(s.san / MAX_STATE, 0.2));
 
-        // 体温（特殊：文字描述）
+        // 体温（特殊：文字描述，desc 由数据层 TEMP_DATA 本地化）
         if (this.tempLabel) {
             const tempDesc = this.getTempDesc(s.temp);
-            this.tempLabel.setText(`体温\n${tempDesc}`);
+            this.tempLabel.setText(`${t('ui.status.temp', '体温')}\n${tempDesc}`);
             this.tempLabel.setColor((s.temp >= 30 || s.temp <= -15) ? C.danger : C.body);
         }
     }

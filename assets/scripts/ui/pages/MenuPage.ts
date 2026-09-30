@@ -14,6 +14,8 @@ import { CloudSaveProvider } from '../../core/CloudSaveProvider';
 import { SKILL_DATA, EVENT_DATA } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
 import { DialogOption } from '../DialogPanel';
+import { t, type Lang } from '../../i18n';
+import { Layout } from '../layoutConfig';
 
 export class MenuPage extends BasePage {
     // ===== 菜单（原版风格：技能 + 设置 两页）=====
@@ -25,14 +27,14 @@ export class MenuPage extends BasePage {
     private buildMenuPage(): GridPage {
         // 原版菜单只有两个入口：技能 / 设置
         const cells: GridCellData[] = [
-            { id: 'skill', name: '技能', state: 'normal' },
-            { id: 'settings', name: '设置', state: 'normal' },
+            { id: 'skill', name: t('ui.menu.skills', '技能'), state: 'normal' },
+            { id: 'settings', name: t('ui.menu.settings', '设置'), state: 'normal' },
         ];
 
 
         return {
-            title: '菜单',
-            breadcrumb: '主页 > 菜单',
+            title: t('ui.menu.title', '菜单'),
+            breadcrumb: t('ui.menu.breadcrumb', '主页 > 菜单'),
             columns: 4,
             cells,
             onCellClick: (index, cell) => {
@@ -55,7 +57,7 @@ export class MenuPage extends BasePage {
             if (level <= 0) continue;
 
             const maxLv = d.maxLevel || 10;
-            const talentMark = (d as any).isTalent ? '(天赋)' : '';
+            const talentMark = (d as any).isTalent ? t('ui.skill.talent', '(天赋)') : '';
             cells.push({
                 id: `skill_${key}`,
                 name: `${d.name}${talentMark}\nLv.${level}/${maxLv}\n${d.desc || ''}`,
@@ -65,52 +67,61 @@ export class MenuPage extends BasePage {
         }
 
         if (cells.length === 0) {
-            cells.push({ id: 'empty', name: '尚未习得任何技能', state: 'disabled', type: 'list' });
+            cells.push({ id: 'empty', name: t('ui.skill.empty', '尚未习得任何技能'), state: 'disabled', type: 'list' });
         }
 
         return {
-            title: '技能',
-            breadcrumb: '菜单 > 技能',
+            title: t('ui.menu.skills', '技能'),
+            breadcrumb: t('ui.menu.breadcrumb.skills', '菜单 > 技能'),
             columns: 1,  // 单列列表
             cells,
             onCellClick: (index, cell) => {},
         };
     }
 
-    /** 菜单 → 设置页（参照原版：存档/读档/云存档/音量/统计/帮助/转生/阵营/返回） */
+    /** 菜单 → 设置页（参照原版：存档/读档/云存档/音量/统计/帮助/转生/阵营/语言/返回） */
     private buildMenuSettingsPage(): GridPage {
         const s = this.gm.settings;
         const canReincarnate = ActionEvent.instance.canReincarnate();
+        const langNow: Lang = (s.lang as Lang) || 'zh';
+        const campName = this.gm.camp
+            ? (this.gm.camp === 'fire' ? t('ui.fire', '火之阵营') : t('ui.ice', '冰之阵营'))
+            : t('ui.settings.chooseCamp', '选择阵营');
         const cells: GridCellData[] = [
-            { id: 'save', name: '保存游戏', state: 'normal' },
-            { id: 'load', name: '读取存档', state: 'normal' },
-            { id: 'cloud', name: '云存档', state: CloudSaveProvider.instance.enabled ? 'normal' : 'disabled' },
-            { id: 'autoSave', name: `自动存档: ${s.autoSave ? '开' : '关'}`, state: 'normal' },
-            { id: 'volLabel', name: `音量: ${Math.round(s.volume * 100)}%`, state: 'disabled' },
-            { id: 'volUp', name: '音量+', state: 'normal' },
-            { id: 'volDown', name: '音量-', state: 'normal' },
-            { id: 'stats', name: '游戏统计', state: 'normal' },
-            { id: 'help', name: '游戏帮助', state: 'normal' },
-            { id: 'reincarnation', name: canReincarnate ? '转生' : '转生(未满足条件)', state: canReincarnate ? 'normal' : 'disabled' },
-            { id: 'camp', name: this.gm.camp ? `阵营: ${this.gm.camp === 'fire' ? '火之阵营' : '冰之阵营'}` : '选择阵营', state: this.gm.camp ? 'disabled' : 'normal' },
+            { id: 'save', name: t('ui.settings.save', '保存游戏'), state: 'normal' },
+            { id: 'load', name: t('ui.settings.load', '读取存档'), state: 'normal' },
+            { id: 'cloud', name: t('ui.settings.cloud', '云存档'), state: CloudSaveProvider.instance.enabled ? 'normal' : 'disabled' },
+            { id: 'autoSave', name: t('ui.settings.autoSave', '自动存档: {state}', { state: s.autoSave ? t('ui.on', '开') : t('ui.off', '关') }), state: 'normal' },
+            { id: 'volLabel', name: t('ui.settings.volLabel', '音量: {pct}', { pct: `${Math.round(s.volume * 100)}%` }), state: 'disabled' },
+            { id: 'volUp', name: t('ui.settings.volUp', '音量+'), state: 'normal' },
+            { id: 'volDown', name: t('ui.settings.volDown', '音量-'), state: 'normal' },
+            { id: 'stats', name: t('ui.settings.stats', '游戏统计'), state: 'normal' },
+            { id: 'help', name: t('ui.settings.help', '游戏帮助'), state: 'normal' },
+            { id: 'reincarnation', name: canReincarnate ? t('ui.settings.reincarnation', '转生') : t('ui.settings.reincarnationLocked', '转生(未满足条件)'), state: canReincarnate ? 'normal' : 'disabled' },
+            { id: 'camp', name: t('ui.settings.camp', '阵营: {c}', { c: campName }), state: this.gm.camp ? 'disabled' : 'normal' },
         ];
+
+        // 语言切换：仅「浏览器」平台展示；微信小游戏（移动端/国内）按需求不展示
+        if (Layout.isWeb) {
+            cells.push({ id: 'lang', name: langNow === 'zh' ? 'English' : '中文', state: 'normal' });
+        }
 
 
         return {
-            title: '设置',
-            breadcrumb: '菜单 > 设置',
+            title: t('ui.settings.title', '设置'),
+            breadcrumb: t('ui.menu.breadcrumb.settings', '菜单 > 设置'),
             columns: 4,
             cells,
             onCellClick: (index, cell) => {
                 switch (cell.id) {
                     case 'save':
                         this.saveMgr.save();
-                        this.setMsg('存档已保存');
+                        this.setMsg(t('ui.msg.saved', '存档已保存'));
                         this.navigator.replace(this.buildMenuSettingsPage());
                         break;
                     case 'load':
                         this.saveMgr.load();
-                        this.setMsg('已读档');
+                        this.setMsg(t('ui.msg.loaded', '已读档'));
                         this.eventBus.emit(GameEvents.UI_REFRESH);
                         this.navigator.replace(this.buildMenuSettingsPage());
                         break;
@@ -121,7 +132,7 @@ export class MenuPage extends BasePage {
                         this.gm.settings.autoSave = !this.gm.settings.autoSave;
                         if (this.gm.settings.autoSave) this.saveMgr.startAutoSave(60000);
                         else this.saveMgr.stopAutoSave();
-                        this.setMsg(`自动存档已${this.gm.settings.autoSave ? '开启' : '关闭'}`);
+                        this.setMsg(t('ui.msg.autoSaveOn', '自动存档已开启'));
                         this.navigator.replace(this.buildMenuSettingsPage());
                         break;
                     case 'volUp':
@@ -130,6 +141,11 @@ export class MenuPage extends BasePage {
                         break;
                     case 'volDown':
                         this.gm.settings.volume = Math.max(0, this.gm.settings.volume - 0.1);
+                        this.navigator.replace(this.buildMenuSettingsPage());
+                        break;
+                    case 'lang':
+                        this.gm.setLanguage(langNow === 'zh' ? 'en' : 'zh');
+                        this.saveMgr.save();
                         this.navigator.replace(this.buildMenuSettingsPage());
                         break;
                     case 'stats':
@@ -152,16 +168,17 @@ export class MenuPage extends BasePage {
     /** 阵营选择弹窗（仅未选择时有效） */
     private openCampDialog(): void {
         if (this.gm.camp) {
-            this.setMsg(`你已属于【${this.gm.camp === 'fire' ? '火之阵营' : '冰之阵营'}】，无法更改`);
+            const campName = this.gm.camp === 'fire' ? t('ui.fire', '火之阵营') : t('ui.ice', '冰之阵营');
+            this.setMsg(t('ui.camp.already', '你已属于【{c}】，无法更改', { c: campName }));
             this.navigator.replace(this.buildMenuPage());
             return;
         }
         const options: DialogOption[] = [
-            { label: '🔥 火之阵营', data: 'fire', desc: '体温更暖（不易冻毙），代谢稳定使满腹/水分消耗 -15%，战斗中攻击 +5%' },
-            { label: '❄ 冰之阵营', data: 'ice', desc: '冷静使精神衰减 -50%，低温环境更稳' },
+            { label: '🔥 ' + t('ui.fire', '火之阵营'), data: 'fire', desc: t('ui.camp.fireDesc', '体温更暖（不易冻毙），代谢稳定使满腹/水分消耗 -15%，战斗中攻击 +5%') },
+            { label: '❄ ' + t('ui.ice', '冰之阵营'), data: 'ice', desc: t('ui.camp.iceDesc', '冷静使精神衰减 -50%，低温环境更稳') },
         ];
         this.dialogPanel?.show(
-            '选择你的阵营',
+            t('ui.camp.title', '选择你的阵营'),
             options,
             (data: string) => {
                 const r = this.gm.chooseCamp(data as 'ice' | 'fire');

@@ -12,6 +12,7 @@ import { C, Btn } from './theme';
 import { Layout } from './layoutConfig';
 import { ModalRow, ModalScrollList, UIButton, UIHStack } from './widgets';
 import { OfflineReport } from '../systems/TimeSystem';
+import { t } from '../i18n';
 
 export class OfflineModal extends ModalPanel {
     protected panelW = 640;
@@ -34,14 +35,15 @@ export class OfflineModal extends ModalPanel {
         const gameH = Math.round(r.hours);
         this.mkText(
             this._content!, 0, -8, listW, 44,
-            `你离开了约 ${realH} 小时，游戏内时光推进了 ${gameH} 小时`, 20, C.sub,
+            t('ui.offline.head', '你离开了约 {real} 小时，游戏内时光推进了 {game} 小时', { real: realH, game: gameH }),
+            20, C.sub,
             { anchorY: 1, align: 'center' },
         );
 
         const rows: ModalRow[] = [];
         rows.push(new ModalRow({
             width: listW,
-            name: `来到了 第${r.dayAfter}日（${r.seasonName}季）`,
+            name: t('ui.offline.arrived', '来到了 第{day}日（{season}季）', { day: r.dayAfter, season: r.seasonName }),
             align: 'left',
             bg: C.optionBg, stroke: C.optionStroke,
         }));
@@ -50,7 +52,10 @@ export class OfflineModal extends ModalPanel {
         const sd = r.stateDelta;
         const fmt = (v: number) => (v <= 0 ? `−${Math.round(-v)}` : `+${Math.round(v)}`);
         const stateItems: [string, number][] = [
-            ['满腹', sd.full], ['水分', sd.moist], ['精神', sd.san], ['体温', sd.temp],
+            [t('ui.status.full', '满腹'), sd.full],
+            [t('ui.status.moist', '水分'), sd.moist],
+            [t('ui.status.san', '精神'), sd.san],
+            [t('ui.status.temp', '体温'), sd.temp],
         ];
         for (const [name, v] of stateItems) {
             if (Math.abs(v) < 0.5) continue;
@@ -58,7 +63,7 @@ export class OfflineModal extends ModalPanel {
             rows.push(new ModalRow({
                 width: listW, name, align: 'left',
                 meta: fmt(v), metaColor: down ? C.danger : C.accent2,
-                subText: down ? '下降' : '回升', subColor: C.sub, subSize: 18,
+                subText: down ? t('ui.offline.down', '下降') : t('ui.offline.up', '回升'), subColor: C.sub, subSize: 18,
                 bg: C.optionBg, stroke: C.optionStroke,
             }));
         }
@@ -66,14 +71,14 @@ export class OfflineModal extends ModalPanel {
         // 酿造熟成提示
         if (r.brewsGrew > 0) {
             rows.push(new ModalRow({
-                width: listW, name: `${r.brewsGrew} 份酿造已熟成`, align: 'left',
-                subText: '去酿酒桶收获', subColor: C.accent2, subSize: 18,
+                width: listW, name: t('ui.offline.brewsGrew', '{n} 份酿造已熟成', { n: r.brewsGrew }), align: 'left',
+                subText: t('ui.offline.harvestBrewery', '去酿酒桶收获'), subColor: C.accent2, subSize: 18,
                 bg: C.optionBg, stroke: C.optionStroke,
             }));
         } else if (r.brewsReady > 0) {
             rows.push(new ModalRow({
-                width: listW, name: `${r.brewsReady} 份酿造已可收获`, align: 'left',
-                subText: '去酿酒桶收获', subColor: C.accent2, subSize: 18,
+                width: listW, name: t('ui.offline.brewsReady', '{n} 份酿造已可收获', { n: r.brewsReady }), align: 'left',
+                subText: t('ui.offline.harvestBrewery', '去酿酒桶收获'), subColor: C.accent2, subSize: 18,
                 bg: C.optionBg, stroke: C.optionStroke,
             }));
         }
@@ -97,7 +102,7 @@ export class OfflineModal extends ModalPanel {
         // 底部「知道了」按钮
         const btnW = 240;
         const btnRow = new UIHStack().gap(0)
-            .add(new UIButton('知道了', Btn.confirm, () => this.hide(), btnW, 60));
+            .add(new UIButton(t('ui.offline.ok', '知道了'), Btn.confirm, () => this.hide(), btnW, 60));
         btnRow.mount(this._content!);
         btnRow.pos(0, -(listH + 56 + 30), 0);
     }
@@ -105,6 +110,6 @@ export class OfflineModal extends ModalPanel {
     /** 展示离线结算报告 */
     public showReport(report: OfflineReport): void {
         this._report = report;
-        this.show('你离开的这段时间');
+        this.show(t('ui.offline.title', '你离开的这段时间'));
     }
 }

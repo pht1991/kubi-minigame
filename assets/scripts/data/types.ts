@@ -259,7 +259,7 @@ export interface SaveData {
     coolDownSaveData: Record<string, number>;
     timeData: { day: number; hour: number; season: number };
     maouLevel: number;
-    settings: { autoSave: boolean; volume: number };
+    settings: { autoSave: boolean; volume: number; lang?: string };
 }
 
 /** 网格格子数据 */

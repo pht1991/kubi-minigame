@@ -21,10 +21,10 @@ import {
     DUNGEON_DEC,
     ALCO_DATA,
 } from '../data/data';
+import { t } from '../i18n';
 
 /** 冬季每小时体温额外流失（制造"难熬"的低温压力） */
 const WINTER_COLD_PER_HOUR = 0.4;
-const SEASON_NAMES = ['春', '夏', '秋', '冬'];
 
 /** 离线结算：真实离线时长 → 游戏内推进小时的映射与上限 */
 const OFFLINE_MIN_MS = 60_000;        // 离线不足 1 分钟不弹结算
@@ -88,7 +88,13 @@ export class TimeSystem {
 
     /** 当前季节名 */
     get seasonName(): string {
-        return SEASON_NAMES[this.season] || '春';
+        const names = [
+            t('ui.time.spring', '春'),
+            t('ui.time.summer', '夏'),
+            t('ui.time.autumn', '秋'),
+            t('ui.time.winter', '冬'),
+        ];
+        return names[this.season] || t('ui.time.spring', '春');
     }
 
     /**
@@ -266,15 +272,24 @@ export class TimeSystem {
     getTimeDesc(): string {
         const h = this.hour;
         let period = '';
-        if (h >= 5 && h < 9) period = '早晨';
-        else if (h >= 9 && h < 12) period = '上午';
-        else if (h >= 12 && h < 14) period = '中午';
-        else if (h >= 14 && h < 18) period = '下午';
-        else if (h >= 18 && h < 22) period = '傍晚';
-        else period = '夜晚';
+        if (h >= 5 && h < 9) period = t('ui.time.morning', '早晨');
+        else if (h >= 9 && h < 12) period = t('ui.time.forenoon', '上午');
+        else if (h >= 12 && h < 14) period = t('ui.time.noon', '中午');
+        else if (h >= 14 && h < 18) period = t('ui.time.afternoon', '下午');
+        else if (h >= 18 && h < 22) period = t('ui.time.dusk', '傍晚');
+        else period = t('ui.time.night', '夜晚');
 
-        const seasonNames = ['春', '夏', '秋', '冬'];
-        return `${seasonNames[this.season]}第${this.day}日 ${period}`;
+        const seasonNames = [
+            t('ui.time.spring', '春'),
+            t('ui.time.summer', '夏'),
+            t('ui.time.autumn', '秋'),
+            t('ui.time.winter', '冬'),
+        ];
+        return t('ui.time.format', '{season}第{day}日 {period}', {
+            season: seasonNames[this.season],
+            day: this.day,
+            period,
+        });
     }
 
     /**

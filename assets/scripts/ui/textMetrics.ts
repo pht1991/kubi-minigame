@@ -12,6 +12,8 @@
  *    （不传 width → NONE 自适应，永不裁切）。
  */
 
+import { getLang } from '../i18n';
+
 /** 单个字符的「显示单位」（宽字符 1.0，窄字符 0.55） */
 export function charUnits(ch: string): number {
     const code = ch.codePointAt(0)!;
@@ -29,11 +31,30 @@ export function textUnits(text: string): number {
     return total;
 }
 
+const LATIN_CHAR_W = 0.5;   // 拉丁字母/数字平均视觉宽 ≈ 0.5em（等比字体）
+const LATIN_SPACE_W = 0.28; // 空格宽 ≈ 0.28em
+
+/** 单行拉丁文本宽度（词内不断开，空格按 LATIN_SPACE_W 计） */
+function estimateLatinLineWidth(line: string, fontSize: number): number {
+    let w = 0;
+    for (const tk of line.split(/(\s+)/)) {
+        if (!tk) continue;
+        w += /^\s+$/.test(tk) ? tk.length * LATIN_SPACE_W * fontSize : tk.length * LATIN_CHAR_W * fontSize;
+    }
+    return w;
+}
+
 /**
  * 估算文本在给定字号下的像素宽度（基于混合字符宽）。
  * 返回不含 padding 的纯文字宽，调用方可按需 + 余量。
  */
 export function estimateTextWidth(text: string, fontSize: number): number {
+    if (getLang() !== 'zh') {
+        // 非中文：取最宽的一行宽度（按 \n 分段）
+        let maxW = 0;
+        for (const line of (text || '').split('\n')) maxW = Math.max(maxW, estimateLatinLineWidth(line, fontSize));
+        return Math.ceil(maxW);
+    }
     return Math.ceil(textUnits(text) * fontSize);
 }
 
@@ -44,6 +65,26 @@ export function estimateTextWidth(text: string, fontSize: number): number {
  * @param availW    单行可用像素宽（不含 padding）
  */
 export function estimateWrappedLines(text: string, fontSize: number, availW: number): number {
+    if (getLang() !== 'zh') {
+        // 非中文：词边界换行（词内不断开）
+        const charW = LATIN_CHAR_W * fontSize;
+        const spaceW = LATIN_SPACE_W * fontSize;
+        let lines = 0;
+        for (const seg of (text || '').split('\n')) {
+            const words = seg.split(/\s+/).filter(Boolean);
+            if (words.length === 0) { lines++; continue; }
+            let lineW = 0, first = true;
+            for (const word of words) {
+                const w = word.length * charW;
+                const add = (first ? 0 : spaceW) + w;
+                if (lineW + add > availW && !first) { lines++; lineW = w; }
+                else { lineW += add; }
+                first = false;
+            }
+            lines++;
+        }
+        return lines;
+    }
     const perLine = Math.max(1, Math.floor(availW / (fontSize * 0.95)));
     let lines = 0;
     for (const seg of (text || '').split('\n')) {

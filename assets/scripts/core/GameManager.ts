@@ -26,6 +26,9 @@ import {
 } from '../data/data';
 // PLACE_INIT 已在 data.ts 末尾初始化（visited/amount/resource/things/mst），与 PLACE_DATA 配套
 
+import { registerAllDataTables, applyLang, defaultLangForPlatform, type Lang } from '../i18n';
+import { sys } from 'cc';
+
 export class GameManager {
     private static _instance: GameManager;
     private _eventBus: EventBus;
@@ -66,7 +69,7 @@ export class GameManager {
     /** 魔王轮回等级 */
     maouLevel: number;
     /** 游戏设置 */
-    settings: { autoSave: boolean; volume: number };
+    settings: { autoSave: boolean; volume: number; lang?: string };
 
     // ===== 场景/UI 状态 =====
     /** 当前场景 */
@@ -88,6 +91,10 @@ export class GameManager {
     private constructor() {
         this._eventBus = EventBus.instance;
         this.resetToInit();
+        // 注册全部数据表到 i18n（仅一次），之后 applyLang 即可就地本地化 name/desc/对话
+        registerAllDataTables();
+        // 新游戏默认语种（按平台 geo 判定）：注册完成后立即就地本地化数据表（缺省回退中文快照）
+        applyLang((this.settings.lang as Lang) || defaultLangForPlatform(sys.platform));
     }
 
     /** 重置为初始状态 */
@@ -122,7 +129,8 @@ export class GameManager {
         this.coolDownSaveData = JSON.parse(JSON.stringify(COOL_DOWN_INIT));
         this.timeData = { day: 1, hour: 6, season: 0 };
         this.maouLevel = 0;
-        this.settings = { autoSave: true, volume: 1 };
+        // 默认语种按平台判定：微信→中文；浏览器→国内中文/国外英文（geo-aware）
+        this.settings = { autoSave: true, volume: 1, lang: defaultLangForPlatform(sys.platform) };
         this.currentScene = 'home';
         this.isAwayFromBase = false;
         this.isDueling = false;
@@ -439,7 +447,19 @@ export class GameManager {
         this.timeData = data.timeData;
         this.maouLevel = data.maouLevel;
         this.settings = data.settings;
+        // 读档后按已存语种就地本地化所有数据表（旧存档无 lang → 回退平台默认语种）
+        applyLang((this.settings.lang as Lang) || defaultLangForPlatform(sys.platform));
         this._eventBus.emit(GameEvents.LOAD_COMPLETE);
+        this._eventBus.emit(GameEvents.UI_REFRESH);
+    }
+
+    /**
+     * 切换游戏语言：写入设置、就地本地化数据表、刷新界面（页面与状态栏监听 UI_REFRESH 重渲染）。
+     * 持久化由调用方（如设置页）负责触发存档。
+     */
+    setLanguage(lang: Lang): void {
+        this.settings.lang = lang;
+        applyLang(lang);
         this._eventBus.emit(GameEvents.UI_REFRESH);
     }
 }

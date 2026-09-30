@@ -123,7 +123,8 @@ export abstract class ModalPanel extends Component {
         const bottomMargin = Math.round(this._vsH * 0.08);
         const maxW = Math.max(280, this._vsW - sideMargin * 2);
         const maxH = Math.max(280, this._vsH - topMargin - bottomMargin);
-        const s = Math.min(1, maxW / this.panelW, maxH / this.panelH);
+        // 用户反馈弹窗仍偏大：横屏在视口适配之上再统一乘 0.85 缩小一档（竖屏不受影响）
+        const s = Math.min(1, maxW / this.panelW, maxH / this.panelH) * 0.85;
         this._panel.setScale(s, s, 1);
         // 在「顶栏之下 ~ 底栏之上」的可用竖向区间内居中（而非死板下移 inset/2）
         const bandTop = -(this._vsH / 2 - topMargin);      // 区间上缘（负值）
