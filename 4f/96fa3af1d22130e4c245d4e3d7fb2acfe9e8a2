@@ -1,0 +1,22 @@
+assets/scripts/ui/OfflineModal.ts
+  s_f8b3b7f5531622::t_eceba37a972276 86-88,90-95,98,102,104,109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "4f96fa3af1d22130e4c245d4e3d7fb2acfe9e8a2",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
