@@ -1,0 +1,36 @@
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_e758ab45ca9d0b 299-305,896-897
+assets/scripts/ui/layoutConfig.ts
+  s_f8b3b7f5531622::t_cea248e30accef 42-58
+assets/scripts/ui/ModalPanel.ts
+  s_f8b3b7f5531622::t_b236d2a2ac0f28 126-127,267-272
+  s_f8b3b7f5531622::t_219c5af316eeb5 295
+assets/scripts/ui/HarvestModal.ts
+  s_f8b3b7f5531622::t_a6fad0675c1386 91,93-94,101
+docs/browser-adaptation.md
+  s_f8b3b7f5531622::t_19b50bd5cd3562 1-81
+assets/scripts/ui/GridComponent.ts
+  s_f8b3b7f5531622::t_11157ac7d160a3 338-357
+  s_f8b3b7f5531622::t_303215e6941eb9 283-284,286,296-297,305,358-359,540-542
+assets/scripts/ui/OfflineModal.ts
+  s_f8b3b7f5531622::t_dd558915a82465 98,100,102-103,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "d3f3e456ae4758798874ded55fd7c44fa5023a0b",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
