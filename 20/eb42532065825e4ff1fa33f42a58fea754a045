@@ -1,0 +1,96 @@
+assets/scripts/ui/HarvestModal.ts
+  s_f8b3b7f5531622::t_b104fb058ef9ab 49,55
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_de19c9a19fc650 1011-1012
+  s_f8b3b7f5531622::t_63496aba8a2857 1020
+  s_f8b3b7f5531622::t_6dde8894a83209 1025,1027-1028
+  s_f8b3b7f5531622::t_52fa3fa3b23d10 1049
+  s_f8b3b7f5531622::t_62b5347e16c1cc 918-923
+  s_f8b3b7f5531622::t_2548b71409af8d 953-954
+  s_f8b3b7f5531622::t_d30f5efd2cfcee 837-838
+  s_f8b3b7f5531622::t_a89bcb95c63426 696-701
+  s_f8b3b7f5531622::t_f27d5841bb596e 733-753,766,768-769,779-780,789
+  s_f8b3b7f5531622::t_51f02effc33fbf 297,299,301-303,307-312
+  s_f8b3b7f5531622::t_ad9ae4184397b2 304,306
+  s_f8b3b7f5531622::t_b07bc17081cf5d 877-878
+  s_f8b3b7f5531622::t_c70325fc193416 825-828
+  s_f8b3b7f5531622::t_745787b768c7cd 988-1010,1013-1019,1021-1024,1026,1029-1048,1050-1063
+  s_f8b3b7f5531622::t_1b5b48ad9597d5 732
+assets/scripts/ui/TutorialPanel.ts
+  s_f8b3b7f5531622::t_04f684cb6fa197 36
+assets/scripts/ui/cellLayout.ts
+  s_f8b3b7f5531622::t_97ada93400b611 98
+assets/scripts/ui/widgets/UIShape.ts
+  s_f8b3b7f5531622::t_a7238bd01b0213 10,22-28,30-35,45-51,70-71
+  s_f8b3b7f5531622::t_04566ec87d78a7 56,66-69
+assets/scripts/ui/OfflineModal.ts
+  s_f8b3b7f5531622::t_9108b27f4bd2f8 89,91,95
+assets/scripts/i18n/en/ui.ts
+  s_f8b3b7f5531622::t_75c0c94a477472 1022-1024
+assets/scripts/ui/GridComponent.ts
+  s_f8b3b7f5531622::t_00c9207bb91400 292-293
+  s_f8b3b7f5531622::t_6a0d1eb4bc7d15 362
+assets/scripts/ui/ModalPanel.ts
+  s_f8b3b7f5531622::t_353d9e17043e73 54-55
+  s_f8b3b7f5531622::t_fd989b44a883cd 135-137
+  s_f8b3b7f5531622::t_10df73f4b92ebc 23
+  s_f8b3b7f5531622::t_6642c06ce1dbb4 256-258
+  s_f8b3b7f5531622::t_eac7d79dd2539f 210
+docs/web-ui-upgrade-plan.md
+  s_f8b3b7f5531622::t_8c8082c6baed5b 132-141
+  s_f8b3b7f5531622::t_360f92b44eee9d 116-125,127-129,142-147
+  s_ec605744bb081d::t_8e25a533686ba4 1-115
+  s_f8b3b7f5531622::t_f60dd977165905 126,130-131
+assets/scripts/ui/DialogPanel.ts
+  s_f8b3b7f5531622::t_e2c549bd642ce3 32
+  s_f8b3b7f5531622::t_004391964f0212 62
+assets/scripts/ui/GridCell.ts
+  s_f8b3b7f5531622::t_13c1f14aaf8937 390,396,400,404-409
+  s_f8b3b7f5531622::t_8e8eee108c66a7 315-317
+assets/scripts/ui/widgets/UIButton.ts
+  s_f8b3b7f5531622::t_1c45c1ad0ef7cf 21-22,29,36,41-61,85
+  s_f8b3b7f5531622::t_9d6e7a045fcff1 62-69
+  s_f8b3b7f5531622::t_c244e0fb66e4eb 9
+assets/scripts/ui/ResultModal.ts
+  s_f8b3b7f5531622::t_8c5e7a34771c6e 26
+assets/scripts/ui/theme.ts
+  s_f8b3b7f5531622::t_c596b658e3ef4e 172-181
+  s_f8b3b7f5531622::t_680a6dc7d90b6c 156-159
+  s_f8b3b7f5531622::t_1ab5ce8ad221da 122-128
+  s_f8b3b7f5531622::t_8e954749a14989 153-155
+assets/scripts/ui/QuantityPanel.ts
+  s_f8b3b7f5531622::t_804ff03357fa5b 66
+assets/scripts/ui/layoutConfig.ts
+  s_f8b3b7f5531622::t_5a679cb7d22a81 65-75
+  s_f8b3b7f5531622::t_7936477ce8527a 20-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.33",
+  "base_commit_sha": "20eb42532065825e4ff1fa33f42a58fea754a045",
+  "prompts": {},
+  "sessions": {
+    "s_ec605744bb081d": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "a3bf5092-3cb0-4e34-ad7c-62cb8892e645",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    },
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
