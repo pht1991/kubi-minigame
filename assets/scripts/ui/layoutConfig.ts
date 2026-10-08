@@ -39,4 +39,21 @@ export const Layout = {
      * 手机/微信保持 1，字节级零回归。
      */
     uiScale: 1,
+
+    // ════ 横屏统一缩放 tokens（S1 规则层 · 见 docs/browser-adaptation.md）════
+    // 竖屏全部为中性值（1 或 0=不启用）；横屏由 MainScene.onLoad 统一赋值。
+    // 铁律 A：任何文件禁止再出现横屏专属魔法数，一律引用此处；调手感只改这里。
+
+    /** 网格单元缩放（tileW/H、横条高、间距；竖屏 160 方格 → 横屏 96） */
+    cellScale: 1,
+    /** 格子内字号/行高缩放（cellLayout.fontScale） */
+    fontScale: 1,
+    /** 弹窗面板整体缩放（ModalPanel._fitPanel 乘数）、底栏按钮二段缩放 */
+    modalScale: 1,
+    /** 横条/列表条目最大宽；0 = 不钳制（竖屏），横屏钳到 460 防撑满整屏 */
+    barMaxW: 0,
+    /** 页脚列表宽；0 = 用竖屏默认 700 */
+    footerW: 0,
+    /** 页脚行高；0 = 用竖屏默认 70 */
+    footerRowH: 0,
 };

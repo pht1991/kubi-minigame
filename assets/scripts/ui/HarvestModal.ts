@@ -88,16 +88,17 @@ export class HarvestModal extends ModalPanel {
         // ModalPanel 固定 content 底部距面板底 50px，因此取 content 底部 padding=0 时
         // panelH = listH + 256 刚好不裁剪按钮，底部留白 50px。
         const targetH = listH + 256;
-        this.resizePanel(Math.max(300, Math.min(880, targetH)));
+        const panelH = this.resizePanel(Math.max(300, Math.min(880, targetH)));
 
-        // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)——HStack 自动排布（y 跟随列表实际高度）
+        // 底部按钮：背包(左) / 全部拾取(中) / 完成(右)——HStack 自动排布
+        // y 用贴底公式 136−实际面板高（横屏钳制后仍准确 · docs/browser-adaptation.md 三-2）
         const btnW = (listW - 2 * 12) / 3;
         const btnRow = new UIHStack().gap(12)
             .add(new UIButton(t('背包'), Btn.neutral, () => this.onOpenBag?.(), btnW, 60))
             .add(new UIButton(t('全部拾取'), Btn.primary, () => this.takeAll(), btnW, 60))
             .add(new UIButton(t('完成'), Btn.confirm, () => this.finish(), btnW, 60));
         btnRow.mount(this._content!);
-        btnRow.pos(0, -(listH + 56 + 30), 0);
+        btnRow.pos(0, 136 - panelH, 0);
     }
 
     /** 尝试把某物品放入背包：已有种类(堆叠)或背包有空格即可；否则失败 */

@@ -123,8 +123,8 @@ export abstract class ModalPanel extends Component {
         const bottomMargin = Math.round(this._vsH * 0.08);
         const maxW = Math.max(280, this._vsW - sideMargin * 2);
         const maxH = Math.max(280, this._vsH - topMargin - bottomMargin);
-        // 用户反馈弹窗仍偏大：横屏在视口适配之上再统一乘 0.85 缩小一档（竖屏不受影响）
-        const s = Math.min(1, maxW / this.panelW, maxH / this.panelH) * 0.85;
+        // 用户反馈弹窗仍偏大：横屏在视口适配之上再统一乘 modalScale 缩小一档（竖屏=1 不影响）
+        const s = Math.min(1, maxW / this.panelW, maxH / this.panelH) * Layout.modalScale;
         this._panel.setScale(s, s, 1);
         // 在「顶栏之下 ~ 底栏之上」的可用竖向区间内居中（而非死板下移 inset/2）
         const bandTop = -(this._vsH / 2 - topMargin);      // 区间上缘（负值）
@@ -264,8 +264,12 @@ export abstract class ModalPanel extends Component {
         g.fill();
     }
 
-    /** 自适应高度：重绘面板 + 重定位标题/关闭按钮/内容容器。返回可用滚动可视高度推导用的面板高 */
-    protected resizePanel(h: number): void {
+    /**
+     * 自适应高度：重绘面板 + 重定位标题/关闭按钮/内容容器。
+     * 返回钳制后的实际面板高（横屏可能小于入参 h）——调用方定位其下方元素
+     * （底部按钮等）必须用返回值，禁止用入参推导（铁律见 docs/browser-adaptation.md 三-1/2）。
+     */
+    protected resizePanel(h: number): number {
         // 横屏：钳制高度装入视口（顶部给 HTML 顶栏让位 + 上下边距）；竖屏零回归
         if (Layout.landscape) {
             const maxH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
@@ -288,6 +292,7 @@ export abstract class ModalPanel extends Component {
         }
         // 横屏：高度变了，重新适配缩放/位置
         this._fitPanel();
+        return h;
     }
 
     // ════ 对外接口 ════

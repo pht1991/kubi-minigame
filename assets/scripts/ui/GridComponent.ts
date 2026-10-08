@@ -280,10 +280,10 @@ export class GridComponent extends Component {
         let barWidth = this.barWidth;
         let barHeight = this.barHeight;
         // 横屏桌面：格子整体缩小（竖屏 160 搬到 1280 宽显得笨重），列数从可用宽度推导
-        // （最多 8 列）；横条/页脚宽钳到 520 不撑满整屏；字号 ×0.8 同步缩小。
-        // 竖屏保持原尺寸与列数（零回归）。
+        // （最多 8 列）；横条/页脚宽按 barMaxW 钳制不撑满整屏；字号 ×fontScale 同步缩小。
+        // 缩放系数全部来自 layoutConfig tokens（docs/browser-adaptation.md 铁律 A）；竖屏零回归。
         if (Layout.landscape) {
-            const k = 0.6;                                   // 横屏格子缩放系数
+            const k = Layout.cellScale;
             tileW = Math.round(this.cellWidth * k);           // 160 → 96
             tileH = Math.round(this.cellHeight * k);          // 160 → 96
             spacing = Math.round(this.cellSpacing * k);
@@ -293,8 +293,8 @@ export class GridComponent extends Component {
                 const fit = Math.floor(availInnerW / (tileW + spacing));
                 columns = Math.min(Math.max(fit, columns), 8);  // 至少保持原列数，最多 8 列
             }
-            // 横条/页脚宽钳到 520（避免撑满整屏、也避免单方格页被抬高致首格贴左溢出）
-            barWidth = Math.min(this.barWidth, 520);
+            // 横条/页脚宽钳到 barMaxW（避免撑满整屏、也避免单方格页被抬高致首格贴左溢出）
+            barWidth = Layout.barMaxW > 0 ? Math.min(this.barWidth, Layout.barMaxW) : this.barWidth;
         }
         const tileGridW = columns * tileW + (columns - 1) * spacing;
         // 先用占位 contentInnerW 解析各格布局（bar/header 宽=barWidth，与 contentInnerW 无关），
@@ -302,7 +302,7 @@ export class GridComponent extends Component {
         // 旧法漏判 type:'list' 推导出的横条 → 建造列表页 contentInnerW=125、横条整体右漂跑偏。
         const protoCtx: CellLayoutContext = {
             columns, tileW, tileH, spacing, contentInnerW: tileGridW, barWidth, barH: barHeight,
-            fontScale: Layout.landscape ? 0.8 : 1,
+            fontScale: Layout.fontScale,
         };
         const items = cells.map(c => ({ data: c, L: resolveCellLayout(c, protoCtx) }));
         const maxCellW = items.reduce((m, it) => Math.max(m, it.L.width), 0);
@@ -335,7 +335,28 @@ export class GridComponent extends Component {
             rowUsedW += w + spacing;
             rowH = Math.max(rowH, h);
         }
-        const contentHeight = Math.max(topY + rowH + this.bottomPadding, 500);
+
+        // 横屏：未占满整行的行水平居中（修主页单入口孤格顶左）；竖屏保持左对齐（零回归）
+        if (Layout.landscape) {
+            let ri = 0;
+            while (ri < flow.length) {
+                let rj = ri;
+                let rowW = 0;
+                while (rj < flow.length && flow[rj].topY === flow[ri].topY) {
+                    rowW += flow[rj].w;
+                    rj++;
+                }
+                rowW += (rj - ri - 1) * spacing;
+                if (rowW < contentInnerW - 1) {
+                    const off = (contentInnerW - rowW) / 2;
+                    for (let q = ri; q < rj; q++) flow[q].cx += off;
+                }
+                ri = rj;
+            }
+        }
+
+        // 横屏下限 200：内容少时不产生「可滚出一屏空白」的幽灵滚动（竖屏保持 500 零回归）
+        const contentHeight = Math.max(topY + rowH + this.bottomPadding, Layout.landscape ? 200 : 500);
         // 横屏：content 内宽不得超过 view 可用宽，否则格子被 Mask 横向裁切而「看不见」
         const maxContentW = Layout.landscape ? (Layout.designW - 80) : (contentInnerW + edgePad * 2);
         const contentWidth = Math.min(contentInnerW + edgePad * 2, maxContentW);
@@ -516,9 +537,9 @@ export class GridComponent extends Component {
         for (const ch of oldChildren) { if (ch.isValid) ch.destroy(); }
         this._footerCells = [];
 
-        // 页脚参数：单列列表样式；横屏宽钳 560、行高 48 与缩小后的条目协调，竖屏保持原 700/70
-        const footerW = Layout.landscape ? 560 : 700;
-        const rowH = Layout.landscape ? 48 : 70;
+        // 页脚参数：单列列表样式；横屏宽/行高走 tokens（与缩小后的条目协调），竖屏保持原 700/70
+        const footerW = Layout.footerW || 700;
+        const rowH = Layout.footerRowH || 70;
         const gap = 8;
         const totalFooterH = footerCells.length * rowH + (footerCells.length - 1) * gap + 16;
 

@@ -296,6 +296,13 @@ export class MainScene extends Component {
         Layout.landscape = isDesktopWeb;
         // 横屏壳层缩放：状态栏/底栏/标题/字号统一压小（竖屏 1 = 零回归）
         Layout.uiScale = isDesktopWeb ? 0.6 : 1;
+        // 横屏统一缩放 tokens（S1 规则层 · docs/browser-adaptation.md）
+        Layout.cellScale = isDesktopWeb ? 0.6 : 1;
+        Layout.fontScale = isDesktopWeb ? 0.8 : 1;
+        Layout.modalScale = isDesktopWeb ? 0.85 : 1;
+        Layout.barMaxW = isDesktopWeb ? 460 : 0;
+        Layout.footerW = isDesktopWeb ? 520 : 0;
+        Layout.footerRowH = isDesktopWeb ? 44 : 0;
         Layout.isWeb = isWeb;
         // FIXED_WIDTH 保持设计宽度不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
@@ -886,8 +893,8 @@ export class MainScene extends Component {
         const S = Layout.uiScale;
         const BAR_W = Layout.designW;            // 拉满画布宽度，不留两侧空隙
         const BAR_H = Math.round(92 * S);        // 底栏高度（原 70 在真机显窄；横屏 ×S 压小）
-        // 按钮在壳层缩放 S 之上再乘 0.85：横屏下 230×72 显笨重，用户反馈再缩小一档
-        const B = S * 0.85;
+        // 按钮在壳层缩放 S 之上再乘 modalScale：横屏下 230×72 显笨重，用户反馈再缩小一档
+        const B = S * Layout.modalScale;
         const BTN_W = Math.round(230 * B);       // 3 按钮均分，横屏随 S 缩小
         const BTN_H = Math.round(72 * B);        // 按钮高度（原 56 在真机显矮）
 

@@ -95,16 +95,17 @@ export class OfflineModal extends ModalPanel {
         });
         const listH = this._list.setRows(rows);
 
-        // 面板随内容收缩，避免底部死区
+        // 面板随内容收缩，避免底部死区；横屏可能被钳制 → 用实际高度定位按钮
         const targetH = listH + 200;
-        this.resizePanel(Math.max(360, Math.min(780, targetH)));
+        const panelH = this.resizePanel(Math.max(360, Math.min(780, targetH)));
 
-        // 底部「知道了」按钮
+        // 底部「知道了」按钮：贴底公式 btnY=136−实际面板高（按钮底边距面板底 16px，
+        // 横屏钳制后仍准确；禁止 -(listH+86) 裸公式 · docs/browser-adaptation.md 三-2）
         const btnW = 240;
         const btnRow = new UIHStack().gap(0)
             .add(new UIButton(t('ui.offline.ok', '知道了'), Btn.confirm, () => this.hide(), btnW, 60));
         btnRow.mount(this._content!);
-        btnRow.pos(0, -(listH + 56 + 30), 0);
+        btnRow.pos(0, 136 - panelH, 0);
     }
 
     /** 展示离线结算报告 */
