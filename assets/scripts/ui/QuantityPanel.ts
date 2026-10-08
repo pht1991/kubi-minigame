@@ -63,7 +63,7 @@ export class QuantityPanel extends ModalPanel {
         this.clearContent();
         const c = this._content!;
         const o = this._opts;
-        const cw = this.panelW - 80;
+        const cw = this.contentW;
 
         // 声明式垂直栈：信息行 → N/M + −/+ → 全部 → 预览 → 确认，布局自动排
         const stack = new UIVStack().gap(18).align('center').fixedWidth(cw).padding(12, 0, 0, 0);

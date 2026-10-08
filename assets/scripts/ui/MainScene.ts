@@ -294,15 +294,22 @@ export class MainScene extends Component {
         Layout.designW = isDesktopWeb ? 1280 : 750;
         Layout.designH = isDesktopWeb ? 720 : 1334;
         Layout.landscape = isDesktopWeb;
+        Layout.isDesktop = isDesktopWeb;
         // 横屏壳层缩放：状态栏/底栏/标题/字号统一压小（竖屏 1 = 零回归）
-        Layout.uiScale = isDesktopWeb ? 0.6 : 1;
+        Layout.uiScale = isDesktopWeb ? 0.85 : 1;
         // 横屏统一缩放 tokens（S1 规则层 · docs/browser-adaptation.md）
-        Layout.cellScale = isDesktopWeb ? 0.6 : 1;
-        Layout.fontScale = isDesktopWeb ? 0.8 : 1;
+        // P1-A 侧栏+内容布局：格子不再 0.6 缩小（0.9 ≈ 填满内容区、多列平铺），
+        // 横条/页脚按内容区满宽（barMaxW=0 不钳制、footerW=contentW-32）。
+        Layout.cellScale = isDesktopWeb ? 0.9 : 1;
+        Layout.fontScale = 1;
         Layout.modalScale = isDesktopWeb ? 0.85 : 1;
-        Layout.barMaxW = isDesktopWeb ? 460 : 0;
-        Layout.footerW = isDesktopWeb ? 520 : 0;
-        Layout.footerRowH = isDesktopWeb ? 44 : 0;
+        Layout.barMaxW = 0;
+        Layout.footerW = isDesktopWeb ? (Layout.designW - Layout.sidebarW - 32) : 0;
+        Layout.footerRowH = isDesktopWeb ? 70 : 0;
+        // 侧栏+内容布局派生参数（P1-A）
+        Layout.sidebarW = isDesktopWeb ? 260 : 0;
+        Layout.contentW = isDesktopWeb ? (Layout.designW - Layout.sidebarW) : Layout.designW; // 1020 / 750
+        Layout.contentX = isDesktopWeb ? (Layout.sidebarW / 2) : 0;                          // 130 / 0
         Layout.isWeb = isWeb;
         // FIXED_WIDTH 保持设计宽度不变，高度自适应填满屏幕
         // （原 SHOW_ALL 会保持宽高比留白边，导致真机上下空白 + 遮罩无法铺满）
@@ -686,6 +693,12 @@ export class MainScene extends Component {
         const TOP_PADDING = 8;   // 与安全区域的间距
         const AD_TOP_OFFSET = 0; // 预留：接入 Banner 广告时设为 banner 高度（设计坐标），状态栏整体下推避开
         // Canvas 锚点(0.5,0.5)居中 → 屏幕顶 = +vs.height/2
+        if (Layout.isDesktop) {
+            // 侧栏布局：状态栏是内容区顶部紧凑 HUD，x 居中到内容区、y 贴内容区顶边之下
+            const regionTopY = vs.height / 2 - this._safeTop - TOP_PADDING;
+            this._statusBar.setPosition(Layout.contentX, regionTopY - nodeH / 2, 0);
+            return;
+        }
         const targetY = vs.height / 2 - this._safeTop - TOP_PADDING - AD_TOP_OFFSET - nodeH / 2;
         this._statusBar.setPosition(0, targetY, 0);
     }
@@ -715,22 +728,31 @@ export class MainScene extends Component {
         // 在 1280×720 画布下严重错位（只露中间一小块）。FIXED_WIDTH 下正常可见高≈designH。
         const visH = (vs.height > 0 && vs.height < Layout.designH * 2.5) ? vs.height : Layout.designH;
         const S = Layout.uiScale;
-        const SB_H = Math.round(120 * S); // 状态栏高度（与 createStatusBar 一致）
         const SB_TOP_PAD = 8;          // 状态栏安全区间距（与 _applySafeAreaToScene 一致）
-        const BAR_H = Math.round(92 * S); // 底栏高度（与 createBottomBar 一致）
-        const BAR_BOTTOM_MARGIN = 3;   // 底栏底部间距（与 createBottomBar 一致）
-        const MIN_BOTTOM_MARGIN = 16;  // 底部最小间距（与 createBottomBar 一致）
-        const totalBottomOffset = BAR_BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
 
-        // 可用区域（设计分辨率坐标）：
-        //   顶 = 屏幕顶 - safeTop - 间距 - SB_H   （即状态栏底边的 Y 坐标）
-        //   底 = 屏幕底 + BAR_H + totalBottomOffset （即底栏顶边的 Y 坐标）
-        const topEdge = visH / 2 - this._safeTop - SB_TOP_PAD - SB_H;
-        const bottomEdge = -visH / 2 + BAR_H + totalBottomOffset;
+        // 顶部/底部边界与网格宽度：竖屏=屏幕上下沿（状态栏顶 / 底栏顶）；
+        // 桌面侧栏布局=内容区（状态栏底 / 内容区底，无底栏），宽=contentW、中心=contentX。
+        let topEdge: number, bottomEdge: number, VIEW_W: number, contentCenterX: number;
+        if (Layout.isDesktop) {
+            const SB_H = 84;           // 紧凑 HUD 高度（与 createStatusBar 一致）
+            const regionTopY = vs.height / 2 - this._safeTop - SB_TOP_PAD;
+            topEdge = regionTopY - SB_H;                 // 状态栏底边
+            bottomEdge = -visH / 2 + 16;                 // 内容区底（留 16 间距）
+            VIEW_W = Layout.contentW;                    // 1020
+            contentCenterX = Layout.contentX;            // 130
+        } else {
+            const SB_H = Math.round(120 * S);            // 状态栏高度（与 createStatusBar 一致）
+            const BAR_H = Math.round(92 * S);            // 底栏高度（与 createBottomBar 一致）
+            const BAR_BOTTOM_MARGIN = 3;
+            const MIN_BOTTOM_MARGIN = 16;
+            const totalBottomOffset = BAR_BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
+            topEdge = visH / 2 - this._safeTop - SB_TOP_PAD - SB_H;
+            bottomEdge = -visH / 2 + BAR_H + totalBottomOffset;
+            VIEW_W = Layout.designW - 80;                // 竖屏用满宽度（原 700 已通过 designW=750 体现）
+            contentCenterX = 0;
+        }
         const availH = topEdge - bottomEdge;
         if (availH <= 0) return; // 异常：空间不足，不修改
-
-        const VIEW_W = Layout.landscape ? (Layout.designW - 80) : 700; // 横屏用满宽度；竖屏保持原 700
 
         // 【关键修复】原实现把 ScrollView/view 高度直接设为 availH（与容器同高），
         // 导致滚动区上沿覆盖了顶部标题/面包屑区 → 标题被滚动区背景 Sprite 遮挡。
@@ -741,10 +763,10 @@ export class MainScene extends Component {
         const svH = availH - HEADER_H - BOTTOM_PAD;
         if (svH <= 0) return;
 
-        // 1) GridContainer 填满「状态栏底 ~ 底栏顶」整段可用高度，并居中到该区中心
+        // 1) GridContainer 填满「状态栏底 ~ 内容区底」整段可用高度，并居中到该区中心
         const gcTf = gridContainer.getComponent(UITransform);
-        if (gcTf) gcTf.setContentSize(Layout.designW, availH);
-        gridContainer.setPosition(0, (topEdge + bottomEdge) / 2, 0);
+        if (gcTf) gcTf.setContentSize(VIEW_W, availH);
+        gridContainer.setPosition(contentCenterX, (topEdge + bottomEdge) / 2, 0);
 
         // 2) ScrollView + view 高度 = 预留头部后的剩余空间；
         //    位置下移：顶部留 HEADER_H、底部留 BOTTOM_PAD → 中心 y = (BOTTOM_PAD - HEADER_H) / 2
@@ -754,8 +776,8 @@ export class MainScene extends Component {
         const viewTf = viewNode.getComponent(UITransform);
         if (viewTf) viewTf.setContentSize(VIEW_W, svH);
 
-        // 3) 标题/面包屑定位到 GridContainer 顶部（头部区内、滚动区之上，不会被覆盖）
-        // 横屏：节点整体缩放（场景 Label 字号 28/18 是竖屏设计稿尺寸，直接显示偏大）
+        // 3) 标题/面包屑/返回按钮定位到 GridContainer 顶部（头部区内、滚动区之上，不会被覆盖）
+        //    这些节点是 GridContainer 子节点，坐标相对容器中心（容器已置于 contentCenterX）。
         const TITLE_TOP_PAD = Math.round(35 * S);   // 标题距容器顶边（原 550-515=35）
         const CRUMB_GAP = Math.round(40 * S);       // 面包屑在标题下方（原 515-475=40）
         const halfH = availH / 2;
@@ -764,7 +786,7 @@ export class MainScene extends Component {
         const breadcrumbLabel = gridContainer.getChildByName('BreadcrumbLabel');
         if (breadcrumbLabel) { breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0); breadcrumbLabel.setScale(S, S, 1); }
         const backButton = gridContainer.getChildByName('BackButton');
-        if (backButton) { backButton.setPosition(-(Layout.designW / 2 - 40), halfH - TITLE_TOP_PAD, 0); backButton.setScale(S, S, 1); }
+        if (backButton) { backButton.setPosition(-VIEW_W / 2 + 40, halfH - TITLE_TOP_PAD, 0); backButton.setScale(S, S, 1); }
 
         // 存档指示器随布局重算：始终贴在标题行最右侧（与标题同高，避开中间滚动区）
         this.positionSaveIndicator();
@@ -800,8 +822,10 @@ export class MainScene extends Component {
         if (this._statusBar && this._statusBar.isValid) return;
 
         const S = Layout.uiScale;
-        const SB_W = Layout.designW;
-        const SB_H = Math.round(120 * S);
+        // 桌面侧栏布局：状态栏改为内容区顶部「紧凑 HUD」，宽=内容区宽、高收窄为单行块；
+        // 竖屏保持原全宽 120×S 两行块（零回归）。
+        const SB_W = Layout.isDesktop ? Layout.contentW : Layout.designW;
+        const SB_H = Layout.isDesktop ? 84 : Math.round(120 * S);
         const bar = new Node('StatusBar');
         bar.layer = this.node.layer;
         const tf = bar.addComponent(UITransform);
@@ -810,8 +834,8 @@ export class MainScene extends Component {
         // 挂专属 StatusBar 层（Content 之上、BottomBar 之下），由 _applySafeAreaToScene 绝对定位
         bar.setParent(this._statusBarLayer!);
 
-        // 背景（替代原场景 Bg Sprite / 手绘 Graphics）：UIShape 暖色矩形
-        new UIShape('StatusBarBg').rect(SB_W, SB_H, new Color(245, 240, 230, 255)).mount(bar);
+        // 背景（替代原场景 Bg Sprite / 手绘 Graphics）：UIShape 暖色矩形（P2：投影 + 内侧高光）
+        new UIShape('StatusBarBg').rect(SB_W, SB_H, C.infoBg, 0, C.barBorder, 1.5, true, true).mount(bar);
 
         // 时间标题行（字号 24×S，留足高度防 CLAMP 裁切）
         const timeLabel = this._mkStatusLabel(bar, 'TimeLabel', 0, Math.round(36 * S), Math.round(200 * S), Math.round(56 * S), Math.round(24 * S));
@@ -850,7 +874,8 @@ export class MainScene extends Component {
         // 语言切换按钮（状态栏右上角，首页常驻可见）：点按在 中/EN 间切换并即时持久化
         // 文案显示「将要切换到的目标语言」——当前中文显示 EN，当前英文显示 中
         // 仅「浏览器」平台展示；微信小游戏（移动端/国内）按需求不展示语言切换。
-        if (Layout.isWeb) {
+        // 桌面侧栏布局下语言按钮改放侧栏底部（见 createSideBar），此处不重复创建。
+        if (Layout.isWeb && !Layout.isDesktop) {
             const langBtnW = Math.round(60 * S);
             const langBtnH = Math.round(32 * S);
             const langBtn = new UIButton(
@@ -890,6 +915,12 @@ export class MainScene extends Component {
         // 防重入：如果已创建则跳过
         if (this._bottomBar && this._bottomBar.isValid) return;
 
+        // 桌面侧栏+内容布局：底栏改为左侧竖向导航栏（P1-A）
+        if (Layout.isDesktop) {
+            this.createSideBar();
+            return;
+        }
+
         const S = Layout.uiScale;
         const BAR_W = Layout.designW;            // 拉满画布宽度，不留两侧空隙
         const BAR_H = Math.round(92 * S);        // 底栏高度（原 70 在真机显窄；横屏 ×S 压小）
@@ -919,8 +950,8 @@ export class MainScene extends Component {
         const totalBottomOffset = BOTTOM_MARGIN + Math.max(this._safeBottom, MIN_BOTTOM_MARGIN);
         this._bottomBar.setPosition(0, -vs.height / 2 + BAR_H / 2 + totalBottomOffset, 0);
 
-        // 背景（暖色）：UIShape 矩形 + 描边，替代手绘 Graphics
-        new UIShape('BottomBarBg').rect(BAR_W, BAR_H, C.barBg, 0, C.barBorder, 1.5).mount(this._bottomBar);
+        // 背景（暖色）：UIShape 矩形 + 描边，替代手绘 Graphics（P2：投影 + 内侧高光）
+        new UIShape('BottomBarBg').rect(BAR_W, BAR_H, C.barBg, 0, C.barBorder, 1.5, true, true).mount(this._bottomBar);
 
         // 按钮定义（3 个：背包 / 出门(回家) / 菜单）
         // 注：「休息」已移除——休息仅限在家（床铺）使用，不应全局暴露（可卡 bug 随地恢复）
@@ -951,6 +982,82 @@ export class MainScene extends Component {
             if (i === 0) this._bagBtnLabel = uiBtn.label;
             if (i === 1) this._goBtnLabel = uiBtn.label;
             if (i === 2) this._menuBtnLabel = uiBtn.label;
+        }
+    }
+
+    /**
+     * 桌面侧栏+内容布局：左侧竖向导航栏（替代浮底栏）。
+     * 承载：游戏标题 + 主页/背包/出门(回家)/菜单 竖向导航 + 底部语言切换。
+     * 竖屏/微信不创建（createBottomBar 已早返回走原浮底栏路径）。
+     */
+    private createSideBar(): void {
+        if (this._bottomBar && this._bottomBar.isValid) return;
+
+        const vs = view.getVisibleSize();
+        const W = Layout.sidebarW;                 // 260
+        const H = vs.height;                        // 随可见高度满高
+        const x = -Layout.designW / 2 + W / 2;      // 贴左缘居中
+
+        // 容器（复用 _bottomBar 引用，享受原 防重入 / 分层 逻辑）
+        const bar = new Node('SideBar');
+        bar.layer = this.node.layer;
+        const barTf = bar.addComponent(UITransform);
+        barTf.setContentSize(W, H);
+        barTf.setAnchorPoint(0.5, 0.5);
+        bar.setPosition(x, 0, 0);
+        this._bottomBarLayer!.addChild(bar);
+        this._bottomBar = bar;
+
+        // 背景（暖色竖条 + 右侧描边，与内容区视觉分隔；P2：投影 + 内侧高光，加 1.5 描边）
+        new UIShape('SideBarBg').rect(W, H, C.barBg, 0, C.barBorder, 1.5, true, true)
+            .mount(bar).pos(0, 0, 0);
+        const sep = new UIShape('SideBarSep').rect(2, H, C.barBorder, 0).mount(bar);
+        sep.pos(W / 2 - 1, 0, 0);
+
+        // 标题（品牌名，顶部）
+        const titleLbl = new UILabel('', {
+            size: 20, width: W - 24, height: 56, align: 'center',
+            color: C.body, bold: true, lineHeight: 26,
+        });
+        titleLbl.setText(t('超苦逼冒险者'));
+        titleLbl.mount(bar).pos(0, H / 2 - 56, 0);
+
+        // 导航按钮（竖向堆叠）：主页 / 背包 / 出门(回家) / 菜单
+        const goHome = () => { if (this._buildPage) this._navigator.setRoot(this._buildPage.buildHomePage()); };
+        const navDefs: { label: string; action: () => void; key: 'home' | 'bag' | 'go' | 'menu' }[] = [
+            { label: t('主页'), action: goHome, key: 'home' },
+            { label: t('ui.bar.bag', '背包'), action: () => this.onBottomAction('bag'), key: 'bag' },
+            { label: t('ui.bar.goOut', '出门'), action: () => this.onBottomAction('goout'), key: 'go' },
+            { label: t('ui.bar.menu', '菜单'), action: () => this.onBottomAction('menu'), key: 'menu' },
+        ];
+        const btnStyle: BtnStyle = {
+            bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1,
+            text: C.barBtnText, radius: 12, fontSize: 22,
+        };
+        const BTN_W = W - 32;
+        const BTN_H = 60;
+        const gap = 14;
+        const startY = H / 2 - 140;
+        const step = BTN_H + gap;
+        for (let i = 0; i < navDefs.length; i++) {
+            const d = navDefs[i];
+            const uiBtn = new UIButton(d.label, btnStyle, d.action, BTN_W, BTN_H);
+            uiBtn.mount(bar).pos(0, startY - i * step, 0);
+            uiBtn.node.on(Node.EventType.TOUCH_CANCEL, d.action);
+            if (d.key === 'bag') this._bagBtnLabel = uiBtn.label;
+            if (d.key === 'go') this._goBtnLabel = uiBtn.label;
+            if (d.key === 'menu') this._menuBtnLabel = uiBtn.label;
+        }
+
+        // 底部语言切换（中/EN），仅浏览器平台
+        if (Layout.isWeb) {
+            const langBtn = new UIButton(
+                isZh() ? 'EN' : t('中'),
+                { bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1, text: C.barBtnText, radius: 10, fontSize: 18 },
+                () => this.toggleLanguage(), BTN_W, 44,
+            );
+            langBtn.mount(bar).pos(0, -H / 2 + 50, 0);
+            this._langBtnLabel = langBtn.label;
         }
     }
 

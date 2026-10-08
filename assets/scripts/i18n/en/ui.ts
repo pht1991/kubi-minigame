@@ -1019,4 +1019,7 @@ export const EN_UI: Record<string, string> = {
     '微凉': 'Cool',
     '寒冷': 'Cold',
     '极寒': 'Freezing',
+
+    // ===== 补全 4：侧栏标题 =====
+    '超苦逼冒险者': 'Super Hardcore Adventurer',
 };

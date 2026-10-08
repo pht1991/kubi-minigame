@@ -29,7 +29,7 @@ export class DialogPanel extends ModalPanel {
         // 滚动列表区（自适应高度，自动 resize 面板）
         this._list = this.createScrollList({
             parent: this._panel, x: 0, y: this.panelH / 2 - 110,
-            width: 600, viewH: 700, gap: 8, padT: 36, padB: 24,
+            width: this.contentW, viewH: 700, gap: 8, padT: 36, padB: 24,
             minScrollH: 200, minPanelH: 300, maxPanelH: 900,
             align: 'center',
         });
@@ -59,7 +59,7 @@ export class DialogPanel extends ModalPanel {
 
     protected render(): void {
         const rows = this._options.map((opt, i) => new ModalRow({
-            width: 580,
+            width: this.contentW - 12,
             name: opt.label,
             align: 'left',
             disabled: !!opt.disabled,

@@ -23,7 +23,7 @@ export class ResultModal extends ModalPanel {
 
     protected render(): void {
         this.clearContent();
-        const cw = this.panelW - 80;
+        const cw = this.contentW;
         // 声明式：文案 → 确定按钮，VStack 自动排布
         const stack = new UIVStack().gap(28).align('center').fixedWidth(cw)
             .add(new UILabel(this._msgText, { size: 22, width: cw, color: C.body, align: 'center' }))

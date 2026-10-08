@@ -289,7 +289,8 @@ export class GridComponent extends Component {
             spacing = Math.round(this.cellSpacing * k);
             barHeight = Math.round(this.barHeight * k);       // 120 → 72
             if (columns > 1) {
-                const availInnerW = Layout.designW - 32;     // 两侧各留 16
+                // 内容区宽度推导列数（桌面侧栏布局用 contentW=1020，不再用满画布 1280 导致居中留白）
+                const availInnerW = Layout.contentW - 32;     // 两侧各留 16
                 const fit = Math.floor(availInnerW / (tileW + spacing));
                 columns = Math.min(Math.max(fit, columns), 8);  // 至少保持原列数，最多 8 列
             }
@@ -358,7 +359,7 @@ export class GridComponent extends Component {
         // 横屏下限 200：内容少时不产生「可滚出一屏空白」的幽灵滚动（竖屏保持 500 零回归）
         const contentHeight = Math.max(topY + rowH + this.bottomPadding, Layout.landscape ? 200 : 500);
         // 横屏：content 内宽不得超过 view 可用宽，否则格子被 Mask 横向裁切而「看不见」
-        const maxContentW = Layout.landscape ? (Layout.designW - 80) : (contentInnerW + edgePad * 2);
+        const maxContentW = Layout.landscape ? Layout.contentW : (contentInnerW + edgePad * 2);
         const contentWidth = Math.min(contentInnerW + edgePad * 2, maxContentW);
 
         // 设置 content 容器 —— 只设置尺寸（锚点/位置由场景编辑器管理，绝不改）

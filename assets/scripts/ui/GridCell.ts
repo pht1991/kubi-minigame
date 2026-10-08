@@ -312,8 +312,9 @@ export class GridCell extends Component {
                 this._nameLabel.enableWrapText = false;
             }
 
-            // 图标（仅方格 + iconPos top）：名字框缩小并下移，图标块置于上方
-            const showIcon = isTile && L.iconPos === 'top';
+            // 图标（P2-A5：方格且高度足够时默认启用图标块，缓解 tan-on-tan 扁平感；
+            // 仅在小格子/横条/标题隐藏，保证极小 tile 不退化为拥挤布局）
+            const showIcon = isTile && L.iconPos === 'top' && cellH >= 120;
             let nameW = cellW - pad * 2;
             let nameH = cellH - pad * 2;
             let nameY = 0;
@@ -386,20 +387,26 @@ export class GridCell extends Component {
         }
     }
 
-    /** 用 Graphics 绘制矩形背景 + 描边 */
+    /** 用 Graphics 绘制矩形背景 + 描边（P2：圆角 + 内侧高光） */
     private drawCellBg(bgColor: Color, outlineColor: Color): void {
         if (!this._bgGfx) return;
         const w = this.node.getComponent(UITransform)?.width || 160;
         const h = this.node.getComponent(UITransform)?.height || 160;
         const lw = 2;
+        const r = 8;
 
         this._bgGfx.clear();
         this._bgGfx.fillColor = bgColor;
-        this._bgGfx.rect(-w / 2, -h / 2, w, h);
+        this._bgGfx.roundRect(-w / 2, -h / 2, w, h, r);
         this._bgGfx.fill();
         this._bgGfx.strokeColor = outlineColor;
         this._bgGfx.lineWidth = lw;
-        this._bgGfx.rect(-w / 2, -h / 2, w, h);
+        this._bgGfx.roundRect(-w / 2, -h / 2, w, h, r);
+        this._bgGfx.stroke();
+        // P2-A2：内侧高光描边（sheen），在滚动 Mask 内不被裁，营造立体感
+        this._bgGfx.lineWidth = 2;
+        this._bgGfx.strokeColor = C.sheen;
+        this._bgGfx.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, Math.max(0, r - 2));
         this._bgGfx.stroke();
     }
 

@@ -20,7 +20,7 @@ import {
     _decorator, Component, Node, Label, UITransform, Color, Graphics,
     Mask, ScrollView, EventTouch, NodeEventType, VerticalTextAlignment, view,
 } from 'cc';
-import { C, S, Btn, BtnStyle } from './theme';
+import { C, S, Btn, BtnStyle, T } from './theme';
 import { Layout } from './layoutConfig';
 import { UIButton } from './widgets';
 import { ModalScrollList, ModalScrollListOpts } from './widgets/ModalScrollList';
@@ -51,6 +51,8 @@ export abstract class ModalPanel extends Component {
     // ════ 子类可覆盖的配置（字段初始化在 onLoad 前执行）════
     protected panelW = 640;
     protected panelH = 900;
+    /** 统一内容宽度（P1-L5 模板）：左右各留 S.contentPadX，消除各弹窗写死的 panelW-80 */
+    protected get contentW(): number { return this.panelW - S.contentPadX * 2; }
     protected showMask = true;     // 是否创建半透明遮罩
     protected maskClose = true;    // 点击遮罩是否关闭
     protected showClose = true;    // 是否显示右上角关闭按钮
@@ -130,7 +132,9 @@ export abstract class ModalPanel extends Component {
         const bandTop = -(this._vsH / 2 - topMargin);      // 区间上缘（负值）
         const bandBottom = this._vsH / 2 - bottomMargin;   // 区间下缘（正值）
         const centerY = Math.round((bandTop + bandBottom) / 2);
-        this._panel.setPosition(0, centerY, 0);
+        // 桌面侧栏布局：面板水平居中到内容区（contentX），避免整屏居中压住左侧导航栏；
+        // 竖屏/微信保持整屏居中（contentX=0）。
+        this._panel.setPosition(Layout.isDesktop ? Layout.contentX : 0, centerY, 0);
         console.log(`[Modal] fit s=${s.toFixed(3)} panel=${this.panelW}x${this.panelH} vs=${this._vsW}x${this._vsH} centerY=${centerY}`);
     }
 
@@ -203,7 +207,7 @@ export abstract class ModalPanel extends Component {
         tnt.setContentSize(this.panelW - 100, 52); tnt.setAnchorPoint(0, 0.5);
         this._titleLbl = this._titleNode.addComponent(Label);
         Object.assign(this._titleLbl, {
-            fontSize: 28, lineHeight: 36, color: C.title, string: '', isBold: true,
+            fontSize: T.title.size, lineHeight: Math.ceil(T.title.size * 1.4), color: C.title, string: '', isBold: true,
             horizontalAlign: Label.HorizontalAlign.LEFT, verticalAlign: Label.VerticalAlign.CENTER,
         });
         this._titleNode.setPosition(-this.panelW / 2 + 36, this.panelH / 2 - 42, 0);
@@ -249,6 +253,9 @@ export abstract class ModalPanel extends Component {
         vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, S.panelRadius); vg.fill();
         vg.lineWidth = S.panelBorderW; vg.strokeColor = C.panelBorder;
         vg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, S.panelRadius); vg.stroke();
+        // P2-A2：内侧高光描边（sheen）营造立体感（面板在 Mask 内，真实投影会被裁，故用内侧高光）
+        vg.lineWidth = 2; vg.strokeColor = C.sheen;
+        vg.roundRect(-this.panelW / 2 + 2, -this.panelH / 2 + 2, this.panelW - 4, this.panelH - 4, Math.max(0, S.panelRadius - 2)); vg.stroke();
         // Mask 形状：画在 _panelGfx（GRAPHICS_RECT 读此 Graphics 做 stencil 裁剪）
         const mg = this._panelGfx; mg.clear();
         mg.roundRect(-this.panelW / 2, -this.panelH / 2, this.panelW, this.panelH, S.panelRadius); mg.fill();

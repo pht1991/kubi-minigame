@@ -86,12 +86,13 @@ export class OfflineModal extends ModalPanel {
         // 弹窗布局：内容从面板顶向下排（标题区 → 列表可视区 → 按钮），
         // 按钮永远贴在「列表可视区」下方，不再压到溢出的条目 · docs/browser-adaptation.md 三-2
         const topMargin = 70;            // 标题区预留（标题在面板内顶部）
+        // 底部按钮区预留 = 16 间距 + 60 按钮高 + 16 底边距 = 92（少了按钮会溢出面板底边）
         const maxPanelH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
-        const maxViewH = Math.max(160, maxPanelH - topMargin - 60);
+        const maxViewH = Math.max(160, maxPanelH - topMargin - 92);
         // 先按行数估算内容高（行高≈54 + 间距10），再定列表可视高：尽量完整显示，超限则内部滚动
         const estListH = Math.max(60, rows.length * 64 - 10);
         const viewH = Math.min(estListH, maxViewH);
-        const panelH = this.resizePanel(Math.min(maxPanelH, topMargin + viewH + 60));
+        const panelH = this.resizePanel(Math.min(maxPanelH, topMargin + viewH + 92));
         const listTop = panelH / 2 - topMargin;   // 列表可视区顶（相对内容中心）
 
         this._list = this.createScrollList({

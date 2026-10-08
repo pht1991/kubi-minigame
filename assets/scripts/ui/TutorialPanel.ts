@@ -33,7 +33,7 @@ export class TutorialPanel extends ModalPanel {
         if (!c) return;
         this.clearContent();
 
-        const W = this.panelW - 60;
+        const W = this.contentW;
         let y = -8;
 
         // 欢迎语

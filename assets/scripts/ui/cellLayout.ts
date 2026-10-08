@@ -95,7 +95,7 @@ function tilePreset(ctx: CellLayoutContext): Omit<ResolvedCellLayout, 'kind'> {
         align: 'center',
         wrap: false,
         noTruncate: false,
-        iconPos: 'none',
+        iconPos: 'top',   // P2-A5：方格默认启用图标块（GridCell 仅在高格 + 显式时显示，极小 tile 自动隐藏，零回归）
     };
 }
 

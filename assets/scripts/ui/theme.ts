@@ -119,6 +119,13 @@ export const C = {
     battleLogText:  new Color(90, 70, 50, 255),     // 战斗日志文字（深棕）
     btnActionBg:    new Color(210, 175, 130, 255),  // 行动按钮低饱和暖底色
     battleActBorder:new Color(140, 90, 60, 255),    // 行动按钮描边（深棕，3px）
+
+    // ── 层次 / 深度（P2-A1）──
+    shadow:      new Color(70, 45, 25, 55),         // 真实投影（仅未遮罩表面可用：HUD/侧栏）
+    sheen:       new Color(255, 255, 255, 95),      // 内侧高光描边（所有表面通用，不被 Mask 裁）
+    divider:     new Color(216, 200, 178, 255),     // 分隔线
+    focus:       new Color(110, 165, 220, 255),     // 焦点 / 悬停描边（桌面态）
+    panelTop:    new Color(255, 252, 246, 255),     // 面板顶部提亮（伪渐变上沿）
 };
 
 // ══════════ 尺寸 / 间距 token（魔法数字集中地）═════════
@@ -143,6 +150,13 @@ export const S = {
 
     barH: 96,
 
+    /** 弹窗内容区左右留边（统一「内容左右留边」模板，P1-L5）。所有弹窗内容宽 = panelW - 2*contentPadX */
+    contentPadX: 24,
+
+    /** 真实投影竖向偏移（仅未被 Mask 裁掉的表面：HUD / 侧栏）。弹窗/格子在 Mask 内，投影会被裁，故用 sheen 代替 */
+    shadowOffY: 6,
+    shadowRadius: 14,
+
     font: {
         title: 28,
         body: 20,
@@ -153,6 +167,16 @@ export const S = {
         button: 24,
         durText: 16,   // P0×4：耐久数值下限 ≥16 设计 px（原 10 ≈5pt，挤成一团不可读）
     },
+};
+
+// ══════════ 字号层级 type scale（P2-A3）═════════
+// 用统一层级拉开标题/正文/辅助对比，避免散落 fontSize 字面量。消费方取 size/color/bold。
+export const T = {
+    title:    { size: 30, color: C.title, bold: true },
+    heading:  { size: 25, color: C.title, bold: true },
+    subtitle: { size: 22, color: C.sub,   bold: false },
+    body:     { size: 20, color: C.body,  bold: false },
+    caption:  { size: 16, color: C.sub,   bold: false },
 };
 
 // ══════════ 按钮样式预设（特殊场景用 {...预设, bg: 自定} 覆盖）═════════

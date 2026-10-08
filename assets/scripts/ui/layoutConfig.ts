@@ -17,6 +17,12 @@ export const Layout = {
     designH: 1334,
     /** 是否横屏桌面模式（桌面浏览器才为 true） */
     landscape: false,
+    /**
+     * 是否桌面浏览器（横屏 + 侧栏+内容布局）。与 landscape 同值但语义更明确，
+     * 专用于 P1-A 侧栏布局分支（状态栏/底栏/网格/弹窗均以「内容区」为中心重排）。
+     * 竖屏/微信恒 false，零回归。
+     */
+    isDesktop: false,
     /** 是否浏览器（WEB）平台 —— 用于注入 HTML 顶栏让位逻辑（微信/编辑器=false） */
     isWeb: false,
     /**
@@ -56,4 +62,15 @@ export const Layout = {
     footerW: 0,
     /** 页脚行高；0 = 用竖屏默认 70 */
     footerRowH: 0,
+
+    // ════ 侧栏+内容布局派生参数（P1-A · docs/web-ui-upgrade-plan.md）════
+    // 仅桌面浏览器(isDesktop)启用；竖屏全部为 0 = 不启用，走原 750 全宽路径。
+    // 铁律 A：任何文件禁止再出现侧栏/内容区专属魔法数，一律引用此处。
+
+    /** 左侧导航栏宽度（桌面 260）；竖屏 0 = 不启用侧栏 */
+    sidebarW: 0,
+    /** 内容区宽度（= designW − sidebarW）；竖屏 = designW（750） */
+    contentW: 0,
+    /** 内容区中心 X（侧栏布局下 = sidebarW/2）；竖屏 = 0 */
+    contentX: 0,
 };

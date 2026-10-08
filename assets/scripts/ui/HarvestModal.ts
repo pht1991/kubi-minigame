@@ -46,13 +46,13 @@ export class HarvestModal extends ModalPanel {
 
         // 顶部提示（背包容量）
         this.mkText(
-            this._content!, 0, -8, this.panelW - 80, 40,
+            this._content!, 0, -8, this.contentW, 40,
             `${t('点击材料放入背包（背包 ')}${used}/${cap}）`, 20, C.sub,
             { anchorY: 1, align: 'center' },
         );
 
         // 收获列表（可滚动；行用 ModalRow，setRows 自动装载 + 自适应 content 高度）
-        const listW = this.panelW - 56;
+        const listW = this.contentW;
         const ids = Object.keys(this._loot);
         const rows: ModalRow[] = [];
         if (ids.length === 0) {
