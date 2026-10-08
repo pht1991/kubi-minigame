@@ -83,29 +83,30 @@ export class OfflineModal extends ModalPanel {
             }));
         }
 
-        // 横屏：列表可视高随视口收缩（面板钳制后 targetH=listH+200 仍须装入，
-        // 否则底部「知道了」按钮被面板 Mask 裁掉）；竖屏保持 360 零回归
+        // 弹窗布局：内容从面板顶向下排（标题区 → 列表可视区 → 按钮），
+        // 按钮永远贴在「列表可视区」下方，不再压到溢出的条目 · docs/browser-adaptation.md 三-2
+        const topMargin = 70;            // 标题区预留（标题在面板内顶部）
         const maxPanelH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
-        const viewH = Layout.landscape ? Math.max(200, Math.min(360, maxPanelH - 232)) : 360;
+        const maxViewH = Math.max(160, maxPanelH - topMargin - 60);
+        // 先按行数估算内容高（行高≈54 + 间距10），再定列表可视高：尽量完整显示，超限则内部滚动
+        const estListH = Math.max(60, rows.length * 64 - 10);
+        const viewH = Math.min(estListH, maxViewH);
+        const panelH = this.resizePanel(Math.min(maxPanelH, topMargin + viewH + 60));
+        const listTop = panelH / 2 - topMargin;   // 列表可视区顶（相对内容中心）
 
         this._list = this.createScrollList({
-            parent: this._content!, x: 0, y: -56,
+            parent: this._content!, x: 0, y: listTop,
             width: listW, viewH, gap: 10,
             autoResizePanel: false, repositionScroll: false, align: 'center',
         });
-        const listH = this._list.setRows(rows);
+        this._list.setRows(rows);
 
-        // 面板随内容收缩，避免底部死区；横屏可能被钳制 → 用实际高度定位按钮
-        const targetH = listH + 200;
-        const panelH = this.resizePanel(Math.max(360, Math.min(780, targetH)));
-
-        // 底部「知道了」按钮：贴底公式 btnY=136−实际面板高（按钮底边距面板底 16px，
-        // 横屏钳制后仍准确；禁止 -(listH+86) 裸公式 · docs/browser-adaptation.md 三-2）
+        // 底部「知道了」按钮：紧贴列表可视区下方（listTop - viewH = 可视区底，再留 16 间距）
         const btnW = 240;
         const btnRow = new UIHStack().gap(0)
             .add(new UIButton(t('ui.offline.ok', '知道了'), Btn.confirm, () => this.hide(), btnW, 60));
         btnRow.mount(this._content!);
-        btnRow.pos(0, 136 - panelH, 0);
+        btnRow.pos(0, listTop - viewH - 16 - 30, 0);
     }
 
     /** 展示离线结算报告 */
