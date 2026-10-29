@@ -62,6 +62,7 @@ export class FarmPage extends BasePage {
             columns: 4,
             cells,
             rebuild: () => this.buildFarmPage().cells,
+            rebuildPage: () => this.buildFarmPage(),
             onCellClick: (index, cell) => {
                 if (cell.id.startsWith('harvest_')) {
                     const slotIdx = parseInt(cell.id.replace('harvest_', ''));

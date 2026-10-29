@@ -822,7 +822,7 @@ export const EN_UI: Record<string, string> = {
     ' 等待中(': ' waiting(',
     ' 等级': ' Lv',
     ' 精神+': ' San+',
-    ' 耗时': ' time',
+    ' 耗时': ' time ',
     ' 酿造 ': ' brew ',
     ' 金': ' gold',
     ' 陷阱': ' trap',

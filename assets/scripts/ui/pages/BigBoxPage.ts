@@ -36,6 +36,7 @@ export class BigBoxPage extends BasePage {
                     { id: 'hint', name: t('你还没有大箱子\n请先在「建造」中建造'), state: 'disabled', type: 'list' },
                     { id: 'goBuild', name: t('前往建造'), state: 'normal', type: 'list' },
                 ],
+                rebuildPage: () => this.buildBigBoxPage(),
                 onCellClick: (idx, cell) => {
                     if (cell.id === 'goBuild') {
                         this.navigator.pop();
@@ -54,6 +55,7 @@ export class BigBoxPage extends BasePage {
             columns: 4,
             cells,
             rebuild: () => this.buildBigBoxCells(),
+            rebuildPage: () => this.buildBigBoxPage(),
             onCellClick: (index, cell) => this.onBigBoxItemClick(cell.data),
             // 公共升级按钮（标题栏右侧，替代突兀的 footer 页脚）
             ...this.buildUpgradeInfo(),

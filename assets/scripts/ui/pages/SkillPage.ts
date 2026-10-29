@@ -14,6 +14,11 @@ import { SKILL_DATA, ITEM_DATA } from '../../data/data';
 export class SkillPage extends BasePage {
     /** 公开入口：打开技能一览网格 */
     public openSkillGrid(): void {
+        this.navigator.push(this.buildSkillListPage());
+    }
+
+    /** 技能一览页构建（openSkillGrid 与语言切换 rebuildPage 共用） */
+    private buildSkillListPage(): GridPage {
         const cells: GridCellData[] = [];
         for (const key in SKILL_DATA) {
             const data = SKILL_DATA[key];
@@ -33,13 +38,14 @@ export class SkillPage extends BasePage {
             cells.push({ id: 'empty', name: t('暂无技能'), state: 'disabled' });
         }
 
-        this.navigator.push({
+        return {
             title: `${t('技能 (')}${cells.length})`,
             breadcrumb: t('技能'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildSkillListPage(),
             onCellClick: (index, cell) => this.openSkillDetail(cell.id),
-        });
+        };
     }
 
     /** 技能详情 + 学习动作 */
@@ -80,6 +86,7 @@ export class SkillPage extends BasePage {
             breadcrumb: data.name,
             columns: 1,
             cells,
+            rebuildPage: () => this.buildSkillDetailPage(skillId),
             onCellClick: (index, cell) => {
                 if (cell.id === 'learn') {
                     const r = ActionSkill.instance.learn(skillId);

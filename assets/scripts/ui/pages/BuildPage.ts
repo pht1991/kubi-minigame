@@ -14,16 +14,19 @@ import { BUILDING_DATA, ITEM_DATA } from '../../data/data';
 import { GameEvents } from '../../core/EventBus';
 
 export class BuildPage extends BasePage {
-    /** 原版首页：动态设施区 + 建造 + 出门 + 菜单 */
-    public buildHomePage(): GridPage {
-        // 回主页 → 必然不在户外，重置底栏按钮为「出门」
+    /** 回到主页（含回家状态重置：清户外标记/在场商人 + 刷新底栏按钮为「出门」） */
+    public goHome(): void {
         const op = this.ctx.outdoorPage;
         if (op) {
             op.isOutdoors = false;
             op.rolledTraders = []; // 回家清空在场商人，下次出门重新随机
         }
         this.ctx.refreshGoButton();
+        this.navigator.setRoot(this.buildHomePage());
+    }
 
+    /** 原版首页：动态设施区 + 建造 + 出门 + 菜单（纯构建，无副作用——语言切换 rebuildPage 会重复调用） */
+    public buildHomePage(): GridPage {
         const cells: GridCellData[] = [];
 
         // 1. 已建设施动态入口（建了什么出现什么）
@@ -66,6 +69,7 @@ export class BuildPage extends BasePage {
             cells,
             home: true,
             rebuild: () => this.buildHomePage().cells,
+            rebuildPage: () => this.buildHomePage(),
             onCellClick: (index, cell) => this.ctx.onHomeCellClick(cell.id),
         };
     }
@@ -73,6 +77,11 @@ export class BuildPage extends BasePage {
     // ===== 建造（网格形式：仅未建建筑，每格展示名称+需求摘要）=====
     /** 公开入口：打开建造列表 */
     public openBuildList(): void {
+        this.navigator.push(this.buildBuildListPage());
+    }
+
+    /** 建造列表页构建（openBuildList 与语言切换 rebuildPage 共用） */
+    private buildBuildListPage(): GridPage {
         const cells: GridCellData[] = [];
         for (const key in BUILDING_DATA) {
             if (key === 'build') continue; // 'build' 是分类入口，非真实建筑
@@ -102,17 +111,17 @@ export class BuildPage extends BasePage {
             cells.push({ id: 'empty', name: t('所有建筑均已建造'), state: 'disabled', type: 'list' });
         }
 
-
-        this.navigator.push({
+        return {
             title: t('建造'),
             breadcrumb: t('主页 > 建造'),
             columns: 1,  // 单列：每行一个建筑，横向撑满展示完整信息
             cells,
+            rebuildPage: () => this.buildBuildListPage(),
             onCellClick: (index, cell) => {
                 if (!cell.data?.canBuild) return;
                 this.doBuild(cell.data.key);
             },
-        });
+        };
     }
 
     /** 执行建造动作（复用 ActionBuilding 完整逻辑） */

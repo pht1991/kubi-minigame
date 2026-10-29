@@ -45,6 +45,7 @@ export class RestPage extends BasePage {
                     { id: 'hint', name: t('你还没有床铺\n请先在「建造」中建造一个'), state: 'disabled', type: 'list' },
                     { id: 'goBuild', name: t('前往建造'), state: 'normal', type: 'list' },
                 ],
+                rebuildPage: () => this.openRestPage(),
                 onCellClick: (idx, cell) => {
                     if (cell.id === 'goBuild') {
                         this.navigator.pop();
@@ -94,6 +95,7 @@ export class RestPage extends BasePage {
             breadcrumb: t('主页 > 床铺'),
             columns: 1,
             cells,
+            rebuildPage: () => this.openRestPage(),
             // 升级按钮走公共标题栏接口（与大箱子/厨房/井/卫生间统一），替代旧内联升级格
             ...this.makeUpgradeInfo('sleepPlaceUpdate', {
                 title: t('床铺升级'),

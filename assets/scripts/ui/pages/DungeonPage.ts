@@ -58,6 +58,7 @@ export class DungeonPage extends BasePage {
             breadcrumb: t('地牢'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildDungeonPage(),
             onCellClick: (index, cell) => {
                 switch (cell.id) {
                     case 'enter': {

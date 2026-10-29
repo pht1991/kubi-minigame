@@ -71,6 +71,7 @@ export class TrapPage extends BasePage {
             columns: 1,   // 单列 list：每行一个陷阱，全宽展示完整信息（仿卫生间详情页）
             cells,
             rebuild: () => this.buildTrapPage().cells,
+            rebuildPage: () => this.buildTrapPage(),
             onCellClick: (index, cell) => {
                 if (cell.id.startsWith('check_')) {
                     const slotIdx = parseInt(cell.id.replace('check_', ''));

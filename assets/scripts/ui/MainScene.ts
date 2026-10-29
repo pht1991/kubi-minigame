@@ -786,7 +786,8 @@ export class MainScene extends Component {
         const breadcrumbLabel = gridContainer.getChildByName('BreadcrumbLabel');
         if (breadcrumbLabel) { breadcrumbLabel.setPosition(0, halfH - TITLE_TOP_PAD - CRUMB_GAP, 0); breadcrumbLabel.setScale(S, S, 1); }
         const backButton = gridContainer.getChildByName('BackButton');
-        if (backButton) { backButton.setPosition(-VIEW_W / 2 + 40, halfH - TITLE_TOP_PAD, 0); backButton.setScale(S, S, 1); }
+        // 左偏移 = 半宽 + 内容留边 24（与 theme.S.contentPadX 对齐）：按钮锚点居中，原 40 太贴内容区左缘（文字离侧栏仅 ~10px）
+        if (backButton) { backButton.setPosition(-VIEW_W / 2 + 40 + 24, halfH - TITLE_TOP_PAD, 0); backButton.setScale(S, S, 1); }
 
         // 存档指示器随布局重算：始终贴在标题行最右侧（与标题同高，避开中间滚动区）
         this.positionSaveIndicator();
@@ -1034,7 +1035,7 @@ export class MainScene extends Component {
         titleLbl.mount(bar).pos(0, H / 2 - 56, 0);
 
         // 导航按钮（竖向堆叠）：主页 / 背包 / 出门(回家) / 菜单
-        const goHome = () => { if (this._buildPage) this._navigator.setRoot(this._buildPage.buildHomePage()); };
+        const goHome = () => { if (this._buildPage) this._buildPage.goHome(); };
         const navDefs: { label: string; action: () => void; key: 'home' | 'bag' | 'go' | 'menu' }[] = [
             { label: t('主页'), action: goHome, key: 'home' },
             { label: t('ui.bar.bag', '背包'), action: () => this.onBottomAction('bag'), key: 'bag' },
@@ -1134,8 +1135,8 @@ export class MainScene extends Component {
 
         // 户外时「出门」按钮已变为「回家」，点击直接回主页（不 popTo 清理后再 push 地图）
         if (action === 'goout' && this._outdoorPage?.isOutdoors) {
-            if (this._buildPage) this._navigator.setRoot(this._buildPage.buildHomePage());
-            return; // buildHomePage 内部已重置 _isOutdoors=false 并刷新按钮
+            if (this._buildPage) this._buildPage.goHome();
+            return; // goHome 内部已重置 _isOutdoors=false 并刷新按钮
         }
 
         // 先清到根页，确保栈始终为 [主页, 当前页]，面包屑干净「主页 > xxx」
@@ -1239,6 +1240,10 @@ export class MainScene extends Component {
 
     // ===== 状态面板（非网格，弹窗）=====
     private openStatePanel(): void {
+        this._navigator.push(this.buildStatePage());
+    }
+
+    private buildStatePage(): GridPage {
         const s = this._gm.playerState;
         const cells: GridCellData[] = [
             { id: 'hp', name: `${t('生命 ')}${Math.round(s.hp)}`, state: 'normal' },
@@ -1248,17 +1253,22 @@ export class MainScene extends Component {
             { id: 'san', name: `${t('精神 ')}${Math.round(s.san)}`, state: 'normal' },
             { id: 'temp', name: `${t('体温 ')}${s.temp}`, state: 'normal' },
         ];
-        this._navigator.push({
+        return {
             title: t('状态'),
             breadcrumb: t('状态'),
             columns: 4,
             cells,
-        });
+            rebuildPage: () => this.buildStatePage(),
+        };
     }
 
     // ===== 战斗面板 =====
     /** 战斗列表：列出所有可战斗的怪物（测试/主动挑战用） */
     private openBattleGrid(): void {
+        this._navigator.push(this.buildBattleGridPage());
+    }
+
+    private buildBattleGridPage(): GridPage {
         const cells: GridCellData[] = Object.keys(MST_DATA).map(id => ({
             id,
             name: MST_DATA[id].name,
@@ -1267,17 +1277,18 @@ export class MainScene extends Component {
         }));
         cells.unshift({ id: 'info', name: t('选择对手作战'), state: 'disabled' });
 
-        this._navigator.push({
+        return {
             title: t('战斗'),
             breadcrumb: t('战斗'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildBattleGridPage(),
             onCellClick: (index, cell) => {
                 if (cell.id !== 'info') {
                     this.triggerBattle(cell.id);
                 }
             },
-        });
+        };
     }
 
     /** 启动交互式战斗面板（prefix 为地牢前缀怪物 key，可选） */
@@ -1329,7 +1340,7 @@ export class MainScene extends Component {
                     this._lastMsg = r.message;
                     this._isDead = false;
                     this._dialogPanel?.hide();
-                    if (this._buildPage) this._navigator.setRoot(this._buildPage.buildHomePage());
+                    if (this._buildPage) this._buildPage.goHome();
                 } else if (data === 'respawn') {
                     this._gm.respawn();
                     this._isDead = false;

@@ -358,12 +358,17 @@ export class GridCell extends Component {
         if (this._cooldownMask) this.setCooldownMask(this._cooldownMask, d.state === 'cooldown');
 
         // ── NewBadge（isNew 才显示；位置随格子尺寸更新，修复 bar 模式角标偏离的 bug） ──
+        // 文字每次激活时重取 t('新')：角标节点进对象池复用，构建时烘焙的语种会残留（切英文后仍显「新」）
         if (this._newBadge) {
             const nbTf = this.node.getComponent(UITransform);
             const nbW = nbTf ? nbTf.width : 160;
             const nbH = nbTf ? nbTf.height : 160;
             this._newBadge.setPosition(nbW / 2 - 8, nbH / 2 - 8, 0);
             this._newBadge.active = !!d.isNew;
+            if (d.isNew) {
+                const nbLbl = this._newBadge.getComponentInChildren(Label);
+                if (nbLbl) nbLbl.string = t('新');
+            }
         }
 
         this.applyState(d.state || 'normal');

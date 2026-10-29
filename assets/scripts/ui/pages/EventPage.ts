@@ -69,6 +69,7 @@ export class EventPage extends BasePage {
             breadcrumb: t('事件'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildQuestPage(),
             onCellClick: (index, cell) => this.openEventDetail(cell.id),
         };
     }

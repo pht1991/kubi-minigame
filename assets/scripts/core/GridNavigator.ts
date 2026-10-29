@@ -74,6 +74,14 @@ export class GridNavigator {
         this._notify();
     }
 
+    /** 重建栈中所有带 rebuildPage 工厂的页（语言切换后调用，让全栈 title/breadcrumb 的 t() 重新求值） */
+    rebuildAll(): void {
+        for (let i = 0; i < this._stack.length; i++) {
+            const p = this._stack[i];
+            if (p.rebuildPage) this._stack[i] = p.rebuildPage();
+        }
+    }
+
     /** 清空栈并设置根页 */
     setRoot(page: GridPage): void {
         this._stack = [page];

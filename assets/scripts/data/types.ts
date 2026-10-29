@@ -301,6 +301,12 @@ export interface GridPage {
     onCellClick?: (index: number, cell: GridCellData) => void;
     /** 刷新回调：UI_REFRESH 重新渲染时调用，返回最新 cells（用于 pop 回列表后刷新数据/msg） */
     rebuild?: () => GridCellData[];
+    /**
+     * 整页重建工厂：UI_REFRESH 渲染前调用，返回全新 GridPage（替换栈顶后再渲染）。
+     * 用于语言切换等场景——页面 title/breadcrumb/格子文案在构建时经 t() 烘焙，
+     * 仅靠 cells 级 rebuild 无法刷新标题，需要整页重新构建让 t() 重新求值。
+     */
+    rebuildPage?: () => GridPage;
     /** 是否为主页（用于导航变化后同步底栏「出门/回家」按钮状态） */
     home?: boolean;
     /**

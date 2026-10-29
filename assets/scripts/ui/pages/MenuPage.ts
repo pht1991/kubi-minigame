@@ -37,6 +37,7 @@ export class MenuPage extends BasePage {
             breadcrumb: t('ui.menu.breadcrumb', '主页 > 菜单'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildMenuPage(),
             onCellClick: (index, cell) => {
                 if (cell.id === 'skill') {
                     this.navigator.push(this.buildMenuSkillPage());
@@ -75,6 +76,7 @@ export class MenuPage extends BasePage {
             breadcrumb: t('ui.menu.breadcrumb.skills', '菜单 > 技能'),
             columns: 1,  // 单列列表
             cells,
+            rebuildPage: () => this.buildMenuSkillPage(),
             onCellClick: (index, cell) => {},
         };
     }
@@ -112,6 +114,7 @@ export class MenuPage extends BasePage {
             breadcrumb: t('ui.menu.breadcrumb.settings', '菜单 > 设置'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildMenuSettingsPage(),
             onCellClick: (index, cell) => {
                 switch (cell.id) {
                     case 'save':
@@ -206,6 +209,7 @@ export class MenuPage extends BasePage {
             breadcrumb: t('云存档'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildCloudPage(),
             onCellClick: async (index, cell) => {
                 if (cell.id === 'c_upload') {
                     const ok = await this.saveMgr.uploadToCloud();
@@ -241,8 +245,7 @@ export class MenuPage extends BasePage {
                 if (cell.id === 'doReincarnate' && canReincarnate) {
                     const r = ActionEvent.instance.doReincarnation();
                     this.setMsg(r.message);
-                    const home = this.ctx.buildPage?.buildHomePage();
-                    if (home) this.navigator.setRoot(home);
+                    this.ctx.buildPage?.goHome();
                 }
             },
         });

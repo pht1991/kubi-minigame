@@ -94,6 +94,11 @@ export class OutdoorPage extends BasePage {
         // 本次出门随机摇出在场商人（回家后缓存清空，再出门重摇）
         if (this.rolledTraders.length === 0) this.rolledTraders = this.rollVisibleTraders();
 
+        this.navigator.push(this.buildGoOutListPage());
+    }
+
+    /** 出门列表页构建（openGoOutList 与语言切换 rebuildPage 共用；商人用已缓存的 rolledTraders） */
+    private buildGoOutListPage(): GridPage {
         const cells: GridCellData[] = [];
         for (const key in PLACE_DATA) {
             const p = PLACE_DATA[key];
@@ -147,11 +152,12 @@ export class OutdoorPage extends BasePage {
             cells.push({ id: 'empty', name: t('还没有可前往的地点'), state: 'disabled', type: 'list' });
         }
 
-        this.navigator.push({
+        return {
             title: t('出门'),
             breadcrumb: t('主页 > 出门'),
             columns: 1,
             cells,
+            rebuildPage: () => this.buildGoOutListPage(),
             onCellClick: (index, cell) => {
                 if (cell.data?.traderId) {
                     this.openTradeDetail(cell.data.traderId);
@@ -159,7 +165,7 @@ export class OutdoorPage extends BasePage {
                     this.travelToPlace(cell.data.placeKey, cell.data.timeNeed);
                 }
             },
-        });
+        };
     }
 
     /** 前往地点（消耗时间 + 进入详情页） */
@@ -176,6 +182,11 @@ export class OutdoorPage extends BasePage {
 
     /** 公开入口：打开建筑列表 */
     public openBuildingGrid(): void {
+        this.navigator.push(this.buildBuildingGridPage());
+    }
+
+    /** 建筑列表页构建（openBuildingGrid 与语言切换 rebuildPage 共用） */
+    private buildBuildingGridPage(): GridPage {
         const cells: GridCellData[] = Object.keys(BUILDING_DATA)
             .filter(key => key !== 'build')
             .map(key => {
@@ -192,13 +203,14 @@ export class OutdoorPage extends BasePage {
                 };
             });
 
-        this.navigator.push({
+        return {
             title: t('建筑'),
             breadcrumb: t('建筑'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildBuildingGridPage(),
             onCellClick: (index, cell) => this.openBuildingDetail(cell.id),
-        });
+        };
     }
 
     /** 建筑详情 + 建造/升级动作（public：供 MainScene 设施入口直达） */
@@ -326,6 +338,7 @@ export class OutdoorPage extends BasePage {
             breadcrumb: d.name,
             columns: 1,   // 单列：详情页每项独占一行
             cells,
+            rebuildPage: () => this.buildBuildingDetailPage(buildingId),
             // 升级按钮走公共标题栏接口（与所有可升级建筑统一），替代旧内联升级格
             ...this.makeUpgradeInfo(upType, {
                 title: `${d.name}${t('升级')}`,
@@ -451,6 +464,11 @@ export class OutdoorPage extends BasePage {
 
         if (this.rolledTraders.length === 0) this.rolledTraders = this.rollVisibleTraders();
 
+        this.navigator.push(this.buildMapGridPage());
+    }
+
+    /** 地图页构建（openMapGrid 与语言切换 rebuildPage 共用；商人用已缓存的 rolledTraders） */
+    private buildMapGridPage(): GridPage {
         const cells: GridCellData[] = [];
         for (const key in PLACE_DATA) {
             const p = PLACE_DATA[key];
@@ -479,11 +497,12 @@ export class OutdoorPage extends BasePage {
             cells.push({ id: 'empty', name: t('没有可探索的地点'), state: 'disabled' });
         }
 
-        this.navigator.push({
+        return {
             title: t('地图'),
             breadcrumb: t('地图'),
             columns: 4,
             cells,
+            rebuildPage: () => this.buildMapGridPage(),
             onCellClick: (index, cell) => {
                 if (cell.data?.traderId) {
                     this.openTradeDetail(cell.data.traderId);
@@ -497,11 +516,15 @@ export class OutdoorPage extends BasePage {
                     this.openPlaceDetail(cell.id);
                 }
             },
-        });
+        };
     }
 
     /** 按筛选条件列出地点（内部复用，不再作为独立导航层） */
     private openMapFiltered(filter: string): void {
+        this.navigator.push(this.buildMapFilteredPage(filter));
+    }
+
+    private buildMapFilteredPage(filter: string): GridPage {
         const cells: GridCellData[] = [];
         for (const key in PLACE_DATA) {
             const p = PLACE_DATA[key];
@@ -530,6 +553,7 @@ export class OutdoorPage extends BasePage {
             breadcrumb: filterNames[filter] || filter,
             columns: 4,
             cells,
+            rebuildPage: () => this.buildMapFilteredPage(filter),
             onCellClick: (index, cell) => {
                 if (cell.id !== 'empty') {
                     if (!this.gm.placeSaveData[cell.id]?.visited) {
@@ -640,6 +664,7 @@ export class OutdoorPage extends BasePage {
             columns: 1,
             cells: buildCells(),
             rebuild: buildCells,
+            rebuildPage: () => this.buildPlaceDetailPage(placeId),
             onCellClick: (index, cell) => {
                 const data = cell.data as any;
                 if (data?.action === 'gather') {

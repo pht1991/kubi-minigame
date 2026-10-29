@@ -224,6 +224,12 @@ export class GridComponent extends Component {
 
     /** 渲染网格页 */
     renderPage(page: GridPage): void {
+        // 整页热替换：页面 title/breadcrumb/格子文案在构建时经 t() 烘焙，语言切换后需重建。
+        // 重建全栈（含栈底主页），面包屑拼接才不会残留旧语种；当前页取重建后的栈顶继续渲染。
+        if (page.rebuildPage) {
+            this._navigator.rebuildAll();
+            page = this._navigator.current || page;
+        }
         // 标题（深棕 + 偏大字号风格）
         if (this.titleLabel) {
             this.titleLabel.string = page.title;

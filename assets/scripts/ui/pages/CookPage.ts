@@ -78,6 +78,7 @@ export class CookPage extends BasePage {
             columns: 1,
             cells: this.buildCookHubCells(),
             rebuild: () => this.buildCookHubCells(),
+            rebuildPage: () => this.buildCookHubPage(),
             // 升级按钮走公共标题栏接口
             ...this.makeUpgradeInfo('cookerUpdate', {
                 title: t('炊具升级'),

@@ -47,6 +47,7 @@ export class BrewPage extends BasePage {
             breadcrumb: t('酿酒'),
             columns: 1,
             cells,
+            rebuildPage: () => this.buildBrewPage(),
             onCellClick: (index, cell) => {
                 if (cell.id === 'start') {
                     this.openBrewRecipeList();

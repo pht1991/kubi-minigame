@@ -94,6 +94,7 @@ export class CraftPage extends BasePage {
             columns: 1,           // 单列：每行一个配方，横向撑满展示完整信息（同建造列表）
             cells: this.buildRecipeCells(workbench),
             rebuild: () => this.buildRecipeCells(workbench),
+            rebuildPage: () => this.buildRecipePage(workbench),
             onCellClick: (index, cell) => this.onRecipeClick(workbench, cell.id),
         };
     }

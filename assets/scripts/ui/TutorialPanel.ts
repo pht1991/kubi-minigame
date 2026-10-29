@@ -70,9 +70,11 @@ export class TutorialPanel extends ModalPanel {
             { align: 'left', anchorX: 0.5, anchorY: 1 });
         y -= 64;
 
-        // 按钮区（跳过 / 开始游戏）
-        const by = -540;
-        const bw = 240, bh = 60, gap = 30;
+        // 按钮区（跳过 / 开始游戏）：紧贴内容末尾下方；面板高度按实际内容自适应，
+        // 消除旧版固定 panelH=940 + 写死 by=-540 造成的底部 ~280 设计px 大空白
+        const bw = 240, bh = 60, gap = 16, bottomPad = 16;
+        const by = y - gap - bh / 2;                       // y = 内容末尾（负值，相对内容容器顶）
+        this.resizePanel(90 + (-y + 8) + gap + bh + bottomPad);   // 90=标题区预留，8=内容起始偏移
         this.mkBtn(c, -bw / 2 - gap / 2, by, bw, bh, t('跳过'),
             { ...Btn.neutral, bg: C.barBtnBg }, () => this.hide());
         this.mkBtn(c, bw / 2 + gap / 2, by, bw, bh, t('开始游戏'),
