@@ -90,20 +90,21 @@ export class OfflineModal extends ModalPanel {
         }
 
         // 弹窗布局：标题区(topMargin) → 列表(viewH) → 按钮区(92)，全部相对面板中心(_root 原点)
-        const topMargin = 70;            // 标题区预留（标题在面板内顶部）
+        // topMargin 须容纳：基类标题(顶 42 + 行高 36 = 78) + 副标题(24) + 间距(16) = 118
+        const topMargin = 118;
         // 底部按钮区预留 = 16 间距 + 60 按钮高 + 16 底边距 = 92（少了按钮会溢出面板底边）
         const maxPanelH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
         const maxViewH = Math.max(160, maxPanelH - topMargin - 92);
-        // 先按行数估算内容高（行高≈54 + 间距10），再定列表可视高：尽量完整显示，超限则内部滚动
-        const estListH = Math.max(60, rows.length * 64 - 10);
+        // 行高估算按 72（两行条目 name+sub ≈70，单行略富余），避免内容高被低估出现意外滚动露半行
+        const estListH = Math.max(72, rows.length * 72 - 10);
         const viewH = Math.min(estListH, maxViewH);
         const panelH = this.resizePanel(Math.min(maxPanelH, topMargin + viewH + 92));
 
-        // 头部：离开时长（紧接标题下方，相对面板中心）
+        // 头部：离开时长（紧接标题下方：标题底 ≈ panelH/2-78，副标题顶留 6px 间距）
         const realH = Math.max(1, Math.round(r.realMs / 3_600_000));
         const gameH = Math.round(r.hours);
         this.mkText(
-            this._root, 0, panelH / 2 - 56, listW, 44,
+            this._root, 0, panelH / 2 - 84, listW, 24,
             t('ui.offline.head', '你离开了约 {real} 小时，游戏内时光推进了 {game} 小时', { real: realH, game: gameH }),
             20, C.sub,
             { anchorY: 1, align: 'center' },

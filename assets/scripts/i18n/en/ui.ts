@@ -67,7 +67,7 @@ export const EN_UI: Record<string, string> = {
     'ui.time.night': 'Night',
     'ui.time.format': '{season} Day {day} · {period}',
     'ui.offline.title': 'While You Were Away',
-    'ui.offline.head': 'You were away about {real} hours; {game} hours passed in-game.',
+    'ui.offline.head': 'You were away about {real}h; {game}h passed in-game.',
     'ui.offline.arrived': 'Arrived at Day {day} ({season})',
     'ui.offline.down': 'Down',
     'ui.offline.up': 'Up',
