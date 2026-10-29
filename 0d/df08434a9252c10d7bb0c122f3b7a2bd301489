@@ -1,0 +1,28 @@
+assets/scripts/ui/ModalPanel.ts
+  s_f8b3b7f5531622::t_185a6ffb279cc0 317,327-331,334,337-338
+  s_f8b3b7f5531622::t_e80c1cd373c4d2 50-56
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_cf9f21557955e9 859-866
+assets/scripts/ui/SaveIndicator.ts
+  s_f8b3b7f5531622::t_95445b1324e8ca 12
+  s_f8b3b7f5531622::t_a05d9167035df9 41-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.37",
+  "base_commit_sha": "0ddf08434a9252c10d7bb0c122f3b7a2bd301489",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "hy3"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
