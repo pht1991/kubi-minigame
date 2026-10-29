@@ -995,7 +995,10 @@ export class MainScene extends Component {
 
         const vs = view.getVisibleSize();
         const W = Layout.sidebarW;                 // 260
-        const H = vs.height;                        // 随可见高度满高
+        // 给 HTML 顶栏(nav.html, 高≈webNavTopPx)让位：侧栏整体下移 inset、高度减 inset，
+        // 避免侧栏标题贴着黑色顶栏（webNavInsetDesign 是设计坐标下的顶栏高度）
+        const inset = Layout.webNavInsetDesign;
+        const H = vs.height - inset;                // 侧栏高度（减顶栏让位）
         const x = -Layout.designW / 2 + W / 2;      // 贴左缘居中
 
         // 容器（复用 _bottomBar 引用，享受原 防重入 / 分层 逻辑）
@@ -1004,7 +1007,7 @@ export class MainScene extends Component {
         const barTf = bar.addComponent(UITransform);
         barTf.setContentSize(W, H);
         barTf.setAnchorPoint(0.5, 0.5);
-        bar.setPosition(x, 0, 0);
+        bar.setPosition(x, -inset / 2, 0);          // 下移 inset/2：顶在画布顶下 inset、底贴画布底
         this._bottomBarLayer!.addChild(bar);
         this._bottomBar = bar;
 
@@ -1049,14 +1052,15 @@ export class MainScene extends Component {
             if (d.key === 'menu') this._menuBtnLabel = uiBtn.label;
         }
 
-        // 底部语言切换（中/EN），仅浏览器平台
+        // 语言切换（中/EN）紧跟导航按钮组下方（仅浏览器平台），消除侧栏底部大段空白
         if (Layout.isWeb) {
             const langBtn = new UIButton(
                 isZh() ? 'EN' : t('中'),
                 { bg: C.barBtnBg, border: C.barBtnBorder, borderW: 1, text: C.barBtnText, radius: 10, fontSize: 18 },
                 () => this.toggleLanguage(), BTN_W, 44,
             );
-            langBtn.mount(bar).pos(0, -H / 2 + 50, 0);
+            const lastNavY = startY - (navDefs.length - 1) * step;
+            langBtn.mount(bar).pos(0, lastNavY - (BTN_H / 2 + 14 + 22), 0);
             this._langBtnLabel = langBtn.label;
         }
     }

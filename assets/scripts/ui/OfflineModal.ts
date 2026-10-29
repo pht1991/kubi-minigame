@@ -7,6 +7,7 @@
  * 纯展示 + 单个「知道了」关闭按钮（不可点遮罩关闭，确保玩家看到结算）。
  */
 
+import { Node, UITransform } from 'cc';
 import { ModalPanel } from './ModalPanel';
 import { C, Btn } from './theme';
 import { Layout } from './layoutConfig';
@@ -23,22 +24,27 @@ export class OfflineModal extends ModalPanel {
 
     private _report: OfflineReport | null = null;
     private _list!: ModalScrollList;
+    /** 以面板中心(0,0)为原点的私有根容器：不走基类 _content，避免 resizePanel 后 _content 下移导致坐标基准错乱 */
+    private _root: Node | null = null;
 
     protected render(): void {
-        this.clearContent();
         const r = this._report;
         if (!r) { this.hide(); return; }
-        const listW = this.panelW - 56;
 
-        // 头部：离开时长
-        const realH = Math.max(1, Math.round(r.realMs / 3_600_000));
-        const gameH = Math.round(r.hours);
-        this.mkText(
-            this._content!, 0, -8, listW, 44,
-            t('ui.offline.head', '你离开了约 {real} 小时，游戏内时光推进了 {game} 小时', { real: realH, game: gameH }),
-            20, C.sub,
-            { anchorY: 1, align: 'center' },
-        );
+        // 私有根容器：以面板中心(0,0)为原点，挂到 _panel。
+        // 关键：基类 _content 在 resizePanel 后会随 panelH 下移(y = panelH/2-90)，
+        // 若把列表/按钮挂 _content 而用「相对面板中心」的 listTop 定位，会产生双重偏移
+        // —— 列表被推到面板顶之上(顶出边界)且底部留大片空白。故自建 _root 统一基准。
+        if (!this._root || !this._root.isValid) {
+            this._root = new Node('OfflineRoot');
+            this._root.addComponent(UITransform).setAnchorPoint(0.5, 0.5);
+            this._root.setPosition(0, 0, 0);
+            this._root.setParent(this._panel);
+        } else {
+            for (const c of [...this._root.children]) c.destroy();
+        }
+
+        const listW = this.panelW - 56;
 
         const rows: ModalRow[] = [];
         rows.push(new ModalRow({
@@ -83,8 +89,7 @@ export class OfflineModal extends ModalPanel {
             }));
         }
 
-        // 弹窗布局：内容从面板顶向下排（标题区 → 列表可视区 → 按钮），
-        // 按钮永远贴在「列表可视区」下方，不再压到溢出的条目 · docs/browser-adaptation.md 三-2
+        // 弹窗布局：标题区(topMargin) → 列表(viewH) → 按钮区(92)，全部相对面板中心(_root 原点)
         const topMargin = 70;            // 标题区预留（标题在面板内顶部）
         // 底部按钮区预留 = 16 间距 + 60 按钮高 + 16 底边距 = 92（少了按钮会溢出面板底边）
         const maxPanelH = Math.max(320, this._vsH - Layout.webNavInsetDesign - 32);
@@ -93,20 +98,31 @@ export class OfflineModal extends ModalPanel {
         const estListH = Math.max(60, rows.length * 64 - 10);
         const viewH = Math.min(estListH, maxViewH);
         const panelH = this.resizePanel(Math.min(maxPanelH, topMargin + viewH + 92));
-        const listTop = panelH / 2 - topMargin;   // 列表可视区顶（相对内容中心）
+
+        // 头部：离开时长（紧接标题下方，相对面板中心）
+        const realH = Math.max(1, Math.round(r.realMs / 3_600_000));
+        const gameH = Math.round(r.hours);
+        this.mkText(
+            this._root, 0, panelH / 2 - 56, listW, 44,
+            t('ui.offline.head', '你离开了约 {real} 小时，游戏内时光推进了 {game} 小时', { real: realH, game: gameH }),
+            20, C.sub,
+            { anchorY: 1, align: 'center' },
+        );
+
+        const listTop = panelH / 2 - topMargin;   // 列表可视区顶（相对面板中心 = _root 原点）
 
         this._list = this.createScrollList({
-            parent: this._content!, x: 0, y: listTop,
+            parent: this._root, x: 0, y: listTop,
             width: listW, viewH, gap: 10,
             autoResizePanel: false, repositionScroll: false, align: 'center',
         });
         this._list.setRows(rows);
 
-        // 底部「知道了」按钮：紧贴列表可视区下方（listTop - viewH = 可视区底，再留 16 间距）
+        // 底部「知道了」按钮：紧贴列表可视区下方（listTop - viewH = 可视区底，再留 16 间距 + 半高）
         const btnW = 240;
         const btnRow = new UIHStack().gap(0)
             .add(new UIButton(t('ui.offline.ok', '知道了'), Btn.confirm, () => this.hide(), btnW, 60));
-        btnRow.mount(this._content!);
+        btnRow.mount(this._root);
         btnRow.pos(0, listTop - viewH - 16 - 30, 0);
     }
 
