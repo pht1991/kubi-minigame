@@ -1,0 +1,85 @@
+assets/scripts/ui/pages/TrapPage.ts
+  s_f8b3b7f5531622::t_28cf92aa97032d 74
+assets/scripts/ui/pages/CraftPage.ts
+  s_f8b3b7f5531622::t_0631add6740c0b 97
+assets/scripts/ui/GridComponent.ts
+  s_f8b3b7f5531622::t_84ed8e72477c50 227-228,230-231
+  s_f8b3b7f5531622::t_2fb6a84cc6e07c 229,232
+assets/scripts/ui/pages/SkillPage.ts
+  s_f8b3b7f5531622::t_0dd28fa8da988f 17
+  s_f8b3b7f5531622::t_78b9c782b45806 18-21,41,46,48
+  s_f8b3b7f5531622::t_8ed6a4e1760a7d 89
+assets/scripts/data/types.ts
+  s_f8b3b7f5531622::t_76995f0925f833 304-309
+assets/scripts/ui/pages/BuildPage.ts
+  s_f8b3b7f5531622::t_995afdf72643f9 17-18,25-26,28-29
+  s_f8b3b7f5531622::t_b48fd9b60cbe94 72
+  s_f8b3b7f5531622::t_e7882b55c0dcc2 81-84,114,119,124
+  s_f8b3b7f5531622::t_74f84d2866b319 80
+assets/scripts/ui/TutorialPanel.ts
+  s_f8b3b7f5531622::t_824f8073c5eda5 73-77
+assets/scripts/ui/pages/RestPage.ts
+  s_f8b3b7f5531622::t_fa9f5ff0c65032 98
+  s_f8b3b7f5531622::t_bd552e5ce9b86c 48
+assets/scripts/i18n/en/ui.ts
+  s_f8b3b7f5531622::t_7f4f10bdaf5027 825
+assets/scripts/ui/pages/OutdoorPage.ts
+  s_f8b3b7f5531622::t_a1d8b72578f39f 556
+  s_f8b3b7f5531622::t_a8532586c8473e 341
+  s_f8b3b7f5531622::t_91d527dce32edc 524-527
+  s_f8b3b7f5531622::t_4f00b5b096697d 155,160,168
+  s_f8b3b7f5531622::t_b4a9b1354fa614 185-189,206,211,213
+  s_f8b3b7f5531622::t_2c027fd92e4588 667
+  s_f8b3b7f5531622::t_2841ccc0156680 500,505,519
+  s_f8b3b7f5531622::t_b2b199b1bc3458 97-101
+  s_f8b3b7f5531622::t_0024fa14ac8b1a 467-471
+assets/scripts/core/GridNavigator.ts
+  s_f8b3b7f5531622::t_a9b4ddcda9b1ce 77-84
+assets/scripts/ui/pages/FarmPage.ts
+  s_f8b3b7f5531622::t_cdaadcd736e3c3 65
+assets/scripts/ui/pages/BigBoxPage.ts
+  s_f8b3b7f5531622::t_4363bf8eddd98b 58
+  s_f8b3b7f5531622::t_8ee5f3b8923d21 39
+assets/scripts/ui/GridCell.ts
+  s_f8b3b7f5531622::t_d98987fce1a635 361,368-371
+assets/scripts/ui/pages/DungeonPage.ts
+  s_f8b3b7f5531622::t_ddf24be3c9648c 61
+assets/scripts/ui/pages/CookPage.ts
+  s_f8b3b7f5531622::t_962028e914fc4a 81
+assets/scripts/ui/MainScene.ts
+  s_f8b3b7f5531622::t_b22de29de2870d 1243-1246,1256,1261-1262
+  s_f8b3b7f5531622::t_e61b1a87939fcb 1268-1271,1280,1285,1291
+  s_f8b3b7f5531622::t_6d163c44dd90cd 1343
+  s_f8b3b7f5531622::t_009cf9244f3721 1138-1139
+  s_f8b3b7f5531622::t_034ffb9ec35175 1038
+  s_f8b3b7f5531622::t_8cf37f844ba80e 789-790
+assets/scripts/ui/pages/MenuPage.ts
+  s_f8b3b7f5531622::t_ffec6ddd4ee89b 212
+  s_f8b3b7f5531622::t_74179b49d7ea66 117
+  s_f8b3b7f5531622::t_4f55e3b081e134 248
+  s_f8b3b7f5531622::t_470062fa2c70a8 79
+  s_f8b3b7f5531622::t_a6107c01c0813c 40
+assets/scripts/ui/pages/BrewPage.ts
+  s_f8b3b7f5531622::t_63f190c0e3d3db 50
+assets/scripts/ui/pages/EventPage.ts
+  s_f8b3b7f5531622::t_65ab9e709dfecf 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.37",
+  "base_commit_sha": "706fbd05c29e21d5e49d80e032d66eeb92cab8c4",
+  "prompts": {},
+  "sessions": {
+    "s_f8b3b7f5531622": {
+      "agent_id": {
+        "tool": "workbuddy",
+        "id": "88e208da-151c-420f-af91-d19f3e6f1cef",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "panhaitao-9ap2u <panhaitao@sdpjw.com>",
+      "custom_attributes": {
+        "internal_commit_event_allowlist": "codeup.aliyun.com,codeup-*"
+      }
+    }
+  }
+}
