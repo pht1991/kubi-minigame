@@ -47,6 +47,13 @@ export interface PanelContextLike {
 
 @ccclass('ModalPanel')
 export abstract class ModalPanel extends Component {
+    // 全局弹窗开合计数（供 SaveIndicator 等顶层浮层判断「是否有弹窗打开」）
+    private static _openCount = 0;
+    private static _onModalState: ((open: boolean) => void) | null = null;
+    /** 注册弹窗开合状态监听（回调首参：当前是否有任意弹窗打开） */
+    static setModalStateListener(cb: (open: boolean) => void): void { ModalPanel._onModalState = cb; }
+    /** 当前是否有任意弹窗打开 */
+    static isAnyOpen(): boolean { return ModalPanel._openCount > 0; }
 
     // ════ 子类可覆盖的配置（字段初始化在 onLoad 前执行）════
     protected panelW = 640;
@@ -307,6 +314,7 @@ export abstract class ModalPanel extends Component {
     // 调用 super.show(title) 即可；any 让子类签名与基类兼容，避免 TS2416。
     public show(title: any): void {
         // 先刷新视口（防 onLoad 时分辨率/窗口未就位的陈旧尺寸），再渲染
+        const wasActive = this.node.active;
         this._refreshViewport();
         if (this._titleLbl) this._titleLbl.string = title;
         this.node.active = true;
@@ -316,10 +324,18 @@ export abstract class ModalPanel extends Component {
         if (this.showMask) this._drawMask();
         this.drawPanelBg();
         this.render();
+        // 仅在「从隐藏→显示」的首次时计数 / 通知，避免重复渲染导致多计
+        if (!wasActive) {
+            ModalPanel._openCount++;
+            ModalPanel._onModalState?.(true);
+        }
     }
     public hide(): void {
+        if (!this.node.active) return;   // 已隐藏，避免重复计数
         this.onHide();
         this.node.active = false;
+        ModalPanel._openCount = Math.max(0, ModalPanel._openCount - 1);
+        ModalPanel._onModalState?.(ModalPanel._openCount > 0);
     }
     /** 弹窗是否正在显示 */
     public isShowing(): boolean { return this.node.active; }

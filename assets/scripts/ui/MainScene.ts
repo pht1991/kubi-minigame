@@ -856,6 +856,14 @@ export class MainScene extends Component {
             labels.push(this._mkStatusLabel(bar, attrNames[i], attrXs[i], Math.round(-10 * S), Math.round(120 * S), Math.round(52 * S), Math.round(20 * S)));
         }
 
+        // 属性项之间加细分隔线（景观可读性，桌面/竖屏通用；高度贴合属性行、不碰顶部时间行）
+        const divH = Math.round(46 * S);
+        const divY = Math.round(-10 * S);
+        for (let i = 1; i < n; i++) {
+            const mx = (attrXs[i - 1] + attrXs[i]) / 2;
+            new UIShape('HUDDivider').rect(1, divH, C.divider, 0).mount(bar).pos(mx, divY, 0);
+        }
+
         // 挂 StatusBar 组件并赋值 UILabel 字段
         const comp = bar.addComponent(StatusBar);
         comp.timeLabel = timeLabel;

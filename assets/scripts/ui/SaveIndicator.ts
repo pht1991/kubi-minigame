@@ -9,6 +9,7 @@
 import { _decorator, Component, Node, UITransform, Graphics } from 'cc';
 import { C } from './theme';
 import { UIShape, UILabel } from './widgets';
+import { ModalPanel } from './ModalPanel';
 import { t } from '../i18n';
 
 const { ccclass } = _decorator;
@@ -37,6 +38,9 @@ export class SaveIndicator extends Component {
         const lbl = new UILabel(t('ui.save.savedAt', '保存于 --:--'), { size: 16, color: C.title, align: 'center', width: 130 });
         lbl.mount(this.node);
         this._label = lbl;
+
+        // 弹窗打开时隐藏本徽章，避免浮在弹窗上方（关闭后由监听自动恢复）
+        ModalPanel.setModalStateListener((open) => { this.node.active = !open; });
     }
 
     onDestroy(): void {
